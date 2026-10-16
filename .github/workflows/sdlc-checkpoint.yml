@@ -10,5 +10,5 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "24" }
       # Pinned by `sdlc init` to the commit recorded in .sdlc/lock.json.
-      # Configured ref: main
-      - run: npx --yes github:alex-struk/agentic-sdlc#f7c4e5b43cf49880962a3c10a7f020c184cecff4 checks --json
+      # Configured ref: deploy-to-azure
+      - run: npx --yes github:alex-struk/agentic-sdlc#67a3510c3a85a09991d3a814876594bb578b83cf checks --json

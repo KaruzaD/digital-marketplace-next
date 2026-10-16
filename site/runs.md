@@ -1,5 +1,13 @@
 # Run log
 
+# Run record 2026-10-16
+
+- 13:39:36 init: pipeline 67a3510, packs 3, skills installed 0, skipped 0, briefs 0 written, 0 left as the project has them
+
+# Run record 2026-10-05
+
+- 09:44:23 oracle down old
+
 # Run record 2026-10-04
 
 - 18:05:16 drive: step 1: `sdlc run verify --slice 14` — build-slice-14 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
@@ -525,6 +533,7 @@
 - 16:45:41 oracle down old in configuration evaluation_instructions_absent_twu
 - 16:45:41 calibrate old: a full run, forced with --full
 - 16:45:45 run calibrate: ok, cost 0, turns 0
+- 16:45:47 drive: stopped after 10 steps — nothing left to run
 
 # Run record 2026-10-03
 
