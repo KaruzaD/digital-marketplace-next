@@ -1,310 +1,230 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FileTrigger } from "react-aria-components";
-import {
-  Button,
-  ButtonGroup,
-  Checkbox,
-  Form,
-  Heading,
-  Link,
-  NumberField,
-  Select,
-  Text,
-  TextArea,
-  TextField,
-} from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, Link, NumberField, Radio, RadioGroup, Select, Text, TextArea, TextField } from "@bcgov/design-system-react-components";
+import { Fieldset, VENDOR } from "./opportunity-kit";
+import { CreateHead, FormPart, ORGANIZATIONS, ProposalFormPage, SWU_OPPORTUNITY } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-swu-create · default — a vendor bids for an organization they own or administer. There is one team for
-// each phase the opportunity has and no other, each member can be marked scrum master, the capabilities and the total
-// cost are shown as they change, and each team question has its word limit stated (R-2.1, R-2.12, R-2.16, R-2.18,
-// R-2.19, R-2.21)
-const meta: Meta = { title: "proposals/proposal-swu-create/default" };
+// each phase the opportunity has and no other, each phase's scrum master is one choice among its members, each phase
+// says whether its team meets the phase's requirements, the capabilities and the total cost are shown as they change,
+// and each team question has its word limit stated (R-2.1, R-2.12, R-2.16, R-2.18, R-2.19, R-2.21)
+const meta: Meta = { title: "proposals/proposal-swu-create/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const panel = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const group = {
-  margin: "var(--layout-margin-none)",
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
-const item = {
-  padding: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
 const currency = { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 } as const;
 
-// Illustrative only: the organizations the signed-in vendor owns or administers, and the chosen one's members.
-const organizations = [
-  { id: "org-1", label: "Example Digital Ltd." },
-  { id: "org-2", label: "Sample Software Co-op" },
-];
-const members = [
-  { id: "u-v-1", label: "Test Vendor" },
-  { id: "u-v-2", label: "Test Developer One" },
+// Illustrative only: the chosen organization's people the team-member choice offers. A person whose invitation is
+// still unanswered is offered marked pending (R-2.18); nobody already named in the phase is offered again.
+const choices = [
   { id: "u-v-3", label: "Test Developer Two" },
-  { id: "u-v-4", label: "Test Designer" },
+  { id: "u-v-5", label: "Test Candidate (membership pending)" },
+];
+
+const phases = [
+  {
+    key: "prototype",
+    legend: "Prototype phase",
+    dates: "November 2, 2026 to January 29, 2027. Maximum budget $400,000.",
+    members: ["Test Vendor", "Test Developer One"],
+    scrum: "Test Vendor",
+    capabilities: "Agile coaching, User research, Frontend development and Backend development: held.",
+    cost: 300000,
+    max: "$400,000",
+  },
+  {
+    key: "implementation",
+    legend: "Implementation phase",
+    dates: "February 1, 2027 to September 30, 2027. Maximum budget $850,000.",
+    members: ["Test Vendor", "Test Developer One", "Test Designer"],
+    scrum: "Test Vendor",
+    capabilities: "Agile coaching, Backend development, Frontend development, User research and Security engineering: held.",
+    cost: 850000,
+    max: "$850,000",
+  },
 ];
 
 export const Default: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Create a Sprint With Us proposal</Heading>
-        <section aria-labelledby="create-opportunity" style={panel} data-testid="proposal-opportunity-summary">
-          <Stack gap="medium">
-            <Heading level={2} id="create-opportunity">The opportunity</Heading>
-            <Stack as="dl" direction="row" gap="medium">
-              <Stack gap="small">
-                <dt style={term}>Opportunity</dt>
-                <dd><Link href="/opportunities/sprint-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000201">Modernize the licence renewal service</Link></dd>
-              </Stack>
-              <Stack gap="small">
-                <dt style={term}>Maximum budget</dt>
-                <dd>$1,200,000</dd>
-              </Stack>
-              <Stack gap="small">
-                <dt style={term}>Proposal deadline</dt>
-                <dd>October 16, 2026 at 4:00 p.m. Pacific time</dd>
-              </Stack>
-            </Stack>
-          </Stack>
-        </section>
-        <Text elementType="p">A draft can be saved with any field blank. Every required field is needed to submit.</Text>
-        <Form validationBehavior="aria">
-          <Stack gap="medium">
-            <section aria-labelledby="form-organization" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-organization">Organization</Heading>
-                <Select
-                  id="proposal-organization"
-                  label="Organization"
-                  isRequired
-                  description="Organizations you own or administer. It must be a qualified supplier for Sprint With Us before you submit."
-                  items={organizations}
-                  defaultValue="org-1"
-                  data-testid="proposal-organization-field"
-                />
-              </Stack>
-            </section>
-            <section aria-labelledby="form-team" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-team">Team</Heading>
-                <Text elementType="p">
-                  Name a team for each phase this opportunity has, and at most one scrum master in each. Everyone you name must be an
-                  active member of the organization.
-                </Text>
-                <fieldset id="proposal-prototype-team" style={group}>
-                  <legend style={legend}>Prototype phase</legend>
-                  <Stack gap="medium">
-                    <Text elementType="p" size="small" color="secondary">November 2, 2026 to January 29, 2027. Maximum budget $400,000.</Text>
-                    <Stack as="ul" gap="medium">
-                      <li style={item}>
-                        <Stack gap="small">
-                          <Text elementType="p">Test Vendor</Text>
-                          <Checkbox defaultSelected aria-label="Scrum master: Test Vendor, prototype phase" data-testid="proposal-scrum-master">Scrum master</Checkbox>
-                          <div>
-                            <Button variant="tertiary" size="small" aria-label="Remove Test Vendor from the prototype phase">Remove</Button>
-                          </div>
-                        </Stack>
-                      </li>
-                      <li style={item}>
-                        <Stack gap="small">
-                          <Text elementType="p">Test Developer One</Text>
-                          <Checkbox aria-label="Scrum master: Test Developer One, prototype phase" data-testid="proposal-scrum-master">Scrum master</Checkbox>
-                          <div>
-                            <Button variant="tertiary" size="small" aria-label="Remove Test Developer One from the prototype phase">Remove</Button>
-                          </div>
-                        </Stack>
-                      </li>
-                    </Stack>
-                    <Stack direction="row" align="end" gap="medium">
-                      <Select label="Team member to add to the prototype phase" items={members} />
-                      <Button variant="secondary" aria-label="Add team member to the prototype phase" data-testid="proposal-add-team-member">
-                        Add team member
-                      </Button>
-                    </Stack>
-                    <NumberField
-                      id="proposal-prototype-cost"
-                      label="Proposed cost for the prototype phase"
-                      isRequired
-                      description="Up to the phase's maximum budget of $400,000."
-                      formatOptions={currency}
-                      defaultValue={300000}
-                      data-testid="proposal-phase-cost-field"
-                    />
-                  </Stack>
-                </fieldset>
-                <fieldset id="proposal-implementation-team" style={group}>
-                  <legend style={legend}>Implementation phase</legend>
-                  <Stack gap="medium">
-                    <Text elementType="p" size="small" color="secondary">February 1, 2027 to September 30, 2027. Maximum budget $850,000.</Text>
-                    <Stack as="ul" gap="medium">
-                      <li style={item}>
-                        <Stack gap="small">
-                          <Text elementType="p">Test Vendor</Text>
-                          <Checkbox defaultSelected aria-label="Scrum master: Test Vendor, implementation phase" data-testid="proposal-scrum-master">Scrum master</Checkbox>
-                          <div>
-                            <Button variant="tertiary" size="small" aria-label="Remove Test Vendor from the implementation phase">Remove</Button>
-                          </div>
-                        </Stack>
-                      </li>
-                      <li style={item}>
-                        <Stack gap="small">
-                          <Text elementType="p">Test Developer One</Text>
-                          <Checkbox aria-label="Scrum master: Test Developer One, implementation phase" data-testid="proposal-scrum-master">Scrum master</Checkbox>
-                          <div>
-                            <Button variant="tertiary" size="small" aria-label="Remove Test Developer One from the implementation phase">Remove</Button>
-                          </div>
-                        </Stack>
-                      </li>
-                      <li style={item}>
-                        <Stack gap="small">
-                          <Text elementType="p">Test Designer</Text>
-                          <Checkbox aria-label="Scrum master: Test Designer, implementation phase" data-testid="proposal-scrum-master">Scrum master</Checkbox>
-                          <div>
-                            <Button variant="tertiary" size="small" aria-label="Remove Test Designer from the implementation phase">Remove</Button>
-                          </div>
-                        </Stack>
-                      </li>
-                    </Stack>
-                    <Stack direction="row" align="end" gap="medium">
-                      <Select label="Team member to add to the implementation phase" items={members} />
-                      <Button variant="secondary" aria-label="Add team member to the implementation phase" data-testid="proposal-add-team-member">
-                        Add team member
-                      </Button>
-                    </Stack>
-                    <NumberField
-                      id="proposal-implementation-cost"
-                      label="Proposed cost for the implementation phase"
-                      isRequired
-                      description="Up to the phase's maximum budget of $850,000."
-                      formatOptions={currency}
-                      defaultValue={850000}
-                      data-testid="proposal-phase-cost-field"
-                    />
-                  </Stack>
-                </fieldset>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-capabilities" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-capabilities">Capabilities</Heading>
-                <Text elementType="p">Between them, your phase teams must cover every capability this opportunity requires.</Text>
-                <ul>
-                  <li>Agile coaching: covered</li>
-                  <li>Backend development: covered</li>
-                  <li>Frontend development: covered</li>
-                  <li>User research: covered</li>
-                  <li>Security engineering: covered</li>
-                </ul>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-cost" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-cost">Cost</Heading>
-                <div role="status">
-                  <Text elementType="p">Total proposed cost: $1,150,000 of the $1,200,000 maximum budget.</Text>
-                </div>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-questions" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-questions">Team questions</Heading>
-                <fieldset style={group}>
-                  <legend style={legend}>Question 1</legend>
-                  <Stack gap="medium">
-                    <Text elementType="p">Describe how your team would approach user research for the renewal service.</Text>
-                    <TextArea
-                      id="proposal-question-1"
-                      label="Response to question 1"
-                      isRequired
-                      description="Up to 300 words."
-                      defaultValue="We would start with the renewal staff and the ten most common reasons a renewal is returned."
-                      data-testid="proposal-question-response-field"
-                    />
-                    <div role="status">
-                      <Text elementType="p" size="small" color="secondary">18 of 300 words</Text>
-                    </div>
-                  </Stack>
-                </fieldset>
-                <fieldset style={group}>
-                  <legend style={legend}>Question 2</legend>
-                  <Stack gap="medium">
-                    <Text elementType="p">Describe a time your team replaced a legacy system without interrupting service.</Text>
-                    <TextArea
-                      id="proposal-question-2"
-                      label="Response to question 2"
-                      isRequired
-                      description="Up to 500 words."
-                      defaultValue="We moved a permit service to a new platform in stages."
-                      data-testid="proposal-question-response-field"
-                    />
-                    <div role="status">
-                      <Text elementType="p" size="small" color="secondary">10 of 500 words</Text>
-                    </div>
-                  </Stack>
-                </fieldset>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-references" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-references">References</Heading>
-                <fieldset style={group}>
-                  <legend style={legend}>Reference 1</legend>
-                  <Stack gap="medium">
-                    <TextField label="Name" defaultValue="Test Reference One" />
-                    <TextField label="Email address" type="email" defaultValue="test.reference@example.com" />
-                    <TextField label="Phone number (optional)" type="tel" />
-                    <div>
-                      <Button variant="tertiary" size="small">Remove reference 1</Button>
-                    </div>
-                  </Stack>
-                </fieldset>
-                <div>
-                  <Button variant="secondary" data-testid="proposal-add-reference">Add a reference</Button>
-                </div>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-attachments" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-attachments">Attachments</Heading>
-                <Text elementType="p">
-                  Anyone who can read this proposal can read its attachments. Attachments are checked even when you save a draft.
-                </Text>
-                <Text elementType="p">No attachments have been added.</Text>
-                <div id="attachment-size-limit" data-testid="attachment-size-limit">
-                  <Text elementType="p" size="small" color="secondary">Any type of file, up to 10 MB each.</Text>
-                </div>
-                <div>
-                  <FileTrigger>
-                    <Button variant="secondary" aria-describedby="attachment-size-limit" data-testid="attachment-add-button">
-                      Add attachment
+    <SitePage viewer={VENDOR} current="opportunities">
+      <ProposalFormPage
+        head={<CreateHead title="Create a Sprint With Us proposal" opportunity={SWU_OPPORTUNITY.title} />}
+        intro={
+          <>
+            <p className="op-text">A draft can be saved with any field blank. Every required field is needed to submit.</p>
+            <p className="op-text">
+              <Link href="/opportunities/sprint-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000201">View the opportunity</Link>
+            </p>
+          </>
+        }
+        summary={SWU_OPPORTUNITY}
+        actions={
+          <>
+            <Button variant="primary" size="medium" data-testid="proposal-submit">Submit proposal</Button>
+            <Button variant="secondary" size="medium" data-testid="proposal-save-draft">Save draft</Button>
+            <Button variant="tertiary" size="medium" data-testid="proposal-cancel">Cancel</Button>
+          </>
+        }
+      >
+        <FormPart id="form-organization" title="1. Organization">
+          <Select
+            id="proposal-organization"
+            label="Organization"
+            isRequired
+            description="Organizations you own or administer. It must be a qualified supplier for Sprint With Us before you submit."
+            items={ORGANIZATIONS}
+            defaultValue="org-1"
+            data-testid="proposal-organization-field"
+          />
+        </FormPart>
+
+        <FormPart id="form-team" title="2. Team">
+          <p className="op-text">
+            Name a team for each phase this opportunity has, and choose one scrum master in each. Everyone you name must be an
+            active member of the organization.
+          </p>
+          {phases.map((phase) => (
+            <Fieldset key={phase.key} legend={phase.legend} testId="proposal-phase-team">
+              <p className="op-note">{phase.dates}</p>
+              <ul className="pp-rows" aria-label={`${phase.legend} team`}>
+                {phase.members.map((member) => (
+                  <li key={member} className="pp-row">
+                    <span className="pp-row-name">{member}</span>
+                    <Button variant="tertiary" size="small" aria-label={`Remove ${member} from the ${phase.legend.toLowerCase()}`}>
+                      Remove
                     </Button>
-                  </FileTrigger>
-                </div>
-              </Stack>
-            </section>
-            <Text elementType="p">
-              You will be asked to accept the terms and conditions when you submit. You can withdraw a submitted proposal at any
-              time.
-            </Text>
-            <ButtonGroup ariaLabel="Proposal actions">
-              <Button variant="tertiary" data-testid="proposal-cancel">Cancel</Button>
-              <Button variant="secondary" data-testid="proposal-save-draft">Save draft</Button>
-              <Button type="submit" variant="primary" data-testid="proposal-submit">Submit proposal</Button>
-            </ButtonGroup>
-          </Stack>
-        </Form>
-      </Stack>
-    </PageContainer>
+                  </li>
+                ))}
+              </ul>
+              <RadioGroup
+                label={`Scrum master for the ${phase.legend.toLowerCase()}`}
+                isRequired
+                defaultValue={phase.scrum}
+                orientation="vertical"
+              >
+                {phase.members.map((member) => (
+                  <Radio key={member} value={member} data-testid="proposal-scrum-master">
+                    {member}
+                  </Radio>
+                ))}
+              </RadioGroup>
+              <div className="pp-cluster">
+                <Select
+                  label={`Team member to add to the ${phase.legend.toLowerCase()}`}
+                  items={choices}
+                  data-testid="proposal-team-member-choice"
+                />
+                <Button
+                  variant="secondary"
+                  aria-label={`Add team member to the ${phase.legend.toLowerCase()}`}
+                  data-testid="proposal-add-team-member"
+                >
+                  Add team member
+                </Button>
+              </div>
+              <div data-testid="proposal-phase-requirements">
+                <Text elementType="p" size="small">
+                  This phase&rsquo;s team meets its requirements. {phase.capabilities}
+                </Text>
+              </div>
+              <div data-testid="proposal-cost">
+                <NumberField
+                  id={`proposal-${phase.key}-cost`}
+                  label={`Proposed cost for the ${phase.legend.toLowerCase()}`}
+                  isRequired
+                  description={`Up to the phase's maximum budget of ${phase.max}.`}
+                  formatOptions={currency}
+                  defaultValue={phase.cost}
+                  data-testid="proposal-phase-cost-field"
+                />
+              </div>
+            </Fieldset>
+          ))}
+        </FormPart>
+
+        <FormPart id="form-capabilities" title="3. Capabilities">
+          <p className="op-text">Between them, your phase teams must cover every capability this opportunity requires.</p>
+          <ul className="op-list">
+            <li>Agile coaching: covered</li>
+            <li>Backend development: covered</li>
+            <li>Frontend development: covered</li>
+            <li>User research: covered</li>
+            <li>Security engineering: covered</li>
+          </ul>
+        </FormPart>
+
+        <FormPart id="form-cost" title="4. Cost">
+          <div role="status" data-testid="proposal-cost">
+            <p className="op-text">Total proposed cost: $1,150,000 of the $1,200,000 maximum budget.</p>
+          </div>
+        </FormPart>
+
+        <FormPart id="form-questions" title="5. Team questions">
+          <Fieldset legend="Question 1">
+            <p className="op-text">Describe how your team would approach user research for the renewal service.</p>
+            <TextArea
+              id="proposal-question-1"
+              label="Response to question 1"
+              isRequired
+              description="Up to 300 words."
+              defaultValue="We would start with the renewal staff and the ten most common reasons a renewal is returned."
+              data-testid="proposal-question-response-field"
+            />
+            <div role="status">
+              <p className="op-note">18 of 300 words</p>
+            </div>
+          </Fieldset>
+          <Fieldset legend="Question 2">
+            <p className="op-text">Describe a time your team replaced a legacy system without interrupting service.</p>
+            <TextArea
+              id="proposal-question-2"
+              label="Response to question 2"
+              isRequired
+              description="Up to 500 words."
+              defaultValue="We moved a permit service to a new platform in stages."
+              data-testid="proposal-question-response-field"
+            />
+            <div role="status">
+              <p className="op-note">10 of 500 words</p>
+            </div>
+          </Fieldset>
+        </FormPart>
+
+        <FormPart id="form-references" title="6. References">
+          <Fieldset legend="Reference 1">
+            <TextField label="Name" defaultValue="Test Reference One" />
+            <TextField label="Email address" type="email" defaultValue="test.reference@example.com" />
+            <TextField label="Phone number (optional)" type="tel" />
+            <div>
+              <Button variant="tertiary" size="small">Remove reference 1</Button>
+            </div>
+          </Fieldset>
+          <div className="pf-attach">
+            <Button variant="secondary" data-testid="proposal-add-reference">Add a reference</Button>
+          </div>
+        </FormPart>
+
+        <FormPart id="form-attachments" title="7. Attachments">
+          <p className="op-text">
+            Anyone who can read this proposal can read its attachments. Attachments are checked even when you save a draft.
+          </p>
+          <p className="op-text">No attachments have been added.</p>
+          <div id="attachment-size-limit" data-testid="attachment-size-limit">
+            <p className="op-note">Any type of file, up to 10 MB each.</p>
+          </div>
+          <div className="pf-attach">
+            <FileTrigger>
+              <Button variant="secondary" aria-describedby="attachment-size-limit" data-testid="attachment-add-button">
+                Add attachment
+              </Button>
+            </FileTrigger>
+          </div>
+        </FormPart>
+
+        <p className="op-text">
+          You will be asked to accept the terms and conditions when you submit. You can withdraw a submitted proposal at any time.
+        </p>
+      </ProposalFormPage>
+    </SitePage>
   ),
 };

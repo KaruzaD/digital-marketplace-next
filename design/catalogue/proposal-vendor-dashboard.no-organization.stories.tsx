@@ -1,24 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Link } from "@bcgov/design-system-react-components";
+import { Label } from "./marketplace";
+import { Actions, DataTable, PageTitle, Region, VENDOR } from "./opportunity-kit";
+import { ProposalPage, ProposalStatus } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-vendor-dashboard · no-organization — a vendor who owns and administers no organization sees only the
 // proposals they wrote. There is no organizations' heading and no link to one (R-2.24)
-const meta: Meta = { title: "proposals/proposal-vendor-dashboard/no-organization" };
+const meta: Meta = { title: "proposals/proposal-vendor-dashboard/no-organization", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
 
 const mine = [
   {
@@ -32,43 +22,42 @@ const mine = [
 
 export const NoOrganization: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Dashboard</Heading>
+    <SitePage viewer={VENDOR} current="dashboard">
+      <ProposalPage>
+        <PageTitle>Dashboard</PageTitle>
         <nav aria-label="Dashboard sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href="#my-proposals" data-testid="dashboard-show-my-proposals">My proposals</Link></li>
-          </Stack>
+          <Actions>
+            <Link href="#my-proposals" data-testid="dashboard-show-my-proposals">
+              My proposals
+            </Link>
+          </Actions>
         </nav>
-        <Stack as="section" gap="medium" id="my-proposals" tabIndex={-1} aria-labelledby="my-proposals-heading">
-          <Heading level={2} id="my-proposals-heading">My proposals</Heading>
-          <div role="region" aria-labelledby="my-proposals-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="dashboard-my-proposals-table">
-              <caption id="my-proposals-caption" style={{ textAlign: "start" }}>
-                <Text size="small" color="secondary">Proposals you wrote, most recently updated first</Text>
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" style={cell}>Opportunity</th>
-                  <th scope="col" style={cell}>Program</th>
-                  <th scope="col" style={cell}>Status</th>
-                  <th scope="col" style={cell}>Last updated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mine.map((r) => (
-                  <tr key={r.href} data-testid="dashboard-proposal-row">
-                    <td style={cell}><Link href={r.href} data-testid="dashboard-proposal-link">{r.title}</Link></td>
-                    <td style={cell}>{r.program}</td>
-                    <td style={cell}><span style={badge} data-testid="proposal-status">{r.status}</span></td>
-                    <td style={cell}>{r.updated}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Stack>
-      </Stack>
-    </PageContainer>
+        <Region id="my-proposals" title="My proposals">
+          <DataTable
+            captionId="my-proposals-caption"
+            caption="Proposals you wrote, most recently updated first"
+            columns={["Opportunity", "Program", "Status", "Last updated"]}
+            testId="dashboard-my-proposals-table"
+          >
+            {mine.map((r) => (
+              <tr key={r.href} data-testid="dashboard-proposal-row">
+                <td>
+                  <Link href={r.href} data-testid="dashboard-proposal-link">
+                    {r.title}
+                  </Link>
+                </td>
+                <td>
+                  <Label>{r.program}</Label>
+                </td>
+                <td>
+                  <ProposalStatus>{r.status}</ProposalStatus>
+                </td>
+                <td>{r.updated}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </Region>
+      </ProposalPage>
+    </SitePage>
   ),
 };

@@ -476,7 +476,7 @@ pages:
       # name, email address, phone, street address, city, province, postal code, country,
       # proposal text, additional comments) together with its message, so that a test can
       # tell which fields a refused submission was refused for.
-      field_errors_by_field: { test_id: null }
+      field_errors_by_field: { test_id: proposal-field-errors }
       opportunity_summary: { test_id: proposal-opportunity-summary }
       terms_modal: { test_id: proposal-terms-dialog }
       submit_disabled_until_terms_accepted: { test_id: proposal-submit-confirm }
@@ -574,7 +574,7 @@ pages:
       # submit_proposal stays unavailable and the phase says its team must be confirmed
       # (non-pending) members; save_draft still saves the proposal with that person on
       # it, because the service checks membership only when a proposal is submitted.
-      team_member_choices: { test_id: null }
+      team_member_choices: { test_id: proposal-team-member-choice }
       # Phases below are named Inception, Prototype and Implementation, as the criteria
       # name them. The oracle's screen labels the Prototype phase "Proof of Concept", on its
       # team section and on its cost field ("Proof of Concept Cost"); the binding reads that
@@ -585,7 +585,7 @@ pages:
       # other: an opportunity with a Prototype and an Implementation phase and no Inception
       # phase gives [Prototype, Implementation]. Implementation is always among them, since
       # every Sprint With Us opportunity has it.
-      phase_team_sections: { test_id: null }
+      phase_team_sections: { test_id: proposal-phase-team }
       # Each offered phase, by phase name, with whether the form counts its team section as
       # meeting the phase's requirements, and the phase's required capabilities that the
       # team named in it does not yet hold (by capability name, empty when all are held).
@@ -597,7 +597,7 @@ pages:
       # master: a phase whose members include no scrum master reads complete here, and the
       # service refuses it when submitted. The scrum master is a single choice per phase
       # on this form, so two cannot be chosen here.
-      phase_requirements: { test_id: null }
+      phase_requirements: { test_id: proposal-phase-requirements }
       # Each message the form shows against a cost field, with the field it stands
       # against: a phase by phase name (that phase's proposed cost), or total (the total
       # proposed cost, which the form adds up from the phase costs and does not take as
@@ -608,7 +608,7 @@ pages:
       # opportunity's total maximum budget reads "The proposed cost exceeds the maximum
       # budget for this opportunity." against total. Empty when every cost is within its
       # budget. While any is shown, submit_proposal stays unavailable.
-      cost_errors: { test_id: null }
+      cost_errors: { test_id: proposal-cost }
 
   - id: proposal-swu-edit
     domain: proposals
@@ -622,9 +622,9 @@ pages:
       # then named again from the new organization's members with add_phase_team_member and
       # set_scrum_master. The choice stays open on a submitted proposal: the screen does not
       # stop the change, the service does when save_changes sends it.
-      choose_organization: { test_id: null }
-      add_phase_team_member: { test_id: null }
-      set_scrum_master: { test_id: null }
+      choose_organization: { test_id: proposal-organization-field }
+      add_phase_team_member: { test_id: proposal-add-team-member }
+      set_scrum_master: { test_id: proposal-scrum-master }
       save_changes: { test_id: proposal-save-changes }
       save_changes_and_submit: { test_id: proposal-save-and-submit }
       submit_proposal: { test_id: proposal-submit }
@@ -635,17 +635,17 @@ pages:
       # the notice it raises and any message it shows against a field, as text. Absent
       # when the submission went through. The old application's notice is a general one
       # that does not repeat the service's reason; proposal-team-request reads the reason.
-      submission_refusal: { test_id: null }
+      submission_refusal: { test_id: proposal-submit-refused-message }
       # Each message the form shows against one of its fields after save_changes is
       # refused, with the field it stands against (organization, a phase's team or cost,
       # a team question response, a reference). The screen puts the service's own wording
       # there: a submitted proposal whose organization was changed shows "Organization
       # cannot be changed once the proposal has been submitted" against organization.
       # Empty when the save went through, which the form closing and status show.
-      field_error: { test_id: null }
+      field_error: { test_id: field-error }
       # The organization the proposal names, by legal name, as the screen shows it once
       # the form is closed.
-      organization: { test_id: null }
+      organization: { test_id: proposal-organization }
       proposal_identifier: { test_id: proposal-identifier }
       opportunity_identifier: { test_id: opportunity-identifier }
       proposal_tab: { test_id: proposal-tab-proposal }
@@ -685,7 +685,7 @@ pages:
       # administrator and to the opportunity's owner; the seeded evaluation opportunities
       # belong to users.staffOne. Starting point for R-5.32:
       # seed.opportunities.swuConsensusSixProponentsForHistory.
-      history_entries: { test_id: null }
+      history_entries: { test_id: proposal-history-table }
       wrong_stage_error: { test_id: proposal-wrong-stage-error }
       questions_score: { test_id: proposal-questions-score }
       challenge_score: { test_id: proposal-challenge-score }
@@ -702,7 +702,7 @@ pages:
       # seed.opportunities.swuTeamScenarioLastToScoreB, where swuScenarioBLowerBid is ranked,
       # swuScenarioBHigherBid is not until its scenario score is entered, and the third
       # proposal was left behind at the questions.
-      rank: { test_id: null }
+      rank: { test_id: proposal-rank }
       # The score actions the page offers the signed-in person for this proposal, as a list
       # of this page's own action names — score_code_challenge, score_team_scenario — read
       # across the stage tabs; empty when it offers none. A stage's score is offered on its
@@ -714,7 +714,7 @@ pages:
       # seed.proposals.swuScreenedIntoScenarioEarly offers none (it is in the team scenario,
       # which the opportunity has not reached) and seed.proposals.swuScreenedIntoCodeChallenge
       # offers score_code_challenge.
-      offered_score_actions: { test_id: null }
+      offered_score_actions: { test_id: proposal-score-actions }
 
   - id: proposal-swu-export-one
     domain: proposals
@@ -756,7 +756,7 @@ pages:
       # already named on the proposal. Each name is the person's account name, as the
       # manifest gives it (users.organizationOwner is "Blake Placeholder"). Only people
       # whose membership is active are offered.
-      team_member_choices: { test_id: null }
+      team_member_choices: { test_id: proposal-team-member-choice }
 
   - id: proposal-twu-edit
     domain: proposals
@@ -767,8 +767,8 @@ pages:
       # As on proposal-swu-edit: the create screen's controls, open once editing starts.
       # Choosing a different organization empties the team, which add_team_member_for_resource
       # names again from the new organization's active members.
-      choose_organization: { test_id: null }
-      add_team_member_for_resource: { test_id: null }
+      choose_organization: { test_id: proposal-organization-field }
+      add_team_member_for_resource: { test_id: proposal-add-team-member }
       # As on proposal-twu-create: takes the resource by its service area as the
       # opportunity lists it and the hourly rate, replacing the rate the proposal held. The
       # edit screen renders the same form as the create screen, so the field is the same
@@ -777,7 +777,7 @@ pages:
       # field_error or submission_refusal. A proposal saved within budget from
       # proposal-twu-create (save_draft or submit_proposal) lands on this page, where
       # proposal_identifier returns its identifier.
-      set_hourly_rate: { test_id: null }
+      set_hourly_rate: { test_id: proposal-hourly-rate-field }
       save_changes: { test_id: proposal-save-changes }
       save_changes_and_submit: { test_id: proposal-save-and-submit }
       submit_proposal: { test_id: proposal-submit }
@@ -786,12 +786,12 @@ pages:
     observations:
       # As on proposal-swu-edit: what the screen reports when a submission from it is
       # refused, absent when it went through.
-      submission_refusal: { test_id: null }
+      submission_refusal: { test_id: proposal-submit-refused-message }
       # As on proposal-swu-edit: the service's messages against the form's fields after
       # save_changes is refused, "Organization cannot be changed once the proposal has been
       # submitted" among them.
-      field_error: { test_id: null }
-      organization: { test_id: null }
+      field_error: { test_id: field-error }
+      organization: { test_id: proposal-organization }
       proposal_identifier: { test_id: proposal-identifier }
       opportunity_identifier: { test_id: opportunity-identifier }
       proposal_tab: { test_id: proposal-tab-proposal }
@@ -821,7 +821,7 @@ pages:
       # As on proposal-swu-view. The finalising note reads "Resource question scores were
       # entered. Q1: n; Q2: n; Q3: n; Q4: n." Starting point for R-5.32:
       # seed.opportunities.twuConsensusFiveProponentsForHistory.
-      history_entries: { test_id: null }
+      history_entries: { test_id: proposal-history-table }
       wrong_stage_error: { test_id: proposal-wrong-stage-error }
       questions_score: { test_id: proposal-questions-score }
       challenge_score: { test_id: proposal-challenge-score }
@@ -831,12 +831,12 @@ pages:
       # challenge score, and the rank is shown once the opportunity has reached the
       # challenge. seed.opportunities.twuChallengeLastToScore holds one proposal scored on
       # the challenge and one not.
-      rank: { test_id: null }
+      rank: { test_id: proposal-rank }
       # As on proposal-swu-view, from this page's score_challenge. On
       # seed.proposals.twuScreenedIntoChallengeEarly, as the administrator, the list is empty:
       # the proposal is in the challenge but the opportunity is still at the questions
       # consensus. On seed.proposals.twuChallengeLast it holds score_challenge.
-      offered_score_actions: { test_id: null }
+      offered_score_actions: { test_id: proposal-score-actions }
 
   - id: proposal-twu-export-one
     domain: proposals

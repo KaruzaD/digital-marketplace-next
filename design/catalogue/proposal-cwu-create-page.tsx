@@ -236,7 +236,7 @@ export function ProposalCwuCreatePage({ state }: { state: ProposalState }) {
                   <Text elementType="p">
                     Your Code With Us proposal could not be submitted. Please fix any errors in the form and try again.
                   </Text>
-                  <ul className="form-errors">
+                  <ul className="form-errors" data-testid="proposal-field-errors">
                     <li data-testid="field-error">
                       <Link href="#proposal-legal-name">{ERRORS.legalName}</Link>
                     </li>

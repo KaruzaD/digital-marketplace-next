@@ -1,18 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Checkbox, Heading, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, Checkbox } from "@bcgov/design-system-react-components";
+import { Actions, Details, Panel, STAFF } from "./opportunity-kit";
+import { ProposalHead, ProposalPage } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-twu-export-all · anonymous — the same document with "Name proponents anonymously" ticked: each proponent is
 // named by its anonymous name and the organization is withheld (R-2.5, R-2.38)
-const meta: Meta = { title: "proposals/proposal-twu-export-all/anonymous" };
+const meta: Meta = { title: "proposals/proposal-twu-export-all/anonymous", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const panel = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
 
 const proposals = [
   { id: "export-item-1", proponent: "Proponent 1", submitted: "September 15, 2026", bid: "$220.00 an hour" },
@@ -21,42 +16,35 @@ const proposals = [
 
 export const Anonymous: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Export all Team With Us proposals</Text>
-          <Heading level={1}>Data platform team</Heading>
-        </Stack>
-        <Text elementType="p">Every submitted proposal you are entitled to see, in one document. Drafts are never included.</Text>
-        <Stack direction="row" align="center" gap="medium">
+    <SitePage viewer={STAFF} current="dashboard">
+      <ProposalPage>
+        <ProposalHead eyebrow="Export all Team With Us proposals" program="team-with-us" title="Data platform team" />
+        <p className="op-text">Every submitted proposal you are entitled to see, in one document. Drafts are never included.</p>
+        <Actions>
           <Checkbox defaultSelected data-testid="proposal-export-anonymous-toggle">Name proponents anonymously</Checkbox>
           <Button variant="secondary">Print</Button>
-        </Stack>
-        <Stack gap="medium" data-testid="proposal-export-document">
+        </Actions>
+        <div className="op-regions" data-testid="proposal-export-document">
           {proposals.map((p) => (
-            <article key={p.id} aria-labelledby={p.id} style={panel} data-testid="proposal-export-item">
-              <Stack gap="medium">
-                <Heading level={2} id={p.id}><span data-testid="proposal-proponent-name">{p.proponent}</span></Heading>
-                <Stack as="dl" direction="row" gap="medium">
-                  <Stack gap="small">
-                    <dt style={term}>Status</dt>
-                    <dd>Under review: resource questions</dd>
-                  </Stack>
-                  <Stack gap="small">
-                    <dt style={term}>Submitted</dt>
-                    <dd>{p.submitted}</dd>
-                  </Stack>
-                  <Stack gap="small">
-                    <dt style={term}>Bid</dt>
-                    <dd>{p.bid}</dd>
-                  </Stack>
-                </Stack>
-                <Text elementType="p">The organization is withheld in this document.</Text>
-              </Stack>
-            </article>
+            <Panel
+              key={p.id}
+              as="article"
+              id={p.id}
+              testId="proposal-export-item"
+              title={<span data-testid="proposal-proponent-name">{p.proponent}</span>}
+            >
+              <Details
+                items={[
+                  { term: "Status", value: "Under review: resource questions" },
+                  { term: "Submitted", value: p.submitted },
+                  { term: "Bid", value: p.bid },
+                ]}
+              />
+              <p className="op-text">The organization is withheld in this document.</p>
+            </Panel>
           ))}
-        </Stack>
-      </Stack>
-    </PageContainer>
+        </div>
+      </ProposalPage>
+    </SitePage>
   ),
 };
