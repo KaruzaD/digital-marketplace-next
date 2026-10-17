@@ -431,4 +431,54 @@ describe("the home page", () => {
     expect((await screen.findByTestId("home-awarded-count")).textContent).toBe("128");
     expect(screen.getByTestId("home-awarded-value").textContent).toBe("$6,420,000");
   });
+
+  it("lists the open opportunities alone, nearest deadline first, with their count", async () => {
+    serveLists(
+      { cwu: [OPEN_LATER, AWARDED, OPEN_SOON, MY_DRAFT], swu: [SPRINT_CLOSED] },
+      (_method, path) => (path === "/api/metrics" ? json(200, [{ totalCount: 1, totalAwarded: 5000 }]) : json(404, {})),
+    );
+    resetSessionForTests({ status: "visitor" });
+    renderAt("/");
+    const page = await screen.findByTestId("home-page");
+    await within(page).findByRole("link", { name: "Build an accessible permit tracker" });
+    const titles = within(page)
+      .getAllByRole("article")
+      .map((row) => within(row).getByRole("heading", { level: 3 }).textContent);
+    expect(titles).toEqual(["Build an accessible permit tracker", "Fix the fisheries export"]);
+    expect(within(page).getByRole("heading", { level: 2, name: /Open Opportunities/ }).textContent).toBe("Open Opportunities2");
+    expect(within(page).getByRole("link", { name: "Build an accessible permit tracker" }).getAttribute("href")).toBe(
+      `/opportunities/code-with-us/${OPEN_SOON.id}`,
+    );
+  });
+
+  it("says each part is loading while it is on its way, with the page's own words already there", async () => {
+    serve(() => new Promise<Response>(() => {}));
+    resetSessionForTests({ status: "visitor" });
+    renderAt("/");
+    const page = await screen.findByTestId("home-page");
+    expect(within(page).getByRole("heading", { level: 1 }).textContent).toBe(
+      "Discover Unique Opportunities to Collaborate with the B.C. Public Sector.",
+    );
+    const waits = within(page).getAllByRole("status").map((status) => status.textContent);
+    expect(waits).toEqual(["Loading opportunities…", "Loading figures…"]);
+    expect(within(page).getAllByRole("link", { name: /Learn More/ }).map((link) => link.getAttribute("href"))).toEqual([
+      "/learn-more/code-with-us",
+      "/learn-more/team-with-us",
+      "/learn-more/sprint-with-us",
+    ]);
+  });
+
+  it("searches the opportunity list, which starts narrowed to the words searched for", async () => {
+    serveLists({ cwu: [OPEN_SOON, OPEN_LATER] });
+    resetSessionForTests({ status: "visitor" });
+    const home = renderAt("/");
+    const search = within(await screen.findByTestId("home-page")).getByRole("search");
+    expect(search.getAttribute("action")).toBe("/opportunities");
+    expect(within(search).getByRole("searchbox").getAttribute("name")).toBe("q");
+    home.unmount();
+
+    renderAt("/opportunities?q=fisheries");
+    await screen.findByText("Fix the fisheries export");
+    expect(screen.queryByText("Build an accessible permit tracker")).toBeNull();
+  });
 });

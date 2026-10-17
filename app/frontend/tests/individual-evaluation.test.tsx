@@ -225,6 +225,7 @@ describe("the dashboard's Evaluations section (R-5.19)", () => {
       program: "sprint-with-us" as const,
       status: "PUBLISHED" as const,
       value: { term: "", amount: 0 },
+      teaser: "",
       evaluationPanel: [{ user: { id: evaluator.id, name: "" }, evaluator: evaluatorFlag, chair: chairFlag }],
     });
     expect(panelRows(evaluator, [seat(false, true)]).map((row) => row.role)).toEqual(["Chair"]);
