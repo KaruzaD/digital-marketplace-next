@@ -68,3 +68,14 @@ Every test ID already filled stays on an element that does what the surface says
 - Nothing says whether an administrator, as well as the owner, is offered the panel's Edit; the stories show the owner.
 
 I changed nothing under `spec` except `spec/contract/surface.yaml`, and nothing under `constitution.md` or `.claude/skills`.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:ux-reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Do these screens serve the evaluation criteria, and are they built out of the design system? Approved. design/report.json shows the typecheck and build passing and zero axe violations across the catalogue, with all 113 evaluation stories scanned. The surface.yaml diff only fills six test IDs that were null (start_editing on both panel pages, plus submit_scores_for_consensus_naming, request_accepted, refusal_messages and stored_status on the new submission-request page); no filled test_id changed. evaluation-kit.tsx and evaluation-pages.tsx style only with design tokens. The only pixel values are the 560px container threshold for rows and the 240px minimum width of the add choice, layout thresholds no token carries, and DESIGN.md names the kit's components as the project's own. The rendered screens (panel default and editing, consensus create, dashboard, consensus list, submission request, individual edit invalid) sit in the shared page container aligned with the banner, with even token spacing and at most one primary button each. The contract's read-only panel, editing state and new submission-request page are present and recorded in screens.yaml. The open gaps 67-73 are specification questions, not design defects. A new accessibility violation or a change to an already-filled test_id would change this ruling.
+
+**Conditions:**
+none
