@@ -64,6 +64,11 @@
 - 15:48:28 rule design-notifications-3 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
 - 15:48:31 drive: stopped after 1 step — nothing left to run
 - 15:48:32 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain files`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry.
+- 16:01:11 drive: step 2: `sdlc run design --domain files --revise` — design-files-3 was returned at G-DESIGN by agent:ux-reviewer
+- 16:05:38 run design: ok, cost 0.5809597999999999, turns 19, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 16:05:38 propose design-files-4 at G-DESIGN
+- 16:05:43 drive: step 3: `sdlc rule design-files-4 --by agent:ux-reviewer` — design-files-4 is open at G-DESIGN, held by agent:ux-reviewer
+- 16:06:51 rule design-files-4 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
 
 # Run record 2026-10-15
 

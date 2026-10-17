@@ -5138,3 +5138,184 @@ The four mail-catcher entries stay `null` (older section's gap 14). No test ID w
     stories have no scope sentence and their dialog does not name the signed-in person; this domain's
     landing has both (R-6.16, R-6.7). The older section's note that the two should match still stands; the
     users domain's stories are not this stage's to change.
+
+## File screens in the chosen direction
+
+Every story of the files domain now follows "Site shell and the chosen direction" above: the attachment
+control on the Code With Us manage page and on the opportunity's own page, the profile picture picker, Insert
+image in the body editor and the published image, and the four service addresses' response references. Where
+this section and the older "Domain: files" section disagree about how a story looks (the page container and
+outer stack, the inline-styled card section and rows, the plain row of tab links, heading sizes, the
+`Stack as="dl"` response references), this section is the current one. What that section says about
+behaviour, states, forms, validation, the four service addresses, who sees what, accessibility, test IDs and
+gaps still holds, except where this section says otherwise. Every page keeps its states
+(`design/screens.yaml` is unchanged), every story keeps its words, and every test ID keeps its element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen by and
+the section the page belongs to. The viewer decides the header's navigation and account area, nothing else.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| `file-attachment-control`: `default`, `empty`, `new-attachment`, `invalid`, `too-large` | an administrator (`opportunity-kit.tsx`'s `ADMIN`), as on the opportunities domain's manage stories | Dashboard |
+| `file-attachment-control`: `public-view` | a vendor (`opportunity-kit.tsx`'s `VENDOR`), to whom the opportunity is Open | Opportunities |
+| `file-image-picker`, all four states | Test Vendor One (`user-kit.tsx`'s `VENDOR_ONE`), on their own profile | none (reached from the account menu) |
+| `file-embedded-image`: `default`, `uploading`, `inserted`, `failed` | an administrator | Content |
+| `file-embedded-image`: `published` | a visitor | none |
+| `file-upload`: every state but `signed-out` | a signed-in vendor | none |
+| `file-upload`: `signed-out`; `file-download`: `default` | a visitor | none |
+| `file-description`: `default` and `refused`; `file-download`: `refused`; `file-attach-by-identifier`, both states | a vendor | none |
+| `file-description` and `file-download`: `not-found` | an administrator (R-8.12) | none |
+
+### The direction's file components
+
+`design/catalogue/file-kit.tsx`. All are this project's own compositions of design-system components
+(`Button`, `InlineAlert`, `Link`, `ProgressCircle`, `Text`, `TextArea`, `TextField`) and of
+`react-aria-components`' `FileTrigger` and `Toolbar`, styled only with tokens, built on `opportunity-kit.tsx`
+(`OpportunityHead`, `ManageTabs`, `PageTitle`, `SectionTitle`, `Region`, `Details`, `Actions`), on
+`content-kit.tsx` (`ContentPage`, `ManageHead`, `PageArticle`, `RenderedBody`), on `user-kit.tsx`
+(`ProfileTabs`, `VENDOR_TABS`) and on `proposal-kit.tsx`'s `AlertTitle`, with `marketplace.tsx`'s `Label`
+reached through `OpportunityHead` and its `look` for the published body's H2. None of them is a design-system
+component. `marketplace.tsx`'s `statusOf` has no use here, and `opportunity-kit.tsx`'s `StatusLabel` is used
+only through `OpportunityHead`: no control of this domain shows a status of its own.
+
+- **File page** (`FilePage`). `ContentPage` (the opportunity page frame: the page container, the direction's
+  style sheets, the regions `large` apart, `medium` on a phone; and the content kit's styles, which the
+  published article needs) with this kit's style sheet. It replaces `PageContainer` and the outer `Stack` on
+  every story of this domain.
+- **Trimmed line** (`Trimmed`). The line in small secondary text that says whose design a trimmed part of the
+  host page is. It is a catalogue note; a build does not render it.
+- **Manage frame** (`ManageFrame`). The Code With Us manage page around the attachment control, drawn as the
+  opportunities domain draws it: the head ("Manage a Code With Us opportunity", the grey program label, the
+  status label "Published", the title as the H1 in the H3 size), the manage tabs with Opportunity current,
+  and the Opportunity region (H2 in the H4 size), whose earlier parts are trimmed. It replaces the old plain
+  row of tab links and the full-size H1.
+- **Attachment control** (`AttachmentControl`). The form's last part as the direction's panel (`op-panel`:
+  a token border, `--layout-padding-medium` inside, items `medium` apart) headed "Attachments" (H3 in bold
+  body text), as on `opportunity-cwu-edit · editing`. Inside, in order: who can read an attachment, the rows
+  or "No attachments have been added.", the stated rule in small secondary text, and Add attachment in
+  `Actions`, so it goes full width on a phone. It replaces the old card section, whose inner padding was
+  `large`.
+- **Attachment rows** (`StoredRow`, `NewRow`). A list with no markers whose rows are `small` apart, each a
+  bordered row (`--surface-color-border-default`, `--layout-padding-small` by `--layout-padding-medium`,
+  `--layout-border-radius-medium`) with its parts `small` apart. A stored row holds the read-only name, then
+  the download link and Remove on one line that wraps. A new row holds the line naming the chosen file in
+  small text, then the name field and the resulting name, or the size refusal, then Remove. These are the
+  older section's attachment list, drawn at the direction's density and with the same border as the other
+  domains' bordered rows.
+- **Public attachments** (`PublicAttachments`). The H3 "Attachments" and the download links under it, `small`
+  apart, at the end of the opportunity view's Description region.
+- **Profile frame** (`ProfileFrame`). The H1 "User Profile" and the profile's section links (`ProfileTabs`,
+  Profile current); the story puts the users domain's "Edit your details" region under it, holding the form
+  whose other fields are trimmed. It replaces the old frame of an H1 and a bare form.
+- **Picture group** (`PictureGroup`, `StoredPicture`). A `role="group"` labelled "Profile picture
+  (optional)": the label in the design system's label type, the stored picture or the sentence standing in for
+  it, any status line or refusal, the stated rule, then the trigger, `small` apart and kept at their own
+  width. The picture is a plain `<img>` at its stored size and never wider than its column (older section's
+  gap 11).
+- **Edit frame** (`EditFrame`) and **image editor** (`ImageEditor`, `Uploading`). The managing screen's head
+  ("Manage a page" over the H1) and its "Edit the page" region; inside, the content domain's body editor
+  with this domain's rule under the toolbar and a slot between the rule and the body for the upload's
+  status line or refusal, `small` apart. Insert image is unavailable while an upload runs. The content
+  domain's own `BodyEditor` has neither the rule nor the slot, so the editor is written here with the same
+  toolbar, field and guide link.
+- **Refusal** (`Refusal`). A danger `InlineAlert` with `role="alert"` in a wrapper carrying its test ID, its
+  title in the alert's own title markup (`AlertTitle`). Where the older section says the refusal takes focus
+  (the rejected picture), the wrapper takes it when it appears, with a visible focus ring from the tokens.
+- **Response reference** (`Reference`). The users, content and organizations domains' shape: the small
+  "Response reference: this address answers with data (or the file), not a page" line and the H1, then
+  Request and Answer `Region`s whose pairs are `Details`. A test ID on a whole request or answer
+  (`file-upload-request`, `file-upload-stored`, `file-refused`, `file-attach-accepted` and the rest) is on a
+  wrapper around its `Details`; one on a single part (`file-upload-stored-id`, `file-description-name`,
+  `file-download-filename`, `file-attach-identifiers` and the rest) is on that value, and
+  `file-upload-size-limit` stays on the figure inside the message.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** No screen of this domain lists opportunities. The public view keeps the
+   opportunity's head before anything else.
+2. **Fixed order.** The heads show the program and status labels and the title in the fixed order; the
+   remaining facts are the opportunities domain's and are trimmed, as before.
+3. **Colour only for status.** Nothing on these screens is coloured by this domain. The only colour is the
+   opportunity's status label in the two opportunity frames, which is the opportunities domain's. Rows,
+   panels, the picture group, the toolbar and the references are neutral; the design system's danger alert
+   keeps its colour.
+4. **Programs.** Only as the grey Code With Us label in the opportunity frames.
+5. **Dense.** H1 in the H3 size; region headings (Opportunity, Description, Edit your details, Edit the page,
+   Request, Answer) and a body's H2 in the H4 size; Attachments in bold body text; the stated rules, the
+   chosen-file line, the resulting name, the status lines, the trimmed lines, the guide link and every detail
+   in small text; regions `large` apart, items `medium`, a label and what it labels `small`, attachment rows
+   `small`. Each screen has one primary button at most: Save changes on the profile form. The attachment
+   control's frame and the editor's frame trim their host form's submit row, so they show none; Add
+   attachment, the picture trigger and Remove are secondary, Insert image tertiary.
+6. **Imagery.** None. A profile picture and an inserted image are the person's content, not the direction's
+   imagery.
+7. **Phones.** Regions close to `medium`; the manage tabs and the profile links wrap; a stored row's link and
+   Remove wrap onto two lines; Add attachment goes full width; the toolbar's buttons wrap; the details fall to
+   one column; the picture never exceeds the column; the header and footer are the shared phone versions.
+
+### Other changes in this pass
+
+- **Titles the design system dropped are rendered.** The too-large attachment, the rejected picture and the
+  refused inserted image gave `InlineAlert` both a title and content, so the design system rendered no title
+  (the site shell's gap 4): "site-survey.pdf is too large to attach", "portrait.gif cannot be used as a
+  profile picture" and "harbour-survey.png could not be inserted" were not shown. They now are.
+- **Focus moves where the older section says it does.** The rejected picture's wrapper was focusable but
+  nothing focused it, and the refused name field was not focused; both stories now move focus when they
+  render, as "Forms and validation" in the older section describes.
+- **Frames stay trimmed.** The host forms around the three controls are still trimmed, each with the line
+  saying whose design the trimmed part is, now in the direction's frame. Drawing each host form whole would
+  copy the opportunities and users domains' forms into this domain's stories, and a change there would leave
+  two drawings of one form. The stories named in those lines draw them whole.
+- **Status lines are small text.** "harbour.png is ready…", "…was inserted at the cursor" and "Uploading…"
+  are in small secondary text inside their `role="status"` regions, as the other domains' status lines are.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID on this domain's seven pages in `spec/contract/surface.yaml` was already filled before this
+pass, and none is changed. Each is still put in the markup by these stories, on an element that does what
+the surface says. The stories still carry the extra IDs the older section lists (`file-upload-stored`,
+`file-upload-refused-no-file`, `file-description-answer`, `embedded-image-error`). No test ID was added. The
+opportunity frames now carry the opportunities domain's tab IDs (`opportunity-tab-*`), on the same tabs those
+IDs name there.
+
+### Gaps found in this pass
+
+62. **The host stories still draw the older controls.** `opportunity-cwu-edit · editing` (the opportunities
+    domain's, kept as the reference) still says "The accepted file types and size limit are shown when you
+    choose a file" and has no stated rule or list, and `user-profile-self · editing` still offers
+    `acceptedFileTypes={["image/*"]}` with no stated rule. The older section's gap 8 stands: a build takes
+    the attachment control and the picker from this domain's stories, and those two stories should adopt
+    them. They are not this stage's to change.
+63. **Two test addresses for a vendor.** The opportunity frames use `opportunity-kit.tsx`'s vendor
+    (`vendor.one@example.test`) and the profile frames `user-kit.tsx`'s (`vendor1@example.com`), each to
+    match the domain whose page the control sits on. They are test data and the header is the only place
+    they show; a build's fixtures should use one.
+64. **Statuses in the frames.** The manage frame shows "Published" and the public view "Open" for the same
+    opportunity: the stage an administrator sees and the word a vendor sees (the opportunity list's status
+    wording). No criterion of this domain turns on the status; the words are the opportunities domain's.
+65. **Viewers chosen where a criterion names none.** R-8.1 says only "a signed-in person" uploads; the
+    upload references are drawn for a vendor. The description's `default` ("a person who may read the
+    file") is drawn for a vendor. The four service addresses answer with data, so the header in their
+    references shows only who is asking.
+66. **Remove on a phone.** Rule 7 says actions stack at full width on a phone. Remove is a small secondary
+    button inside a row, not a page action, so it keeps its own width and wraps beneath the download link;
+    whether row commands should go full width is not stated.
+
+### Spacing correction: no paragraph inside a wrapper
+
+The stacks this domain uses (`.op-panel`, `.fl-row`, `.fl-group`, `.fl-editor`) set the margin of their
+direct children to `--layout-margin-none` and nothing deeper. Four stated lines sat in a `<div>` that carried
+their id and test ID, so the `<p>` inside kept the browser's paragraph margin on top of the stack's gap: the
+attachment control's rule (`attachment-size-limit`), the picture group's rule and the editor's rule (both
+`image-file-rule`, ids `image-file-rule` and `embedded-image-rule`), and a new row's resulting name
+(`attachment-resulting-name`). Each is now the `<p className="op-note">` itself, carrying the id, the test ID
+and the `aria-describedby` target directly, so the gaps around it are exactly the container's token: `medium`
+in the panel, `small` in a row, the group and the editor. The two status lines ("harbour.png is ready…" in
+`file-image-picker · chosen`, "…was inserted at the cursor" in `file-embedded-image · inserted`) had the same
+wrapper and are now a `<p role="status">`. The rule for a build: an element that carries an id, a test ID or a
+role for a single paragraph is that paragraph, not a `<div>` around it. No test ID moved to a different
+meaning; each is on the element that shows the text the surface names.

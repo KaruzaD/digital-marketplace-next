@@ -1,48 +1,39 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { FilePage, PublicAttachments, Trimmed } from "./file-kit";
+import { OpportunityHead, Region, VENDOR } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // file-attachment-control · public-view — the same attachments as they appear on the opportunity's own page
 // (opportunity-*-view) once it is published: a list of download links at the end of the Description section. Nothing
 // here can be renamed or removed, so no Remove control is rendered at all (R-8.10, R-8.25). The rest of the page is the
-// opportunities domain's and is trimmed here.
-const meta: Meta = { title: "files/file-attachment-control/public-view" };
+// opportunities domain's and is trimmed here. Seen by a vendor, to whom the opportunity is Open.
+const meta: Meta = { title: "files/file-attachment-control/public-view", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const PublicView: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Code With Us opportunity</Text>
-          <Heading level={1}>Build an accessible permit tracker</Heading>
-        </Stack>
-        <Text elementType="p" size="small" color="secondary">
-          The teaser, key facts and actions are the opportunities domain's design and are not shown here.
-        </Text>
-        <Stack as="section" gap="medium" aria-labelledby="view-description">
-          <Heading level={2} id="view-description">Description</Heading>
-          <Text elementType="p">
+    <SitePage viewer={VENDOR} current="opportunities">
+      <FilePage>
+        <OpportunityHead
+          eyebrow="Code With Us opportunity"
+          program="code-with-us"
+          status="Open"
+          title="Build an accessible permit tracker"
+        />
+        <Trimmed>The teaser, key facts and actions are the opportunities domain's design and are not shown here.</Trimmed>
+        <Region id="view-description" title="Description">
+          <p className="op-text">
             The ministry runs an online permit application that tells applicants little about where their application
             stands. This opportunity adds a status page that works with a keyboard and a screen reader.
-          </Text>
-          <Stack gap="small">
-            <Heading level={3} id="view-attachments">Attachments</Heading>
-            <Stack as="ul" gap="small" aria-labelledby="view-attachments" data-testid="attachment-list">
-              <li data-testid="attachment-existing-row">
-                <Link href="/api/files/5b2e0c3a-8d41-4f6e-a1c2-000000000803?type=blob" data-testid="attachment-download-link">
-                  Download Statement of work.pdf
-                </Link>
-              </li>
-              <li data-testid="attachment-existing-row">
-                <Link href="/api/files/5b2e0c3a-8d41-4f6e-a1c2-000000000804?type=blob" data-testid="attachment-download-link">
-                  Download Current permit screens.png
-                </Link>
-              </li>
-            </Stack>
-          </Stack>
-        </Stack>
-      </Stack>
-    </PageContainer>
+          </p>
+          <PublicAttachments
+            files={[
+              { name: "Statement of work.pdf", id: "5b2e0c3a-8d41-4f6e-a1c2-000000000803" },
+              { name: "Current permit screens.png", id: "5b2e0c3a-8d41-4f6e-a1c2-000000000804" },
+            ]}
+          />
+        </Region>
+      </FilePage>
+    </SitePage>
   ),
 };
