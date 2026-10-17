@@ -4191,3 +4191,228 @@ Every test ID filled before this pass is kept, on an element that does what it d
 34. **Viewers chosen where a story named none.** Several manage stories (the Addenda and History
     tabs, consensus, the loading states) did not say who is looking. They are drawn for an
     administrator, the one viewer offered every action those states can show.
+
+## Proposal screens in the chosen direction
+
+Every screen of the proposals domain now follows "Site shell and the chosen direction" above. The
+Code With Us proposal form (`proposal-cwu-create`) was already drawn that way and is the reference:
+it is unchanged but for one attribute (see "Test IDs filled in this pass"). This section covers the
+rest: the Sprint With Us and Team With Us forms, the three programs' manage, evaluate and export pages,
+the vendor dashboard, `/proposals`, and the three request addresses. Where this section and the older
+"Domain: proposals" section disagree about how a screen looks (the status badge, the key facts list,
+the card section, the inline-styled tables, the plain stack of regions, heading sizes), this section is
+the current one. What that section says about behaviour, states, who is offered what, dialogs,
+validation and gaps still holds, except where this section says otherwise.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen
+by and the section the page belongs to. The viewer decides the header's navigation and account area,
+nothing else on the page.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| Create (all three programs) | a vendor | Opportunities |
+| Manage (`proposal-*-edit`) | the vendor who wrote the proposal | Dashboard |
+| Evaluate (`proposal-*-view`) | the opportunity's author (public sector staff), or an administrator where the story names one | Dashboard |
+| Export one | the vendor (their own copy) or staff (the staff copy, `anonymous`) | Dashboard |
+| Export all | staff | Dashboard |
+| Vendor dashboard | a vendor | Dashboard |
+| `not-found` of any page | the person the refusal is about (a visitor, staff, or another vendor) | none |
+| `/proposals` and the request addresses | the requester the story names | none |
+
+### The direction's proposal components
+
+`design/catalogue/proposal-kit.tsx`. All are this project's own compositions of design-system
+components (`Heading`, `Link`, `ButtonGroup`, `Form`, `Text`) and tokens, built on `marketplace.tsx`'s
+`Label` and on `opportunity-kit.tsx`. None of them is a design-system component. The proposal stories
+also use `opportunity-kit.tsx`'s `Region`, `Panel`, `Fieldset`, `Details`, `DataTable`, `Actions`,
+`PageTitle`, `Waiting` and `MissingPage` exactly as the opportunity screens do.
+
+- **Proposal page** (`ProposalPage`). `OpportunityPage` (the page container, the direction's style
+  sheets, the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **Proposal status** (`ProposalStatus`, `proposalColour`). The `Label` coloured by the proposal's status
+  in words: blue for Draft (as the Code With Us form's summary already marks a saved draft), green for
+  Submitted and Awarded, yellow while it waits on someone (Under review at any stage, Evaluated), grey
+  for Not awarded and Withdrawn, red for Disqualified. A team member's membership is a status in the
+  same sense: "Membership pending" yellow, "Active" green. The label always says the status in words.
+  It carries `proposal-status` wherever a proposal's status is shown, and
+  `proposal-pending-team-member` on a pending member.
+- **Proposal head** (`ProposalHead`). The small line saying what the page is ("Manage a Sprint With Us
+  proposal", "Team With Us proposal"), the program as a grey `Label` and the status as a coloured one,
+  then the H1 in the design system's H3 size: the opportunity's title on a manage page, the proponent as
+  this reader may see them on an evaluate page (`proposal-proponent-name`). The status moved out of the
+  key facts into the head and keeps its test ID.
+- **Action bar** (`ProposalActions`). The design system's `ButtonGroup` ("Proposal actions") in a
+  wrapper that carries `proposal-actions`, always present, empty when nothing is offered.
+- **Proposal tabs** (`ProposalTabs`). The manage and evaluate pages' tabs as links in a navigation
+  landmark ("Proposal sections"), each `proposal-tab-<key>` at `?tab=<query>`, in small text along a
+  rule, the current one marked by `aria-current="page"`, a bar and bold text, the same marking as the
+  header's navigation and the opportunity manage page's tabs. They wrap on a phone.
+- **Proposal form page** (`ProposalFormPage`, `CreateHead`, `FormPart`). The Code With Us form's layout,
+  shared: the H1 ("Create a … proposal") in the H2 size on a wide screen with the opportunity's title
+  beneath it, then the page's messages, the introduction, and one long form in numbered parts
+  ("1. Organization", "2. Team" …), each an H2 in the H3 size with its fields `large` apart. On a wide
+  screen a 320-pixel summary of the opportunity (`proposal-opportunity-summary`: program, the proposal's
+  status once it has one, title, closing date, budget) stays in view beside the form and holds the
+  actions stacked at full width, primary first: Submit proposal, Save draft, Cancel (on the manage
+  page's form, its save buttons and Cancel). On a narrow screen the summary is a compact card under the
+  head and the actions follow the form at full width. The switch is read in script, as the header's is,
+  so each action and its test ID appear once. A manage page's `editing` state uses the same layout,
+  with the manage head, its details and the tabs in place of the create head.
+- **Rows** (`pp-rows`, `pp-row`). A team's members while editing: one bordered row each, the name in
+  bold small text beside any membership label, the Remove button at the end, and the row's own error on
+  a line of its own. Rows wrap, so a 320-pixel screen stacks name and button.
+- **Select-and-add cluster** (`pp-cluster`). The team-member choice and its Add team member button on one
+  line where they fit, the choice taking the room; on a phone the button goes full width beneath.
+- **Group error** (`GroupError`). A problem that belongs to a group rather than a field, in the design
+  system's own danger text (`Text color="danger"`), linked from the error summary.
+- **Focused message** (`Focused`, `AlertTitle`). An alert that takes focus when it appears, and the
+  title markup an `InlineAlert` with content of its own needs (the site shell's gap 4).
+- **Catalogue note** (`CatalogueNote`). The small line saying which story holds the part of the page a
+  dialog or refusal story trims. A build does not render it.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** A create page names the opportunity under its H1 and keeps it in view in the
+   summary; a manage page's H1 is the opportunity's title.
+2. **Fixed order.** The summary gives program and status, title, closing date, then the value, in that
+   order. The stories carry only the facts the earlier stories gave (see gap 39).
+3. **Colour only for status.** The program labels are grey. The only coloured things are status labels
+   (a proposal's, a membership's) and the design system's own alert and error colours. Tabs, panels,
+   tables and scores are neutral.
+4. **Programs** appear as their labels.
+5. **Dense.** Facts, details, captions, tables, tabs, word counts and limits are in small body text; the
+   H1 in the H3 size (H2 on a wide create page, as on the Code With Us form); regions `large` apart,
+   items `medium`, a label and what it labels `small`. Each screen has one primary button at most: Submit
+   proposal on a form or a draft, the save-and-submit button while editing, the stage's score or Award on
+   an evaluate page, the confirm button inside a dialog.
+6. **Imagery.** None on these screens.
+7. **Phones.** Regions close to `medium`; the summary becomes a compact card and the actions follow the
+   form at full width; details fall to one column; team rows wrap; tables scroll inside their own
+   focusable region, as the opportunity dashboard's and History tab's do (gap 40); the header and footer
+   are the shared phone versions.
+
+### Forms: what changed with this pass
+
+The forms keep every field, rule, message and test ID of "Forms and validation" in the older section,
+with these changes, each forced by an accepted criterion or by the contract's own wording:
+
+- **One scrum master per phase, as a single choice** (R-2.19 v3; the surface's `phase_requirements`
+  note). Each phase's scrum master is now a design-system `RadioGroup` ("Scrum master for the prototype
+  phase", required) with one `Radio` per member, each `proposal-scrum-master`, after the phase's member
+  rows. The per-member checkboxes are gone, so two scrum masters can no longer be chosen, and the team
+  part's sentence says "choose one scrum master in each". In `proposal-swu-create.invalid` the former
+  "two scrum masters" problem is now "Implementation phase: choose a scrum master".
+- **Each phase says whether its team meets the phase's requirements** (R-2.19 v3: "the form shows which
+  phase is incomplete"). Every Sprint With Us phase fieldset (`proposal-phase-team`) holds one line
+  (`proposal-phase-requirements`): "This phase’s team meets its requirements." with the capabilities it
+  holds, or "This phase’s team is incomplete." with what is missing (a required capability not held, or
+  a member still pending). The opportunity-wide Capabilities part stays as it was.
+- **The team-member choice** (`proposal-team-member-choice`, R-2.18). Sprint With Us offers the chosen
+  organization's active members and, marked "(membership pending)", those whose invitation is
+  unanswered; Team With Us offers active members only. Neither offers a person already named.
+- **Cost messages in the contract's words.** A phase cost over its maximum reads "Please enter a Proposed
+  Cost less than or equal to 850,000." under the field; a total over the opportunity's maximum reads
+  "The proposed cost exceeds the maximum budget for this opportunity." under the total. Each phase's
+  cost field, and the total with its message, sits in a wrapper `proposal-cost`, so a test reads each
+  message with the field it stands against.
+- **Submit stays unavailable while a phase is incomplete or a cost is over budget** (the surface's
+  `team_member_choices`, `phase_requirements` and `cost_errors` notes). In
+  `proposal-swu-create.invalid` Submit proposal is disabled and described by the error summary, which
+  lists the problems as they stand.
+
+### Evaluate pages: what changed with this pass
+
+- **A stage's score is offered only at that stage** (R-2.28 v2). This replaces the older section's
+  rule that the stage buttons are always present, and resolves its gap 4. Each stage tab (Code
+  challenge and Team scenario; Resource questions and Challenge) holds its score button in a wrapper
+  `proposal-score-actions`, always present on that tab and empty when no score is offered. A stage the
+  opportunity has not reached offers no score, and the tab says "This proposal can be scored once the
+  opportunity has reached the team scenario." (or the code challenge, or the challenge). Screen in and
+  Screen out are not score actions and sit in their own group.
+- **The `wrong-stage` state** keeps the service's refusal ("The opportunity is not in the correct stage
+  of evaluation to perform that action.", `proposal-wrong-stage-error`) above the tab, but the tab now
+  offers no score. See gap 35.
+- **Rank** (R-2.31). Every Sprint With Us and Team With Us evaluate state that shows the Scores region
+  shows a Rank: `proposal-rank` holds "1st", "2nd" … for a fully evaluated proposal, and is empty,
+  beside the words "Not yet ranked", for one that holds no rank.
+
+### Other changes in this pass
+
+- **Status lives in the head.** The "Status" term and "Status:" lines are gone from every page; the
+  status is the head's coloured label and keeps `proposal-status`. Export-one shows it as a label
+  without a test ID, as before. Export-all keeps a Status detail in each proposal's panel, which has no
+  head of its own.
+- **The organization, once the form is closed,** is a Details item "Legal name" on the Sprint With Us
+  and Team With Us manage pages' Proposal tab (`proposal-organization`).
+- **Editing draws the whole form.** The manage pages' `editing` and `organization-locked` stories used
+  to trim all but the organization part; they now draw every part as the create page does, filled in,
+  with the manage head, details and tabs above, and the actions in the summary: Save changes and
+  submit (primary), Save changes, Cancel (`proposal-cancel-edit`). `organization-locked` keeps only
+  Save changes and Cancel, as before.
+- **The unqualified-organization notice** (`proposal-unqualified-organization-notice`) sits with the
+  page's other messages above the form, focused when it appears, rather than under the Organization
+  field.
+- **Phase ids.** The kit's `Fieldset` takes no `id`, so the ids the error summaries link to
+  (`proposal-prototype-team`, `proposal-implementation-team`) are on each phase's member list.
+- **Question numbers return** on the Sprint With Us manage page: its question list is an `op-list`
+  `<ol>`, which keeps its numbers (older gap L1, for that page).
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+- **Viewers where a story named none.** Evaluated and History stories that show Award are drawn for
+  the opportunity's author, as their comments say; R-2.33's example names an administrator, and only
+  `award-confirm` is drawn for one. Who may award is not otherwise stated (see the older "Who is offered
+  what").
+
+### Test IDs filled in this pass
+
+Every proposal page's `null` in `spec/contract/surface.yaml` is now filled, each with an identifier the
+stories put in the markup:
+
+| Page | Entry | Test ID |
+| --- | --- | --- |
+| cwu create | `field_errors_by_field` | `proposal-field-errors`: the error summary's list, each item linking to its field by id and carrying the message (the one attribute added to `proposal-cwu-create-page.tsx`) |
+| swu, twu create | `team_member_choices` | `proposal-team-member-choice` |
+| swu create | `phase_team_sections` | `proposal-phase-team` |
+| swu create | `phase_requirements` | `proposal-phase-requirements` |
+| swu create | `cost_errors` | `proposal-cost` |
+| swu, twu edit | `choose_organization` | `proposal-organization-field` |
+| swu edit | `add_phase_team_member`, `set_scrum_master` | `proposal-add-team-member`, `proposal-scrum-master` |
+| twu edit | `add_team_member_for_resource`, `set_hourly_rate` | `proposal-add-team-member`, `proposal-hourly-rate-field` |
+| swu, twu edit | `submission_refusal` | `proposal-submit-refused-message` |
+| swu, twu edit | `field_error` | `field-error` |
+| swu, twu edit | `organization` | `proposal-organization` (the Proposal tab's organization, once the form is closed) |
+| swu, twu view | `history_entries` | `proposal-history-table` |
+| swu, twu view | `rank` | `proposal-rank` |
+| swu, twu view | `offered_score_actions` | `proposal-score-actions` |
+
+Every test ID filled before this pass is kept, on an element that does what it did. This resolves the
+older section's gap L4.
+
+### Gaps found in this pass
+
+35. **The wrong-stage refusal on the page.** R-2.28 v2 says the page offers no score for a stage the
+    opportunity has not reached, so the screen cannot itself send the score the service refuses; yet
+    the surface keeps `wrong_stage_error` on both evaluate pages, and the `wrong-stage` state is kept.
+    The story shows the refusal as the page would report it if a score reached the service from it
+    anyway. Whether the page needs the observation, now that `proposal-evaluation-request` carries the
+    refusal, is for the contract.
+36. **Words the contract gives that no criterion does.** The cost messages ("Please enter a Proposed
+    Cost less than or equal to N.", "The proposed cost exceeds the maximum budget for this
+    opportunity.") and the pending marking come from the surface's notes, which describe the old
+    application. The stories use them; a criterion should own them.
+37. **Phase requirements' wording.** No criterion or note gives the words a phase uses to say it is
+    complete or incomplete; "This phase’s team meets its requirements." and "This phase’s team is
+    incomplete." are the design's own.
+38. **Scrum master with no choice made.** With a single required choice, the only scrum master problem
+    left is none chosen. The surface says the form "does not count the scrum master" and the service
+    refuses it on submission; the message "Choose a scrum master for the implementation phase." is the
+    design's own.
+39. **The summary's facts.** Rule 2's location and Remote OK are not in the Sprint With Us or Team With
+    Us proposal stories' test data, so those summaries show the program, title, closing date and budget
+    only.
+40. **Tables on phones.** Rule 7 turns rows into stacked cards; the dashboard, team, question and
+    history tables keep the opportunity screens' `DataTable`, which scrolls inside its own region
+    instead. A table that becomes stacked cards would be a new component for both domains at once.

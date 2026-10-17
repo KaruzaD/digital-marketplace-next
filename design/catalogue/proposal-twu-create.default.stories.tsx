@@ -1,231 +1,158 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FileTrigger } from "react-aria-components";
-import {
-  Button,
-  ButtonGroup,
-  Form,
-  Heading,
-  Link,
-  NumberField,
-  Select,
-  Text,
-  TextArea,
-} from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, Link, NumberField, Select, TextArea } from "@bcgov/design-system-react-components";
+import { Fieldset, VENDOR } from "./opportunity-kit";
+import { CreateHead, FormPart, ORGANIZATIONS, ProposalFormPage, TWU_OPPORTUNITY } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-twu-create · default — a vendor bids for an organization they own or administer, naming team members
 // against the opportunity's resources, each with an hourly rate. The estimated cost over the contract is shown as the
 // rates change, and each resource question has its word limit stated (R-2.1, R-2.10, R-2.12, R-2.17, R-2.20, R-2.21)
-const meta: Meta = { title: "proposals/proposal-twu-create/default" };
+const meta: Meta = { title: "proposals/proposal-twu-create/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const panel = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const group = {
-  margin: "var(--layout-margin-none)",
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
-const item = {
-  padding: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
 const rate = { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 } as const;
 
-// Illustrative only: the organizations the signed-in vendor owns or administers, and the chosen one's members.
-const organizations = [
-  { id: "org-1", label: "Example Digital Ltd." },
-  { id: "org-2", label: "Sample Software Co-op" },
-];
-const members = [
+// Illustrative only: the chosen organization's active members the team-member choice offers. Nobody already named is
+// offered again, and nobody whose membership is still pending is offered.
+const choices = [
   { id: "u-v-1", label: "Test Vendor" },
-  { id: "u-v-2", label: "Test Developer One" },
-  { id: "u-v-3", label: "Test Developer Two" },
   { id: "u-v-4", label: "Test Designer" },
+];
+
+const resources = [
+  { number: 1, legend: "Resource 1: Full stack developer, 100% of full time", member: "Test Developer One", rateId: "proposal-resource-1-rate-one", rate: 150 },
+  { number: 2, legend: "Resource 2: Data professional, 50% of full time", member: "Test Developer Two", rateId: "proposal-resource-2-rate-two", rate: 140 },
 ];
 
 export const Default: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Create a Team With Us proposal</Heading>
-        <section aria-labelledby="create-opportunity" style={panel} data-testid="proposal-opportunity-summary">
-          <Stack gap="medium">
-            <Heading level={2} id="create-opportunity">The opportunity</Heading>
-            <Stack as="dl" direction="row" gap="medium">
-              <Stack gap="small">
-                <dt style={term}>Opportunity</dt>
-                <dd><Link href="/opportunities/team-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000301">Data platform team</Link></dd>
-              </Stack>
-              <Stack gap="small">
-                <dt style={term}>Maximum budget</dt>
-                <dd>$900,000</dd>
-              </Stack>
-              <Stack gap="small">
-                <dt style={term}>Proposal deadline</dt>
-                <dd>October 2, 2026 at 4:00 p.m. Pacific time</dd>
-              </Stack>
-            </Stack>
-          </Stack>
-        </section>
-        <Text elementType="p">A draft can be saved with any field blank. Every required field is needed to submit.</Text>
-        <Form validationBehavior="aria">
-          <Stack gap="medium">
-            <section aria-labelledby="form-organization" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-organization">Organization</Heading>
+    <SitePage viewer={VENDOR} current="opportunities">
+      <ProposalFormPage
+        head={<CreateHead title="Create a Team With Us proposal" opportunity={TWU_OPPORTUNITY.title} />}
+        intro={
+          <>
+            <p className="op-text">A draft can be saved with any field blank. Every required field is needed to submit.</p>
+            <p className="op-text">
+              <Link href="/opportunities/team-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000301">View the opportunity</Link>
+            </p>
+          </>
+        }
+        summary={TWU_OPPORTUNITY}
+        actions={
+          <>
+            <Button variant="primary" size="medium" data-testid="proposal-submit">Submit proposal</Button>
+            <Button variant="secondary" size="medium" data-testid="proposal-save-draft">Save draft</Button>
+            <Button variant="tertiary" size="medium" data-testid="proposal-cancel">Cancel</Button>
+          </>
+        }
+      >
+        <FormPart id="form-organization" title="1. Organization">
+          <Select
+            id="proposal-organization"
+            label="Organization"
+            isRequired
+            description="Organizations you own or administer. It must be a qualified supplier for Team With Us, and provide every service area this opportunity needs, before you submit."
+            items={ORGANIZATIONS}
+            defaultValue="org-1"
+            data-testid="proposal-organization-field"
+          />
+        </FormPart>
+
+        <FormPart id="form-team" title="2. Team">
+          <p className="op-text">
+            Name at least one team member against this opportunity's resources, with an hourly rate for each. Everyone you name
+            must be an active member of the organization, and no one may be named twice.
+          </p>
+          {resources.map((resource) => (
+            <Fieldset key={resource.number} legend={resource.legend}>
+              <ul className="pp-rows" aria-label={`Resource ${resource.number} team`}>
+                <li className="pp-row">
+                  <span className="pp-row-name">{resource.member}</span>
+                  <NumberField
+                    id={resource.rateId}
+                    label={`Hourly rate for ${resource.member}`}
+                    isRequired
+                    description="At least $1."
+                    formatOptions={rate}
+                    defaultValue={resource.rate}
+                    data-testid="proposal-hourly-rate-field"
+                  />
+                  <Button
+                    variant="tertiary"
+                    size="small"
+                    aria-label={`Remove ${resource.member} from resource ${resource.number}`}
+                  >
+                    Remove
+                  </Button>
+                </li>
+              </ul>
+              <div className="pp-cluster">
                 <Select
-                  id="proposal-organization"
-                  label="Organization"
-                  isRequired
-                  description="Organizations you own or administer. It must be a qualified supplier for Team With Us, and provide every service area this opportunity needs, before you submit."
-                  items={organizations}
-                  defaultValue="org-1"
-                  data-testid="proposal-organization-field"
+                  label={`Team member to add to resource ${resource.number}`}
+                  items={choices}
+                  data-testid="proposal-team-member-choice"
                 />
-              </Stack>
-            </section>
-            <section aria-labelledby="form-team" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-team">Team</Heading>
-                <Text elementType="p">
-                  Name at least one team member against this opportunity's resources, with an hourly rate for each. Everyone you
-                  name must be an active member of the organization, and no one may be named twice.
-                </Text>
-                <fieldset style={group}>
-                  <legend style={legend}>Resource 1: Full stack developer, 100% of full time</legend>
-                  <Stack gap="medium">
-                    <Stack as="ul" gap="medium">
-                      <li style={item}>
-                        <Stack gap="small">
-                          <Text elementType="p">Test Developer One</Text>
-                          <NumberField
-                            id="proposal-resource-1-rate-one"
-                            label="Hourly rate for Test Developer One"
-                            isRequired
-                            description="At least $1."
-                            formatOptions={rate}
-                            defaultValue={150}
-                            data-testid="proposal-hourly-rate-field"
-                          />
-                          <div>
-                            <Button variant="tertiary" size="small" aria-label="Remove Test Developer One from resource 1">Remove</Button>
-                          </div>
-                        </Stack>
-                      </li>
-                    </Stack>
-                    <Stack direction="row" align="end" gap="medium">
-                      <Select label="Team member to add to resource 1" items={members} />
-                      <Button variant="secondary" aria-label="Add team member to resource 1" data-testid="proposal-add-team-member">
-                        Add team member
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </fieldset>
-                <fieldset style={group}>
-                  <legend style={legend}>Resource 2: Data professional, 50% of full time</legend>
-                  <Stack gap="medium">
-                    <Stack as="ul" gap="medium">
-                      <li style={item}>
-                        <Stack gap="small">
-                          <Text elementType="p">Test Developer Two</Text>
-                          <NumberField
-                            id="proposal-resource-2-rate-two"
-                            label="Hourly rate for Test Developer Two"
-                            isRequired
-                            description="At least $1."
-                            formatOptions={rate}
-                            defaultValue={140}
-                            data-testid="proposal-hourly-rate-field"
-                          />
-                          <div>
-                            <Button variant="tertiary" size="small" aria-label="Remove Test Developer Two from resource 2">Remove</Button>
-                          </div>
-                        </Stack>
-                      </li>
-                    </Stack>
-                    <Stack direction="row" align="end" gap="medium">
-                      <Select label="Team member to add to resource 2" items={members} />
-                      <Button variant="secondary" aria-label="Add team member to resource 2" data-testid="proposal-add-team-member">
-                        Add team member
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </fieldset>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-cost" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-cost">Cost</Heading>
-                <Text elementType="p">
-                  Each hourly rate is applied at its resource's target allocation across the contract, from November 2, 2026 to
-                  October 29, 2027. The total must not be more than the opportunity's maximum budget.
-                </Text>
-                <div role="status">
-                  <Text elementType="p">Estimated cost over the contract: $412,500 of the $900,000 maximum budget.</Text>
-                </div>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-questions" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-questions">Resource questions</Heading>
-                <fieldset style={group}>
-                  <legend style={legend}>Question 1</legend>
-                  <Stack gap="medium">
-                    <Text elementType="p">Describe your experience building data pipelines for health data.</Text>
-                    <TextArea
-                      id="proposal-question-1"
-                      label="Response to question 1"
-                      isRequired
-                      description="Up to 300 words."
-                      defaultValue="Our team has built and run the ingestion pipelines for two provincial registries."
-                      data-testid="proposal-question-response-field"
-                    />
-                    <div role="status">
-                      <Text elementType="p" size="small" color="secondary">13 of 300 words</Text>
-                    </div>
-                  </Stack>
-                </fieldset>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-attachments" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-attachments">Attachments</Heading>
-                <Text elementType="p">
-                  Anyone who can read this proposal can read its attachments. Attachments are checked even when you save a draft.
-                </Text>
-                <Text elementType="p">No attachments have been added.</Text>
-                <div id="attachment-size-limit" data-testid="attachment-size-limit">
-                  <Text elementType="p" size="small" color="secondary">Any type of file, up to 10 MB each.</Text>
-                </div>
-                <div>
-                  <FileTrigger>
-                    <Button variant="secondary" aria-describedby="attachment-size-limit" data-testid="attachment-add-button">
-                      Add attachment
-                    </Button>
-                  </FileTrigger>
-                </div>
-              </Stack>
-            </section>
-            <Text elementType="p">
-              You will be asked to accept the terms and conditions when you submit. You can withdraw a submitted proposal at any
-              time.
-            </Text>
-            <ButtonGroup ariaLabel="Proposal actions">
-              <Button variant="tertiary" data-testid="proposal-cancel">Cancel</Button>
-              <Button variant="secondary" data-testid="proposal-save-draft">Save draft</Button>
-              <Button type="submit" variant="primary" data-testid="proposal-submit">Submit proposal</Button>
-            </ButtonGroup>
-          </Stack>
-        </Form>
-      </Stack>
-    </PageContainer>
+                <Button
+                  variant="secondary"
+                  aria-label={`Add team member to resource ${resource.number}`}
+                  data-testid="proposal-add-team-member"
+                >
+                  Add team member
+                </Button>
+              </div>
+            </Fieldset>
+          ))}
+        </FormPart>
+
+        <FormPart id="form-cost" title="3. Cost">
+          <p className="op-text">
+            Each hourly rate is applied at its resource's target allocation across the contract, from November 2, 2026 to October
+            29, 2027. The total must not be more than the opportunity's maximum budget.
+          </p>
+          <div role="status">
+            <p className="op-text">Estimated cost over the contract: $412,500 of the $900,000 maximum budget.</p>
+          </div>
+        </FormPart>
+
+        <FormPart id="form-questions" title="4. Resource questions">
+          <Fieldset legend="Question 1">
+            <p className="op-text">Describe your experience building data pipelines for health data.</p>
+            <TextArea
+              id="proposal-question-1"
+              label="Response to question 1"
+              isRequired
+              description="Up to 300 words."
+              defaultValue="Our team has built and run the ingestion pipelines for two provincial registries."
+              data-testid="proposal-question-response-field"
+            />
+            <div role="status">
+              <p className="op-note">13 of 300 words</p>
+            </div>
+          </Fieldset>
+        </FormPart>
+
+        <FormPart id="form-attachments" title="5. Attachments">
+          <p className="op-text">
+            Anyone who can read this proposal can read its attachments. Attachments are checked even when you save a draft.
+          </p>
+          <p className="op-text">No attachments have been added.</p>
+          <div id="attachment-size-limit" data-testid="attachment-size-limit">
+            <p className="op-note">Any type of file, up to 10 MB each.</p>
+          </div>
+          <div className="pf-attach">
+            <FileTrigger>
+              <Button variant="secondary" aria-describedby="attachment-size-limit" data-testid="attachment-add-button">
+                Add attachment
+              </Button>
+            </FileTrigger>
+          </div>
+        </FormPart>
+
+        <p className="op-text">
+          You will be asked to accept the terms and conditions when you submit. You can withdraw a submitted proposal at any time.
+        </p>
+      </ProposalFormPage>
+    </SitePage>
   ),
 };

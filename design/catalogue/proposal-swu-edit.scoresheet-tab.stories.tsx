@@ -1,93 +1,65 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, ButtonGroup, Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button } from "@bcgov/design-system-react-components";
+import { Details, Region, VENDOR } from "./opportunity-kit";
+import { ProposalActions, ProposalHead, ProposalPage, ProposalTabs } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-swu-edit · scoresheet-tab — the opportunity was awarded to another proponent, so this proposal is not
 // awarded and the Scoresheet tab appears: each stage's score, the price score, the weighted total, the rank, and the
 // anonymous name evaluators saw (R-2.5, R-2.30, R-2.31, R-2.32, R-2.33)
-const meta: Meta = { title: "proposals/proposal-swu-edit/scoresheet-tab" };
+const meta: Meta = { title: "proposals/proposal-swu-edit/scoresheet-tab", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
 const base = "/opportunities/sprint-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000201/proposals/3f8a2c10-6d4b-4e19-a7c5-000000000211";
 
 export const ScoresheetTab: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Manage a Sprint With Us proposal</Text>
-          <Heading level={1}>Modernize the licence renewal service</Heading>
-        </Stack>
-        <Stack as="dl" direction="row" gap="medium">
-          <Stack gap="small">
-            <dt style={term}>Status</dt>
-            <dd><span style={badge} data-testid="proposal-status">Not awarded</span></dd>
-          </Stack>
-          <Stack gap="small">
-            <dt style={term}>Proposal ID</dt>
-            <dd data-testid="proposal-identifier">3f8a2c10-6d4b-4e19-a7c5-000000000211</dd>
-          </Stack>
-          <Stack gap="small">
-            <dt style={term}>Opportunity ID</dt>
-            <dd data-testid="opportunity-identifier">7c1e2d40-5b1a-4c2e-9d3f-000000000201</dd>
-          </Stack>
-        </Stack>
-        <div data-testid="proposal-actions">
-          <ButtonGroup ariaLabel="Proposal actions">
-            <Button variant="secondary" danger data-testid="proposal-withdraw-button">Withdraw</Button>
-          </ButtonGroup>
-        </div>
-        <nav aria-label="Proposal sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href={`${base}/edit?tab=proposal`} data-testid="proposal-tab-proposal">Proposal</Link></li>
-            <li><Link href={`${base}/edit?tab=scoresheet`} aria-current="page" data-testid="proposal-tab-scoresheet">Scoresheet</Link></li>
-            <li><Link href={`${base}/edit?tab=history`} data-testid="proposal-tab-history">History</Link></li>
-          </Stack>
-        </nav>
-        <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-          <Heading level={2} id="tab-heading">Scoresheet</Heading>
-          <Text elementType="p">
+    <SitePage viewer={VENDOR} current="dashboard">
+      <ProposalPage>
+        <ProposalHead
+          eyebrow="Manage a Sprint With Us proposal"
+          program="sprint-with-us"
+          status="Not awarded"
+          title="Modernize the licence renewal service"
+        />
+        <Details
+          items={[
+            { term: "Proposal ID", value: "3f8a2c10-6d4b-4e19-a7c5-000000000211", testId: "proposal-identifier" },
+            { term: "Opportunity ID", value: "7c1e2d40-5b1a-4c2e-9d3f-000000000201", testId: "opportunity-identifier" },
+          ]}
+        />
+        <ProposalActions>
+          <Button variant="secondary" danger data-testid="proposal-withdraw-button">Withdraw</Button>
+        </ProposalActions>
+        <ProposalTabs
+          base={`${base}/edit`}
+          current="scoresheet"
+          tabs={[
+            { key: "proposal", label: "Proposal" },
+            { key: "scoresheet", label: "Scoresheet" },
+            { key: "history", label: "History" },
+          ]}
+        />
+        <Region id="tab-heading" title="Scoresheet">
+          <p className="op-text">
             During evaluation, evaluators saw this proposal as <span data-testid="proposal-anonymous-name">Proponent 2</span>.
-          </Text>
-          <Stack as="dl" direction="row" gap="medium">
-            <Stack gap="small">
-              <dt style={term}>Team questions</dt>
-              <dd>76.50%</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Code challenge</dt>
-              <dd>81%</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Team scenario</dt>
-              <dd>79%</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Price</dt>
-              <dd>95.65%</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Total</dt>
-              <dd data-testid="proposal-total-score">82.14%</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Rank</dt>
-              <dd data-testid="proposal-rank">2 of 3</dd>
-            </Stack>
-          </Stack>
-          <Text elementType="p" size="small" color="secondary">
+          </p>
+          <Details
+            items={[
+              { term: "Team questions", value: "76.50%" },
+              { term: "Code challenge", value: "81%" },
+              { term: "Team scenario", value: "79%" },
+              { term: "Price", value: "95.65%" },
+              { term: "Total", value: "82.14%", testId: "proposal-total-score" },
+              { term: "Rank", value: "2 of 3", testId: "proposal-rank" },
+            ]}
+          />
+          <p className="op-note">
             The total combines each stage's score in the proportions the opportunity states. The price score is this
             proposal's share of the lowest bid still in contention.
-          </Text>
-        </Stack>
-      </Stack>
-    </PageContainer>
+          </p>
+        </Region>
+      </ProposalPage>
+    </SitePage>
   ),
 };

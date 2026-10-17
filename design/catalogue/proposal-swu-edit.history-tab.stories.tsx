@@ -1,25 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, ButtonGroup, Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button } from "@bcgov/design-system-react-components";
+import { DataTable, Region, VENDOR } from "./opportunity-kit";
+import { ProposalActions, ProposalHead, ProposalPage, ProposalTabs } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-swu-edit · history-tab — the vendor reads the history of a proposal they wrote: every change of state and
 // every score, newest first, with who made it and any note. The proposal has been passed over, so its scores may be
 // shown (R-2.9, R-2.32, R-2.35)
-const meta: Meta = { title: "proposals/proposal-swu-edit/history-tab" };
+const meta: Meta = { title: "proposals/proposal-swu-edit/history-tab", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
 const base = "/opportunities/sprint-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000201/proposals/3f8a2c10-6d4b-4e19-a7c5-000000000211";
 
 const history = [
@@ -34,54 +24,44 @@ const history = [
 
 export const HistoryTab: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Manage a Sprint With Us proposal</Text>
-          <Heading level={1}>Modernize the licence renewal service</Heading>
-        </Stack>
-        <Text elementType="p">Status: <span style={badge} data-testid="proposal-status">Not awarded</span></Text>
-        <div data-testid="proposal-actions">
-          <ButtonGroup ariaLabel="Proposal actions">
-            <Button variant="secondary" danger data-testid="proposal-withdraw-button">Withdraw</Button>
-          </ButtonGroup>
-        </div>
-        <nav aria-label="Proposal sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href={`${base}/edit?tab=proposal`} data-testid="proposal-tab-proposal">Proposal</Link></li>
-            <li><Link href={`${base}/edit?tab=scoresheet`} data-testid="proposal-tab-scoresheet">Scoresheet</Link></li>
-            <li><Link href={`${base}/edit?tab=history`} aria-current="page" data-testid="proposal-tab-history">History</Link></li>
-          </Stack>
-        </nav>
-        <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-          <Heading level={2} id="tab-heading">History</Heading>
-          <div role="region" aria-labelledby="history-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="proposal-history-table">
-              <caption id="history-caption" style={{ textAlign: "start" }}>
-                <Text size="small" color="secondary">Every change of state and every score entered, newest first</Text>
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" style={cell}>Date</th>
-                  <th scope="col" style={cell}>Entry</th>
-                  <th scope="col" style={cell}>By</th>
-                  <th scope="col" style={cell}>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={`${h.when}-${h.entry}`}>
-                    <td style={cell}>{h.when}</td>
-                    <td style={cell}>{h.entry}</td>
-                    <td style={cell}>{h.by}</td>
-                    <td style={cell}>{h.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <SitePage viewer={VENDOR} current="dashboard">
+      <ProposalPage>
+        <ProposalHead
+          eyebrow="Manage a Sprint With Us proposal"
+          program="sprint-with-us"
+          status="Not awarded"
+          title="Modernize the licence renewal service"
+        />
+        <ProposalActions>
+          <Button variant="secondary" danger data-testid="proposal-withdraw-button">Withdraw</Button>
+        </ProposalActions>
+        <ProposalTabs
+          base={`${base}/edit`}
+          current="history"
+          tabs={[
+            { key: "proposal", label: "Proposal" },
+            { key: "scoresheet", label: "Scoresheet" },
+            { key: "history", label: "History" },
+          ]}
+        />
+        <Region id="tab-heading" title="History">
+          <DataTable
+            captionId="history-caption"
+            caption="Every change of state and every score entered, newest first"
+            columns={["Date", "Entry", "By", "Note"]}
+            testId="proposal-history-table"
+          >
+            {history.map((h) => (
+              <tr key={`${h.when}-${h.entry}`}>
+                <td>{h.when}</td>
+                <td>{h.entry}</td>
+                <td>{h.by}</td>
+                <td>{h.note}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </Region>
+      </ProposalPage>
+    </SitePage>
   ),
 };

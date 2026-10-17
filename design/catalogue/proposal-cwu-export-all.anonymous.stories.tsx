@@ -1,18 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Checkbox, Heading, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, Checkbox } from "@bcgov/design-system-react-components";
+import { Actions, Details, Panel, SectionTitle, STAFF } from "./opportunity-kit";
+import { ProposalHead, ProposalPage } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-cwu-export-all · anonymous — the same document with "Name proponents anonymously" ticked: each proponent is
 // named "Proponent 1", "Proponent 2" and so on, and their names and contact details are withheld (R-2.38)
-const meta: Meta = { title: "proposals/proposal-cwu-export-all/anonymous" };
+const meta: Meta = { title: "proposals/proposal-cwu-export-all/anonymous", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const panel = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
 
 const proposals = [
   {
@@ -33,40 +28,44 @@ const proposals = [
 
 export const Anonymous: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Export all Code With Us proposals</Text>
-          <Heading level={1}>Build an accessible permit tracker</Heading>
-        </Stack>
-        <Text elementType="p">Every submitted proposal you are entitled to see, in one document. Drafts are never included.</Text>
-        <Stack direction="row" align="center" gap="medium">
+    <SitePage viewer={STAFF} current="dashboard">
+      <ProposalPage>
+        <ProposalHead
+          eyebrow="Export all Code With Us proposals"
+          program="code-with-us"
+          title="Build an accessible permit tracker"
+        />
+        <p className="op-text">Every submitted proposal you are entitled to see, in one document. Drafts are never included.</p>
+        <Actions>
           <Checkbox defaultSelected data-testid="proposal-export-anonymous-toggle">Name proponents anonymously</Checkbox>
           <Button variant="secondary">Print</Button>
-        </Stack>
-        <Stack gap="medium" data-testid="proposal-export-document">
+        </Actions>
+        <div className="op-regions" data-testid="proposal-export-document">
           {proposals.map((p) => (
-            <article key={p.id} aria-labelledby={p.id} style={panel} data-testid="proposal-export-item">
-              <Stack gap="medium">
-                <Heading level={2} id={p.id}><span data-testid="proposal-proponent-name">{p.proponent}</span></Heading>
-                <Stack as="dl" direction="row" gap="medium">
-                  <Stack gap="small">
-                    <dt style={term}>Status</dt>
-                    <dd>{p.status}</dd>
-                  </Stack>
-                  <Stack gap="small">
-                    <dt style={term}>Submitted</dt>
-                    <dd>{p.submitted}</dd>
-                  </Stack>
-                </Stack>
-                <Text elementType="p">The proponent's name and contact details are withheld in this document.</Text>
-                <Heading level={3}>Proposal</Heading>
-                <Text elementType="p">{p.text}</Text>
-              </Stack>
-            </article>
+            <Panel
+              key={p.id}
+              as="article"
+              id={p.id}
+              testId="proposal-export-item"
+              title={<span data-testid="proposal-proponent-name">{p.proponent}</span>}
+            >
+              <Details
+                items={[
+                  { term: "Status", value: p.status },
+                  { term: "Submitted", value: p.submitted },
+                ]}
+              />
+              <p className="op-text">The proponent's name and contact details are withheld in this document.</p>
+              <div className="op-region">
+                <SectionTitle level={3} id={`${p.id}-proposal`}>
+                  Proposal
+                </SectionTitle>
+                <p className="op-text">{p.text}</p>
+              </div>
+            </Panel>
           ))}
-        </Stack>
-      </Stack>
-    </PageContainer>
+        </div>
+      </ProposalPage>
+    </SitePage>
   ),
 };

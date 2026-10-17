@@ -1,21 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, ProgressCircle, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { PageTitle, STAFF, Waiting } from "./opportunity-kit";
+import { ProposalPage } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-cwu-export-all · loading — the proposals have not arrived yet
-const meta: Meta = { title: "proposals/proposal-cwu-export-all/loading" };
+const meta: Meta = { title: "proposals/proposal-cwu-export-all/loading", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Loading: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Export all Code With Us proposals</Heading>
-        <Stack direction="row" align="center" gap="small" role="status">
-          <ProgressCircle isIndeterminate aria-label="Loading proposals" />
-          <Text>Loading proposals…</Text>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <SitePage viewer={STAFF} current="dashboard">
+      <ProposalPage>
+        <PageTitle>Export all Code With Us proposals</PageTitle>
+        <Waiting label="Loading proposals" />
+      </ProposalPage>
+    </SitePage>
   ),
 };

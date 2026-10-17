@@ -1,24 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, ButtonGroup, Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button } from "@bcgov/design-system-react-components";
+import { DataTable, Region, STAFF } from "./opportunity-kit";
+import { ProposalActions, ProposalHead, ProposalPage, ProposalTabs } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-cwu-view · history-tab — the proposal's history, newest first, with who made each change, when, and any
 // note. The score entered is recorded as a percentage (R-2.26, R-2.35)
-const meta: Meta = { title: "proposals/proposal-cwu-view/history-tab" };
+const meta: Meta = { title: "proposals/proposal-cwu-view/history-tab", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
 const base = "/opportunities/code-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000101/proposals/3f8a2c10-6d4b-4e19-a7c5-000000000111";
 
 const history = [
@@ -30,54 +20,44 @@ const history = [
 
 export const HistoryTab: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Code With Us proposal</Text>
-          <Heading level={1}><span data-testid="proposal-proponent-name">Test Vendor</span></Heading>
-        </Stack>
-        <Text elementType="p">Status: <span style={badge} data-testid="proposal-status">Evaluated</span></Text>
-        <div data-testid="proposal-actions">
-          <ButtonGroup ariaLabel="Proposal actions">
-            <Button variant="primary" data-testid="proposal-award-button">Award</Button>
-            <Button variant="secondary" danger data-testid="proposal-disqualify-button">Disqualify</Button>
-          </ButtonGroup>
-        </div>
-        <nav aria-label="Proposal sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href={`${base}?tab=proposal`} data-testid="proposal-tab-proposal">Proposal</Link></li>
-            <li><Link href={`${base}?tab=history`} aria-current="page" data-testid="proposal-tab-history">History</Link></li>
-          </Stack>
-        </nav>
-        <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-          <Heading level={2} id="tab-heading">History</Heading>
-          <div role="region" aria-labelledby="history-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="proposal-history-table">
-              <caption id="history-caption" style={{ textAlign: "start" }}>
-                <Text size="small" color="secondary">Every change of state and every score entered, newest first</Text>
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" style={cell}>Date</th>
-                  <th scope="col" style={cell}>Entry</th>
-                  <th scope="col" style={cell}>By</th>
-                  <th scope="col" style={cell}>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={`${h.when}-${h.entry}`}>
-                    <td style={cell}>{h.when}</td>
-                    <td style={cell}>{h.entry}</td>
-                    <td style={cell}>{h.by}</td>
-                    <td style={cell}>{h.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <SitePage viewer={STAFF} current="dashboard">
+      <ProposalPage>
+        <ProposalHead
+          eyebrow="Code With Us proposal"
+          program="code-with-us"
+          status="Evaluated"
+          title={<span data-testid="proposal-proponent-name">Test Vendor</span>}
+        />
+        <ProposalActions>
+          <Button variant="primary" data-testid="proposal-award-button">Award</Button>
+          <Button variant="secondary" danger data-testid="proposal-disqualify-button">Disqualify</Button>
+        </ProposalActions>
+        <ProposalTabs
+          base={base}
+          current="history"
+          tabs={[
+            { key: "proposal", label: "Proposal" },
+            { key: "history", label: "History" },
+          ]}
+        />
+        <Region id="tab-heading" title="History">
+          <DataTable
+            captionId="history-caption"
+            caption="Every change of state and every score entered, newest first"
+            columns={["Date", "Entry", "By", "Note"]}
+            testId="proposal-history-table"
+          >
+            {history.map((h) => (
+              <tr key={`${h.when}-${h.entry}`}>
+                <td>{h.when}</td>
+                <td>{h.entry}</td>
+                <td>{h.by}</td>
+                <td>{h.note}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </Region>
+      </ProposalPage>
+    </SitePage>
   ),
 };
