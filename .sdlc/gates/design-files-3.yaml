@@ -1,0 +1,18 @@
+gate: G-DESIGN
+verdict: return
+by: agent:ux-reviewer
+held_by: agent
+rationale: |2-
+  Do these screens serve the files criteria, and are they built out of the design system? Returned. The accessibility scan is clean (report.json ok, zero violations across all 29 files stories), every story sits in SitePage's shared container aligned with the banner, file-kit.tsx uses tokens only, and no test ID was changed. But the spacing is doubled where a paragraph is wrapped in a div that carries the id and test ID: file-kit.tsx lines 142-144 (attachment-size-limit), 243-245 (image-file-rule in PictureGroup) and 309-314 (embedded-image-rule in ImageEditor), and the 'Will be saved as' wrapper in file-attachment-control.new-attachment. The kits remove margins only from direct children (.op-panel > *, .fl-group > *, .fl-editor > *), and .op-note sets only font and colour, so the nested <p> keeps the browser's default margin on top of the stack gap. The screenshots show it: in file-attachment-control.default and too-large, the last row, the stated rule and Add attachment sit about twice the panel's medium gap apart; in file-image-picker.default and rejected, the rule's gaps are much wider than the group's small gap; in file-embedded-image.default, the toolbar, rule and Body field are 30-40px apart, where DESIGN.md says small. I would approve once the nested paragraphs carry no margin of their own and the screenshots show even spacing.
+conditions:
+  - "In design/catalogue/file-kit.tsx, remove the doubled spacing around the stated rules: the <p className=\"op-note\"> inside the wrapper divs for attachment-size-limit (AttachmentControl), image-file-rule (PictureGroup) and embedded-image-rule (ImageEditor) keeps the browser's paragraph margin on top of the stack gap, because the kits zero only direct children. Either put the id and data-testid on the <p> itself and drop the wrapper, or zero the nested paragraph's margin with var(--layout-margin-none). Keep every test ID on an element that does what surface.yaml says."
+  - "Apply the same fix to the attachment-resulting-name wrapper (<div id=\"attachment-new-1-result\"><p className=\"op-note\">) in design/catalogue/file-attachment-control.new-attachment.stories.tsx, and to any other story in this domain that wraps a paragraph this way inside .op-panel, .fl-row, .fl-group or .fl-editor."
+  - "Re-render and check that, in file-attachment-control default/too-large, file-image-picker default/rejected and file-embedded-image default, the gaps around each stated rule equal the container's own token gap (medium in the panel, small in the row, group and editor)."
+cost: 1.0387667999999999
+turns: 17
+session: "e054c3c1-4906-44e1-a0cb-053afb2920e1"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-17T23:01:05.450Z
