@@ -1,0 +1,15 @@
+gate: G-DESIGN
+verdict: approve
+by: agent:ux-reviewer
+held_by: agent
+rationale: |2-
+  Question: do the redrawn proposals-domain screens serve the proposals criteria and are they built from the design system? Ruling: approve. The current design/report.json shows typecheck and build ok and zero accessibility violations on every story, so the landmark-unique failure on proposal-cwu-export-all is cleared. The screenshots I examined (swu-create default, swu-view default, twu-view wrong-stage, vendor-dashboard default) sit in the shared page container aligned with the header width, with even spacing. proposal-kit.tsx's style sheet uses design-system tokens for every colour, margin and padding; its only literal pixel values are breakpoints and column widths (320px summary, 240px field minimum) that the reference Code With Us form already uses. The stories compose the design system's Button, RadioGroup, Select, InlineAlert, Modal/AlertDialog and the rest, plus the project's own kits that DESIGN.md names as the project's. Criteria are met: R-2.19 v3 gives one scrum-master radio group per phase and a requirements line per phase; R-2.28 v2 removes the score button at an unreached stage and says when scoring opens; R-2.31 shows Rank, with 'Not yet ranked'. No proposal page in spec/contract/surface.yaml has an empty test_id left. That no filled test_id changed rests on the proposal's statement and on all pipeline checks passing, because I could not diff surface.yaml against main. Minor, not refused: on the dashboard the Draft label's colour is unclear at screenshot resolution, and the two jump links sit close together. Spec gaps 35-40 belong to the spec stage and are not this design's to settle. What would change the ruling: a diff showing an already-filled test_id changed, or a later scan reporting any violation.
+conditions: []
+cost: 1.0202434
+turns: 14
+session: "aa5e71c9-4d61-45b0-ab50-2f49fab9f0ff"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-17T21:44:56.588Z
