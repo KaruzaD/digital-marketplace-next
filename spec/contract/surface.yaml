@@ -150,16 +150,16 @@ pages:
       proposal_deadline: { test_id: opportunity-proposal-deadline }
       # The assignment date and the work start date as this screen shows them. It shows no
       # completion date; that is read on opportunity-cwu-edit.
-      assignment_date: { test_id: null }
-      start_date: { test_id: null }
+      assignment_date: { test_id: opportunity-assignment-date }
+      start_date: { test_id: opportunity-start-date }
       reward: { test_id: opportunity-reward }
       addenda: { test_id: opportunity-addenda }
       successful_proponent: { test_id: opportunity-successful-proponent }
       # What an awarded opportunity shows about its winner beyond the name: the contact
       # details and the score, which only a reader permitted to see proposal scores is
       # shown. Empty for anybody else, and for an opportunity not yet awarded.
-      successful_proponent_contact_details: { test_id: null }
-      successful_proponent_score: { test_id: null }
+      successful_proponent_contact_details: { test_id: opportunity-successful-proponent-contact }
+      successful_proponent_score: { test_id: opportunity-successful-proponent-score }
 
   - id: opportunity-cwu-edit
     domain: opportunities
@@ -187,10 +187,10 @@ pages:
       # The dates the opportunity holds, as its opportunity tab (?tab=opportunity) shows
       # them in its form, each a calendar day; empty when the opportunity has none. This is
       # the one screen where all four, the completion date included, can be read.
-      proposal_deadline: { test_id: null }
-      assignment_date: { test_id: null }
-      start_date: { test_id: null }
-      completion_date: { test_id: null }
+      proposal_deadline: { test_id: opportunity-deadline-field }
+      assignment_date: { test_id: opportunity-assignment-date-field }
+      start_date: { test_id: opportunity-start-date-field }
+      completion_date: { test_id: opportunity-completion-date-field }
       # Read on the History tab (?tab=history): true when the tab offers any control for
       # adding a note to the opportunity's history (a text entry for a note, a control to
       # attach files to one, or a button to save one), false when it lists the history and
@@ -198,7 +198,7 @@ pages:
       # opportunity's author, so read it as one of those; seed.opportunities
       # .cwuWithPrivateNote has users.staffOne (persona public-sector-staff) as its author.
       # Adding a note by request, without a screen, is on opportunity-history-request.
-      note_control_offered: { test_id: null }
+      note_control_offered: { test_id: opportunity-history-section }
 
   - id: opportunity-cwu-complete
     domain: opportunities
@@ -231,7 +231,7 @@ pages:
       # maximum_score and minimum_score. No position or order field is offered; a
       # question's position is its place in the list. Empty when the list holds no
       # question at that place.
-      evaluation_question_fields: { test_id: null }
+      evaluation_question_fields: { test_id: evaluation-question }
 
   - id: opportunity-swu-view
     domain: opportunities
@@ -249,7 +249,7 @@ pages:
       proposal_deadline: { test_id: opportunity-proposal-deadline }
       # The assignment date as this screen shows it. Start and completion dates are each
       # phase's own and stand in phases.
-      assignment_date: { test_id: null }
+      assignment_date: { test_id: opportunity-assignment-date }
       total_max_budget: { test_id: opportunity-total-max-budget }
       phases: { test_id: opportunity-phases }
       # The body of the page at "sprint-with-us-opportunity-scope" (seed.content
@@ -261,7 +261,7 @@ pages:
       # because every Sprint With Us opportunity reads the same page at the same address;
       # an instance started in the configuration service_page_absent
       # (observables.yaml, configurations) is the one where it is missing.
-      scope_section: { test_id: null }
+      scope_section: { test_id: opportunity-scope }
       # The text of every notice, alert, error message or pop-up message the screen shows
       # anywhere outside its own sections (scope_section, phases, addenda and the rest
       # above), one message per line, in the order shown; empty when none is shown. The
@@ -273,14 +273,14 @@ pages:
       # persona vendor (users.vendorOne, who has no proposal on it), so for that pair this
       # is empty under the default and any message it returns on an instance started in
       # service_page_absent is one the missing page caused.
-      page_messages: { test_id: null }
+      page_messages: { test_id: opportunity-page-messages }
       addenda: { test_id: opportunity-addenda }
       successful_proponent: { test_id: opportunity-successful-proponent }
       # What an awarded opportunity shows about its winner beyond the name: the contact
       # details and the score, which only a reader permitted to see proposal scores is
       # shown. Empty for anybody else, and for an opportunity not yet awarded.
-      successful_proponent_contact_details: { test_id: null }
-      successful_proponent_score: { test_id: null }
+      successful_proponent_contact_details: { test_id: opportunity-successful-proponent-contact }
+      successful_proponent_score: { test_id: opportunity-successful-proponent-score }
 
   - id: opportunity-swu-edit
     domain: opportunities
@@ -314,19 +314,19 @@ pages:
       # instructions and the evaluator's own list of individual evaluations. With
       # evaluation_panel_tab and consensus_tab these are the four an evaluation's tools
       # are split into, each present or absent for the signed-in person.
-      instructions_tab: { test_id: null }
-      evaluation_tab: { test_id: null }
+      instructions_tab: { test_id: opportunity-tab-instructions }
+      evaluation_tab: { test_id: opportunity-tab-evaluation }
       # As on opportunity-cwu-edit, for the two dates a Sprint With Us opportunity holds
       # itself; its start and completion dates are its phases'.
-      proposal_deadline: { test_id: null }
-      assignment_date: { test_id: null }
+      proposal_deadline: { test_id: opportunity-deadline-field }
+      assignment_date: { test_id: opportunity-assignment-date-field }
       # As on opportunity-swu-create, read on the team questions tab while editing.
-      evaluation_question_fields: { test_id: null }
+      evaluation_question_fields: { test_id: evaluation-question }
       # As on opportunity-cwu-edit, read on the History tab (?tab=history) as an
       # administrator or the opportunity's author; seed.opportunities
       # .swuOpenWithSubmittedProposal has users.staffOne (persona public-sector-staff) as
       # its author.
-      note_control_offered: { test_id: null }
+      note_control_offered: { test_id: opportunity-history-section }
 
   - id: opportunity-swu-complete
     domain: opportunities
@@ -355,7 +355,7 @@ pages:
       # As on opportunity-swu-create, for one resource question: question, guideline,
       # response_word_limit, maximum_score and minimum_score, and no position or order
       # field.
-      evaluation_question_fields: { test_id: null }
+      evaluation_question_fields: { test_id: evaluation-question }
 
   - id: opportunity-twu-view
     domain: opportunities
@@ -373,21 +373,21 @@ pages:
       proposal_deadline: { test_id: opportunity-proposal-deadline }
       # The contract award (assignment) date, the contract start date and the contract
       # completion date as this screen shows them; empty when the opportunity has none.
-      assignment_date: { test_id: null }
-      start_date: { test_id: null }
-      completion_date: { test_id: null }
+      assignment_date: { test_id: opportunity-assignment-date }
+      start_date: { test_id: opportunity-start-date }
+      completion_date: { test_id: opportunity-completion-date }
       max_budget: { test_id: opportunity-max-budget }
       resources: { test_id: opportunity-resources }
       # The body of the page at "team-with-us-terms-and-conditions" (seed.content
       # .servicePageTeamWithUsTerms) as this screen embeds it, rendered.
-      terms_section: { test_id: null }
+      terms_section: { test_id: opportunity-terms }
       addenda: { test_id: opportunity-addenda }
       successful_proponent: { test_id: opportunity-successful-proponent }
       # What an awarded opportunity shows about its winner beyond the name: the contact
       # details and the score, which only a reader permitted to see proposal scores is
       # shown. Empty for anybody else, and for an opportunity not yet awarded.
-      successful_proponent_contact_details: { test_id: null }
-      successful_proponent_score: { test_id: null }
+      successful_proponent_contact_details: { test_id: opportunity-successful-proponent-contact }
+      successful_proponent_score: { test_id: opportunity-successful-proponent-score }
 
   - id: opportunity-twu-edit
     domain: opportunities
@@ -416,20 +416,20 @@ pages:
       evaluation_panel_tab: { test_id: opportunity-tab-evaluation-panel }
       consensus_tab: { test_id: opportunity-tab-consensus }
       # As on opportunity-swu-edit: offered only to an evaluator.
-      instructions_tab: { test_id: null }
-      evaluation_tab: { test_id: null }
+      instructions_tab: { test_id: opportunity-tab-instructions }
+      evaluation_tab: { test_id: opportunity-tab-evaluation }
       # The changes of state this screen offers the signed-in person from the state the
       # opportunity is in now — award, cancel, move to the next stage — named in the
       # criteria's words. A criterion turns on which changes a Team With Us opportunity in
       # processing permits, and "offered here" is how that set reaches a reader.
-      offered_state_changes: { test_id: null }
+      offered_state_changes: { test_id: opportunity-actions }
       # As on opportunity-cwu-edit.
-      proposal_deadline: { test_id: null }
-      assignment_date: { test_id: null }
-      start_date: { test_id: null }
-      completion_date: { test_id: null }
+      proposal_deadline: { test_id: opportunity-deadline-field }
+      assignment_date: { test_id: opportunity-assignment-date-field }
+      start_date: { test_id: opportunity-start-date-field }
+      completion_date: { test_id: opportunity-completion-date-field }
       # As on opportunity-twu-create, read on the resource questions tab while editing.
-      evaluation_question_fields: { test_id: null }
+      evaluation_question_fields: { test_id: evaluation-question }
 
   - id: opportunity-twu-complete
     domain: opportunities
