@@ -44,3 +44,14 @@ The earlier gaps still stand. One worth repeating is that `notification_control_
 **One risk the scan may raise.** On the terms page, the content domain's warning and this domain's outcome alert now appear together. If the design system gives every alert title the same id, the scan will report a duplicate id on the `notified` and `notify-failed` stories. Without the package installed here I couldn't check this.
 
 `design/screens.yaml` is unchanged, and I changed nothing under `spec/` (apart from reading it), `constitution.md` or `.claude/skills`.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:ux-reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Do these screens serve the notifications criteria, and are they built out of the design system? Approved. The accessibility scan in design/report.json reports zero violations across the whole catalogue, all 18 notification stories included, and the typecheck and build pass. The duplicate-id risk the proposal flagged on the terms page did not appear. In the screenshots, every screen's content lines up with the banner edge in the shared page container. Spacing is even, and each screen has at most one primary button: Edit page stays primary on the terms page and Notify vendors is secondary. The opt-in control sits once between the search box and the first group, inside the redesigned opportunity list (R-6.21, R-6.27). The unsubscribe landing carries the scope sentence (R-6.16) and acts on the signed-in account (R-6.7). The terms broadcast shows the content domain's real managing screen with the immediate-success outcome (R-6.23, R-6.24). notification-kit.tsx only arranges design-system Button, Checkbox and Link with the project's own kits, and styles with design tokens, with no hard-coded colour or spacing. Nothing under spec/ changed, so no filled test ID moved. The only change outside the domain is an optional notice slot on OpportunityListPage, and without it the opportunities domain's stories render as before. The dialog screenshots appear half-faded with a partial overlay, which comes from how the screenshot runner captures them, not from the stories. Tier is STANDARD, so no escalation. The ruling would change on any scan violation, a hard-coded colour or spacing value, a changed filled test ID, or a screen outside the shared page container.
+
+**Conditions:**
+none
