@@ -673,7 +673,8 @@ describe("awarding and the vendor's scoresheet (R-1.26, R-2.32, R-2.34)", () => 
     answering(staff, { status: "AWARDED", opportunity: { ...inProcessing, status: "AWARDED" }, scoresheet, organization }, () => json(500, {}));
     renderAt(`${VIEW}?tab=proposal`);
     await screen.findByTestId("proposal-identifier");
-    expect(await screen.findByText("org.owner@example.test")).toBeTruthy();
+    // The banner's account menu names the signed-in person too, so the tab is read on its own.
+    expect(await within(screen.getByRole("main")).findByText("org.owner@example.test")).toBeTruthy();
     expect(screen.getByText("250-555-0101")).toBeTruthy();
   });
 

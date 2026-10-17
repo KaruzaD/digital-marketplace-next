@@ -155,7 +155,7 @@ describe("the content area, for anyone but an administrator (R-7.6)", () => {
 
     resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
     renderAt("/dashboard");
-    await screen.findByRole("link", { name: "My profile" });
+    await screen.findByRole("link", { name: "Dashboard" });
     expect(screen.queryByRole("link", { name: "Content" })).toBeNull();
   });
 });

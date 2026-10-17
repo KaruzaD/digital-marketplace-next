@@ -742,16 +742,35 @@ describe("the banner", () => {
     renderAt("/");
 
     const banner = await screen.findByTestId("site-header");
-    expect(within(banner).getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/sign-in");
-    expect(within(banner).queryByRole("link", { name: "Sign out" })).toBeNull();
+    expect(within(banner).getByRole("link", { name: "Sign In" }).getAttribute("href")).toBe("/sign-in");
+    expect(within(banner).getByRole("link", { name: "Sign Up" }).getAttribute("href")).toBe("/sign-up");
+    expect(within(banner).queryByRole("menuitem", { name: "Sign Out" })).toBeNull();
   });
 
-  it("offers somebody signed in the way out", async () => {
+  it("carries the home page's sign-in and sign-up test IDs on the home page alone", async () => {
+    resetSessionForTests({ status: "visitor" }, fakeIdentity(false));
+    const view = renderAt("/");
+    const banner = await screen.findByTestId("site-header");
+    expect(within(banner).getByTestId("home-sign-in").textContent).toBe("Sign In");
+    expect(within(banner).getByTestId("home-sign-up").textContent).toBe("Sign Up");
+    view.unmount();
+
+    renderAt("/opportunities");
+    await screen.findByTestId("site-header");
+    expect(screen.queryByTestId("home-sign-in")).toBeNull();
+    expect(screen.queryByTestId("home-sign-up")).toBeNull();
+  });
+
+  it("offers somebody signed in the way out from their account menu", async () => {
     resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
     renderAt("/");
 
     const banner = await screen.findByTestId("site-header");
-    expect(within(banner).getByRole("link", { name: "Sign out" }).getAttribute("href")).toBe("/sign-out");
+    expect(within(banner).queryByRole("link", { name: "Sign In" })).toBeNull();
+    fireEvent.click(within(banner).getByRole("button", { name: staff.email || staff.name }));
+    const signOut = await screen.findByRole("menuitem", { name: "Sign Out" });
+    expect(signOut.getAttribute("href")).toBe("/sign-out");
+    expect(screen.getByRole("menuitem", { name: "My Profile" }).getAttribute("href")).toBe("/users/me");
   });
 });
 

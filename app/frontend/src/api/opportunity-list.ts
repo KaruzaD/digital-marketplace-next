@@ -14,6 +14,8 @@ export interface ListedOpportunity extends Listable {
   /** Absent unless the reader may see who created it (R-1.29). */
   readonly createdBy?: Person | null;
   readonly remoteDesc: string;
+  /** The short summary the opportunity is introduced with. */
+  readonly teaser: string;
   /** What the opportunity is worth, and the word for it in its program. */
   readonly value: { readonly term: string; readonly amount: number };
   /** Whether the reader watches it (R-1.5). */
@@ -71,6 +73,7 @@ export function readListedOpportunity(program: Program, value: unknown): ListedO
     location: text(record.location),
     remoteOk: record.remoteOk === true,
     remoteDesc: text(record.remoteDesc),
+    teaser: text(record.teaser),
     proposalDeadline: text(record.proposalDeadline),
     createdAt: text(record.createdAt),
     updatedAt: text(record.updatedAt),

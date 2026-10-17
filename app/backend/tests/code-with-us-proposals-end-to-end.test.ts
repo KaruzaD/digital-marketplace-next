@@ -198,7 +198,13 @@ async function openOpportunity(): Promise<string> {
     status: "PUBLISHED",
   });
   expect(made.status).toBe(201);
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  // The publication's own mail has all arrived once none has come for a quiet spell; a fixed
+  // wait was too short when every file ran at once.
+  let seen = -1;
+  for (const started = Date.now(); seen !== catcher.caught.length && Date.now() - started < 10_000; ) {
+    seen = catcher.caught.length;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
   catcher.caught.length = 0;
   return made.body.id;
 }

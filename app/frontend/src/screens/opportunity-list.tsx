@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouterState } from "@tanstack/react-router";
 import { Button, Checkbox, Heading, Link, Select, Text, TextField } from "@bcgov/design-system-react-components";
 import { PROGRAMS, PROGRAM_NAMES, Program, isProgram } from "@rules/opportunities";
 import {
@@ -72,7 +73,12 @@ export function OpportunityListScreen() {
   const account = session.status === "signed-in" ? session.account : null;
   const viewerId = account?.id ?? null;
   const [listing, setListing] = useState<Listing>({ kind: "loading" });
-  const [filters, setFilters] = useState<ListFilters>(NO_FILTERS);
+  // The home page's search arrives as `?q=`, and starts the list narrowed to it.
+  const searchStr = useRouterState({ select: (state) => state.location.searchStr });
+  const [filters, setFilters] = useState<ListFilters>(() => ({
+    ...NO_FILTERS,
+    search: new URLSearchParams(searchStr).get("q") ?? "",
+  }));
   // A watch the person has just changed, shown before the list is read again.
   const [watched, setWatched] = useState<Readonly<Record<string, boolean>>>({});
   const [watchFailed, setWatchFailed] = useState<string | null>(null);

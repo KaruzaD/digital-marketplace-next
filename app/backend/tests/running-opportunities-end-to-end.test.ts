@@ -173,9 +173,23 @@ async function publishedAndWatched(): Promise<string> {
   for (const token of [await tokens.vendor(), await tokens.member()]) {
     expect((await ask("POST", "/api/subscribers/code-with-us", token, { opportunity: made.body.id })).status).toBe(201);
   }
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await mailSettled();
   catcher.caught.length = 0;
   return made.body.id;
+}
+
+/**
+ * Waits until the mail caused so far has all arrived: until none has come for a quiet spell. A
+ * fixed wait was too short when every file ran at once, and the publication's own mail then
+ * arrived after it was cleared and was counted as the next step's.
+ */
+async function mailSettled(quietMs = 400, giveUpMs = 10_000): Promise<void> {
+  const started = Date.now();
+  let seen = -1;
+  while (seen !== catcher.caught.length && Date.now() - started < giveUpMs) {
+    seen = catcher.caught.length;
+    await new Promise((resolve) => setTimeout(resolve, quietMs));
+  }
 }
 
 describe("addenda (R-1.32, R-1.35)", () => {
