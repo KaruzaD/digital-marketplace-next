@@ -53,3 +53,14 @@ They are now written in the alert's own title markup and do appear. The footer s
 - **47 – Wide public page:** the page body runs the full 1100-pixel column, because no token gives a narrower reading width.
 
 I changed nothing under `spec/` except that one `test_id`.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:ux-reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Do these screens serve the content criteria, and are they built out of the design system? Approve. design/report.json is ok with typecheck and build passing, and all 31 content stories show zero accessibility violations. The screenshots (content-list, -create, -edit, -view, -footer, -service-level-agreement-link and -request defaults, plus content-edit invalid and fixed) show every screen inside the shared page container, left-aligned with the banner, with even spacing at each level and no doubled margins. Each screen has at most one primary button. The InlineAlert titles that were previously dropped now render. The screens are built from design-system components (Button, ButtonGroup, TextField, TextArea, InlineAlert, Modal/AlertDialog, Link, Text) and the existing project kits, styled with tokens. The kit's only literal sizes are a 280px grid-column minimum and the 767.98px breakpoint, both already used across the other kits. The one surface.yaml change fills the previously null content-list.page_count with content-list-count, which is visible in the list caption; no filled test_id changes. Gaps 45 to 47 are recorded in design/DESIGN.md, as the persona allows. The tier is STANDARD, so nothing escalates. The ruling would change if a later report showed any accessibility violation on a content story, if an already-filled test_id turned out to have been changed, or if the phone-width layouts showed misalignment or doubled spacing.
+
+**Conditions:**
+none
