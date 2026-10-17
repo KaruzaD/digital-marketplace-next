@@ -1,49 +1,32 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Heading, Link, Text, TextField } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button } from "@bcgov/design-system-react-components";
+import { Actions, PageTitle, Region } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
+import { AccountFacts, ProfileTabs, ReadOnlyDetails, UserPage, VENDOR_ONE, VENDOR_TABS } from "./user-kit";
 
 // user-profile-self · default — a vendor's own profile at /users/me (R-4.26, R-4.34, R-4.28, R-4.9)
-const meta: Meta = { title: "users/user-profile-self/default" };
+const meta: Meta = { title: "users/user-profile-self/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Default: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>User Profile</Heading>
-        <nav aria-label="Profile sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href="/users/me" aria-current="page" data-testid="profile-tab-profile">Profile</Link></li>
-            <li><Link href="/users/me?tab=capabilities" data-testid="profile-tab-capabilities">Capabilities</Link></li>
-            <li><Link href="/users/me?tab=organizations" data-testid="profile-tab-organizations">Organizations</Link></li>
-            <li><Link href="/users/me?tab=notifications" data-testid="profile-tab-notifications">Notifications</Link></li>
-            <li><Link href="/users/me?tab=legal" data-testid="profile-tab-legal">Legal</Link></li>
-          </Stack>
-        </nav>
-        <Stack gap="medium">
-          <Text elementType="p">Account type: <span data-testid="profile-account-type">Vendor</span></Text>
-          <Text elementType="p" size="small" color="secondary">
-            Account ID: <span data-testid="profile-user-identifier">0b6f2c1e-5a7d-4c3e-9f10-000000000003</span>
-          </Text>
-        </Stack>
-        <Stack as="section" gap="medium" aria-labelledby="details-heading">
-          <Heading level={2} id="details-heading">Details</Heading>
-          <Text elementType="p" size="small" color="secondary">No profile picture has been added.</Text>
-          <TextField label="Sign-in username" value="test-vendor-1" isReadOnly data-testid="idp-username-field" />
-          <TextField label="Name" value="Test Vendor One" isReadOnly data-testid="name-field" />
-          <TextField label="Email address" value="vendor1@example.com" isReadOnly data-testid="email-field" />
-          <div>
+    <SitePage viewer={VENDOR_ONE}>
+      <UserPage>
+        <PageTitle>User Profile</PageTitle>
+        <ProfileTabs base="/users/me" current="profile" tabs={VENDOR_TABS} />
+        <AccountFacts type="Vendor" id="0b6f2c1e-5a7d-4c3e-9f10-000000000003" />
+        <ReadOnlyDetails noPicture username="test-vendor-1" name="Test Vendor One" email="vendor1@example.com">
+          <Actions>
             <Button variant="primary" data-testid="profile-edit-button">Edit profile</Button>
-          </div>
-        </Stack>
-        <Stack as="section" gap="medium" aria-labelledby="status-heading">
-          <Heading level={2} id="status-heading">Deactivate your account</Heading>
-          <Text elementType="p">You will be signed out at once. You can come back at any time by signing in again.</Text>
-          <div>
+          </Actions>
+        </ReadOnlyDetails>
+        <Region id="status-heading" title="Deactivate your account">
+          <p className="op-text">You will be signed out at once. You can come back at any time by signing in again.</p>
+          <Actions>
             <Button variant="secondary" danger data-testid="profile-deactivate-button">Deactivate account</Button>
-          </div>
-        </Stack>
-      </Stack>
-    </PageContainer>
+          </Actions>
+        </Region>
+      </UserPage>
+    </SitePage>
   ),
 };

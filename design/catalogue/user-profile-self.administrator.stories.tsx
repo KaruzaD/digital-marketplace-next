@@ -1,53 +1,30 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Heading, Link, Text, TextField } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button } from "@bcgov/design-system-react-components";
+import { Actions, PageTitle, Region } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
+import { ADMINISTRATOR, AccountFacts, ProfileTabs, ReadOnlyDetails, STAFF_TABS, UserPage } from "./user-kit";
 
 // user-profile-self · administrator — an administrator's own profile: status shown, no administrator box,
 // no deactivation control (R-4.12, R-4.31, R-4.34)
-const meta: Meta = { title: "users/user-profile-self/administrator" };
+const meta: Meta = { title: "users/user-profile-self/administrator", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
 
 export const Administrator: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>User Profile</Heading>
-        <nav aria-label="Profile sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href="/users/me" aria-current="page" data-testid="profile-tab-profile">Profile</Link></li>
-            <li><Link href="/users/me?tab=notifications" data-testid="profile-tab-notifications">Notifications</Link></li>
-          </Stack>
-        </nav>
-        <Stack gap="medium">
-          <Text elementType="p">Account type: <span data-testid="profile-account-type">Public sector employee</span></Text>
-          <Text elementType="p">Status: <span style={badge} data-testid="profile-status-badge">Active</span></Text>
-          <Text elementType="p" size="small" color="secondary">
-            Account ID: <span data-testid="profile-user-identifier">0b6f2c1e-5a7d-4c3e-9f10-000000000001</span>
-          </Text>
-        </Stack>
-        <Stack as="section" gap="medium" aria-labelledby="details-heading">
-          <Heading level={2} id="details-heading">Details</Heading>
-          <Text elementType="p" size="small" color="secondary">No profile picture has been added.</Text>
-          <TextField label="Sign-in username" value="test-admin" isReadOnly data-testid="idp-username-field" />
-          <TextField label="Name" value="Test Administrator" isReadOnly data-testid="name-field" />
-          <TextField label="Email address" value="admin@example.com" isReadOnly data-testid="email-field" />
-          <TextField label="Job title" value="Service administrator" isReadOnly data-testid="job-title-field" />
-          <div>
+    <SitePage viewer={ADMINISTRATOR}>
+      <UserPage>
+        <PageTitle>User Profile</PageTitle>
+        <ProfileTabs base="/users/me" current="profile" tabs={STAFF_TABS} />
+        <AccountFacts type="Public sector employee" status="Active" id="0b6f2c1e-5a7d-4c3e-9f10-000000000001" />
+        <ReadOnlyDetails noPicture username="test-admin" name="Test Administrator" email="admin@example.com" jobTitle="Service administrator">
+          <Actions>
             <Button variant="primary" data-testid="profile-edit-button">Edit profile</Button>
-          </div>
-        </Stack>
-        <Stack as="section" gap="medium" aria-labelledby="permissions-heading">
-          <Heading level={2} id="permissions-heading">Permissions</Heading>
-          <Text elementType="p" data-testid="profile-permissions-label">You have administrator permissions.</Text>
-        </Stack>
-      </Stack>
-    </PageContainer>
+          </Actions>
+        </ReadOnlyDetails>
+        <Region id="permissions-heading" title="Permissions">
+          <p className="op-text" data-testid="profile-permissions-label">You have administrator permissions.</p>
+        </Region>
+      </UserPage>
+    </SitePage>
   ),
 };

@@ -1,16 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, InlineAlert } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { InlineAlert } from "@bcgov/design-system-react-components";
+import { PageTitle } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
+import { UserPage, VENDOR_ONE } from "./user-kit";
 
-// user-sign-out · failed — the session could not be ended (R-4.17)
-const meta: Meta = { title: "users/user-sign-out/failed" };
+// user-sign-out · failed — the session could not be ended (R-4.17). The session may still stand, so the header still
+// shows the person signed in.
+const meta: Meta = { title: "users/user-sign-out/failed", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Failed: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Sign Out Failed</Heading>
+    <SitePage viewer={VENDOR_ONE}>
+      <UserPage>
+        <PageTitle>Sign Out Failed</PageTitle>
         <div data-testid="sign-out-failed">
           <InlineAlert
             variant="danger"
@@ -19,7 +22,7 @@ export const Failed: StoryObj = {
             description="You may still be signed in. Try signing out again."
           />
         </div>
-      </Stack>
-    </PageContainer>
+      </UserPage>
+    </SitePage>
   ),
 };

@@ -1,40 +1,29 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import {
-  Button,
-  ButtonGroup,
-  Checkbox,
-  CheckboxGroup,
-  Dialog,
-  Heading,
-  Modal,
-  Text,
-  TextField,
-} from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, ButtonGroup, Checkbox, CheckboxGroup, Dialog, Heading, Modal, TextField } from "@bcgov/design-system-react-components";
+import { look } from "./marketplace";
+import { PageTitle } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
+import { ADMINISTRATOR, UserPage } from "./user-kit";
 
-// user-list · export-ready — at least one account type and one field chosen, export available (R-4.32)
-const meta: Meta = { title: "users/user-list/export-ready" };
+// user-list · export-ready — at least one account type and one field chosen, export available (R-4.32). The list
+// behind the dialog is drawn in user-list · default.
+const meta: Meta = { title: "users/user-list/export-ready", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-// The dialog's inner padding is its own; its content is laid out by the stack.
-const dialogBody = { padding: "var(--layout-padding-large)" } as const;
 
 export const ExportReady: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Digital Marketplace Users</Heading>
-        <TextField type="search" label="Search by name" data-testid="user-list-search" />
-        <div>
+    <SitePage viewer={ADMINISTRATOR} current="users">
+      <UserPage>
+        <PageTitle>Digital Marketplace Users</PageTitle>
+        <div className="us-toolbar">
+          <TextField type="search" label="Search by name" data-testid="user-list-search" />
           <Button variant="secondary" data-testid="contact-list-open-export">Export contact list</Button>
         </div>
-      </Stack>
-      <Modal isOpen isDismissable>
-        <Dialog isCloseable data-testid="contact-list-modal">
-          <div style={dialogBody}>
-            <Stack gap="medium">
-              <Heading level={2} slot="title">Export contact list</Heading>
-              <Text elementType="p">The file lists active accounts only.</Text>
+        <Modal isOpen isDismissable>
+          <Dialog isCloseable data-testid="contact-list-modal">
+            <div className="us-dialog">
+              <Heading level={2} slot="title" style={look.section}>Export contact list</Heading>
+              <p className="op-text">The file lists active accounts only.</p>
               <CheckboxGroup
                 label="Account types"
                 description="Administrators are included with public sector employees."
@@ -54,10 +43,10 @@ export const ExportReady: StoryObj = {
                 <Button variant="secondary" data-testid="contact-list-cancel-button">Cancel</Button>
                 <Button variant="primary" data-testid="contact-list-export-button">Export</Button>
               </ButtonGroup>
-            </Stack>
-          </div>
-        </Dialog>
-      </Modal>
-    </PageContainer>
+            </div>
+          </Dialog>
+        </Modal>
+      </UserPage>
+    </SitePage>
   ),
 };

@@ -1,48 +1,39 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, Link } from "@bcgov/design-system-react-components";
+import { Actions, PageTitle, Panel } from "./opportunity-kit";
+import { SitePage, VISITOR, WIDTHS } from "./site";
+import { Choices, UserPage } from "./user-kit";
 
-// user-sign-up-choose-account · default — R-4.1
-const meta: Meta = { title: "users/user-sign-up-choose-account/default" };
+// user-sign-up-choose-account · default — R-4.1. Seen by a visitor who has not signed in.
+const meta: Meta = { title: "users/user-sign-up-choose-account/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-// A card's border and inner padding are its own; its content is laid out by the stack.
-const card = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
 
 export const Default: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Choose Account Type</Heading>
-        <Text elementType="p">
+    <SitePage viewer={VISITOR}>
+      <UserPage>
+        <PageTitle>Choose Account Type</PageTitle>
+        <p className="op-text">
           Your account is created the first time you sign in. The kind of account you get depends on how you sign in.
-        </Text>
-        <section aria-labelledby="sign-up-vendor-heading" style={card} data-testid="sign-up-vendor-card">
-          <Stack gap="medium">
-            <Heading level={2} id="sign-up-vendor-heading">Vendor</Heading>
-            <Text elementType="p">For people who want to register organizations and submit proposals. You sign up with your code-hosting account.</Text>
-            <div>
+        </p>
+        <Choices>
+          <Panel id="sign-up-vendor-heading" title="Vendor" testId="sign-up-vendor-card">
+            <p className="op-text">For people who want to register organizations and submit proposals. You sign up with your code-hosting account.</p>
+            <Actions>
               <Button variant="secondary" data-testid="sign-up-vendor-button">Sign up as a vendor</Button>
-            </div>
-          </Stack>
-        </section>
-        <section aria-labelledby="sign-up-public-sector-heading" style={card} data-testid="sign-up-public-sector-card">
-          <Stack gap="medium">
-            <Heading level={2} id="sign-up-public-sector-heading">Public sector employee</Heading>
-            <Text elementType="p">For public sector staff who create and manage opportunities. You sign up with your government account.</Text>
-            <div>
+            </Actions>
+          </Panel>
+          <Panel id="sign-up-public-sector-heading" title="Public sector employee" testId="sign-up-public-sector-card">
+            <p className="op-text">For public sector staff who create and manage opportunities. You sign up with your government account.</p>
+            <Actions>
               <Button variant="secondary" data-testid="sign-up-public-sector-button">Sign up as a public sector employee</Button>
-            </div>
-          </Stack>
-        </section>
-        <Text elementType="p">
+            </Actions>
+          </Panel>
+        </Choices>
+        <p className="op-text">
           Already have an account? <Link href="/sign-in">Sign in</Link>
-        </Text>
-      </Stack>
-    </PageContainer>
+        </p>
+      </UserPage>
+    </SitePage>
   ),
 };
