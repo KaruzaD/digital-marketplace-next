@@ -4416,3 +4416,165 @@ older section's gap L4.
 40. **Tables on phones.** Rule 7 turns rows into stacked cards; the dashboard, team, question and
     history tables keep the opportunity screens' `DataTable`, which scrolls inside its own region
     instead. A table that becomes stacked cards would be a new component for both domains at once.
+
+## User screens in the chosen direction
+
+Every screen of the users domain now follows "Site shell and the chosen direction" above: sign-in and
+sign-up, completing a profile, signing out, the two notices, the user list and its export, the profile
+in all its sections (by identifier and as `/users/me`), and the three request addresses. Where this
+section and the older "Domain: users" section disagree about how a screen looks (the page container
+and outer stack, the status badge, the "Account type:" and "Status:" lines, the card style, the
+inline-styled table, the tertiary-link section navigation, heading sizes), this section is the
+current one. What that section says about behaviour, states, who is offered what, dialogs,
+validation, test IDs and gaps still holds, except where this section says otherwise. Every page keeps
+its states (`design/screens.yaml` is unchanged), every story keeps its words, and every test ID keeps
+its element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen
+by and the section the page belongs to. The viewer decides the header's navigation and account area,
+nothing else on the page. The viewers' addresses are the stories' own test data
+(`vendor1@example.com`, `gov@example.com`, `admin@example.com`), so a person on their own profile
+sees their own address in the header.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| Sign in, choose account type, both notices, signed out, `/users/me` `sign-in-required` | a visitor | none |
+| Complete your profile | the vendor who has just signed in for the first time | none |
+| Sign out `loading` and `failed` | the vendor still signed in (the session may still stand) | none |
+| User list, and a profile reached by identifier that an administrator is reading (including every `section-unavailable` state of `user-profile-*`) | an administrator | Users |
+| A profile reached by identifier that its owner is reading (`own`, `editing`, `invalid`, and the capabilities, notifications and legal sections) | the owner (a vendor, or for `editing` and `invalid` a public sector employee) | none |
+| `/users/me` and its sections | the person whose profile it is | none |
+| `not-found` | a public sector employee (user list), another vendor (profile), a visitor (notice) | none |
+| Request addresses | the requester the story names: an administrator, a public sector employee, the owner, another vendor, a visitor | none |
+
+A person's own profile is reached from the account menu (My Profile), not from the main navigation,
+so no main section is current on it.
+
+### The direction's user components
+
+`design/catalogue/user-kit.tsx` and `design/catalogue/user-profile-sections.tsx`. All are this
+project's own compositions of design-system components (`Checkbox`, `InlineAlert`, `Link`,
+`TextField`) and tokens, built on `marketplace.tsx`'s `Label` and `look` and on `opportunity-kit.tsx`,
+whose `PageTitle`, `Region`, `Panel`, `Details`, `DataTable`, `Actions`, `Waiting` and `MissingPage`
+these screens use exactly as the opportunity screens do. `AlertTitle` comes from `proposal-kit.tsx`.
+None of them is a design-system component. `marketplace.tsx`'s `statusOf` describes an opportunity's
+status and has no use here: no users screen shows an opportunity.
+
+- **User page** (`UserPage`). `OpportunityPage` (the page container, the direction's style sheets,
+  the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **Account status** (`AccountStatus`, `accountColour`). The `Label` coloured by the account's status
+  in words: green for Active, grey for Inactive. It is the only coloured thing on these screens apart
+  from the design system's own alerts and error text (rule 3), replaces the old circular status badge,
+  and carries `profile-status-badge` on a profile and `user-list-status-badge` in the list.
+- **Account facts** (`AccountFacts`). The account's type, its status (to an administrator only) and its
+  Account ID, as `Details`: the terms "Account type", "Status" and "Account ID" in bold small text over
+  their values. It replaces the "Account type: …", "Status: …" and "Account ID: …" lines and keeps
+  their test IDs on the values (`profile-account-type`, `profile-status-badge` on the label,
+  `profile-user-identifier`). A story shows only the facts it showed before.
+- **Profile sections** (`ProfileTabs`, `VENDOR_TABS`, `STAFF_TABS`). The profile's section links,
+  drawn as the opportunity manage page's tabs (`op-tabs`): links in a navigation landmark ("Profile
+  sections") in small text along a rule, the current one marked by `aria-current="page"`, a bar and
+  bold text, never colour alone. Profile links to the profile's own address, every other section to
+  `?tab=<key>`; each is `profile-tab-<key>`. They wrap on a phone. Which sections are listed is
+  unchanged ("Which sections a profile offers").
+- **Read-only details** (`ReadOnlyDetails`). The Details region: the "No profile picture has been
+  added." line where the story had it, then the read-only `TextField`s in as many columns as fit (each
+  at least 280 pixels, `medium` apart down and `large` across), then the region's action.
+- **Field grid** (`us-fields`). The same columns for the editable fields of the profile and
+  completion forms. On a 320-pixel screen it is one column.
+- **Group** (`Group`). A label and what it labels, `small` apart: the profile picture's label, its line
+  and its trigger; the terms links and the agreement box; the Administrator box and its hint or refusal.
+- **Choices** (`Choices`). The two kinds of account on the sign-in, sign-up and sign-in-required screens,
+  each a `Panel` (a bordered section with an H2 in the H4 size), side by side where each has at least
+  320 pixels and stacked at full width where it does not (rule 7). Each panel's button sits in `Actions`,
+  so it goes full width on a phone.
+- **Capability rows** (`us-rows`, `us-row`). One bordered row per capability: the checkbox and its "Show
+  description of …" toggle on one line where they fit, the description in small secondary text beneath
+  when shown. Rows wrap, so a 320-pixel screen stacks the box and the toggle.
+- **Save status** (`SaveStatus`). The `role="status"` region an immediate save reports into, present
+  before anything is saved so the outcome is announced. While it is empty it is positioned out of the
+  column, so it adds no gap, but it stays in the accessibility tree (`display: none` would take it out).
+- **Error summary** (`ErrorSummary`). The danger `InlineAlert` that takes focus when it appears, with its
+  title in the alert's own title markup (`AlertTitle`) and a list of links to the fields, each item
+  `field-error`. Before this pass the users stories gave the alert both `title` and content, so the
+  design system dropped the title (the shell's gap 4): "Your profile has 2 problems" and "Your changes
+  have 2 problems" were not rendered. They now are.
+- **User rows** (in `user-list.default`). On a wide screen the list is the opportunity screens'
+  `DataTable` with its caption and the four columns in their old order (Status, Account type, Name,
+  Administrator), each row `user-list-row`. Below the header's switch point each account is a stacked
+  card instead: the name as an H2 in bold body text linking to the profile, then the status label, the
+  account type and "Administrator: Yes/No" on one line of small text, under the same caption as a
+  `<p>` that labels the list. The switch is read in script, as the header's is, so each row and its
+  four test IDs appear once. This is rule 7 for this domain's one list, and resolves the proposals
+  section's gap 40 here: no table on these screens scrolls sideways any more.
+- **Export dialog body** (`us-dialog`). The dialog's content `medium` apart inside
+  `--layout-padding-large` (`medium` on a phone); its H2 in the H4 size.
+- **Toolbar** (`us-toolbar`). The list's search field and its Export contact list button on one line,
+  the button at the far end, wrapping beneath the field on a narrow screen.
+- **Shared section pages** (`user-profile-sections.tsx`). The capabilities, notifications and legal
+  sections, and the two profile sections a refused section shows instead (an administrator on a
+  vendor's profile; a public sector employee on their own), written once and used by both the
+  by-identifier and the `/users/me` stories with the address passed in.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** No users screen lists opportunities.
+2. **Fixed order.** Not applicable; no opportunity is shown.
+3. **Colour only for status.** The account's status label is the only colour of the domain's own; the
+   design system's alerts (success, info, warning, danger) and error text keep theirs. Account type,
+   the Administrator column, the section links, the panels and the capability rows are neutral.
+4. **Programs.** They appear only as the names of the three program terms links.
+5. **Dense.** H1 in the H3 size; region headings (Details, Permissions, Account status, Privacy policy,
+   Terms and conditions, Program terms, Edit your details, Request, Answer) in the H4 size; facts,
+   hints, captions, section links and capability descriptions in small text; regions `large` apart,
+   items `medium`, a label and what it labels `small`. Each screen has one primary button at most: Edit
+   profile on a profile someone may edit, Save changes while editing, Complete profile, Reactivate
+   account, Review and agree to the updated terms, Back to home or Try signing in again on a notice, the
+   confirm button inside a dialog. Deactivate stays secondary with `danger`. Sign-in and sign-up offer
+   two equal secondary choices and no primary, and the header's Sign In and Sign Up are tertiary and
+   secondary, so nothing competes.
+6. **Imagery.** None.
+7. **Phones.** Regions close to `medium`; the account facts, the read-only details and the form fields
+   fall to one column; the two account panels stack at full width; the user list becomes stacked cards;
+   page actions stack at full width; the header and footer are the shared phone versions.
+
+### Other changes in this pass
+
+- **Trimmed dialog stories say what they trim.** `deactivate-confirm`, `reactivate-confirm`,
+  `accept-terms-confirm`, `unsubscribe-confirm` and the export stories still draw only the part of the
+  page behind the dialog that they drew before; each story's comment names the story that draws the
+  page whole.
+- **Notice pages.** Each notice's test ID is on a region holding its H1 and sentences, `medium` apart,
+  as before; the actions follow in `Actions`.
+- **Response references** keep their structure and every test ID: the small "Response reference"
+  line and the H1, then Request and Answer regions whose pairs are `Details`. Where the test ID was on
+  the whole answer list (`user-list-request-accounts`, `user-list-request-refused`,
+  `user-account-refused`) it is on a wrapper around the `Details`; where it was on one value it is on
+  that value.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID on the users domain's pages in `spec/contract/surface.yaml` was already filled before this
+pass, and none is changed. Each is still put in the markup by these stories, on an element that does
+what the surface says. No test ID was added.
+
+### Gaps found in this pass
+
+41. **The completion page's header.** The vendor completing their profile has just signed in, so the
+    header shows them signed in, with Dashboard first in the navigation, before their profile is
+    complete. Whether the shell should offer its navigation to someone who has not yet agreed to the
+    terms (R-4.3, R-4.23) is not stated.
+42. **Sign-out failure's viewer.** R-4.17 says the person "may still be signed in". The story shows the
+    header signed in; if the service cannot tell, it cannot tell which header to show either. The
+    spec does not say.
+43. **An account status colour.** No criterion says how an account's status is distinguished; Active
+    green and Inactive grey are the design's own, following the direction's use of green for a thing
+    in good standing and grey for one that has stopped without fault.
+44. **The user list on a phone.** R-4.14 states the list's order and columns but nothing about a narrow
+    screen. The cards keep the columns' facts and the order of the rows; they put the name first
+    because it is the link a person is looking for.

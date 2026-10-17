@@ -1,24 +1,27 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Link } from "@bcgov/design-system-react-components";
+import { Actions, PageTitle } from "./opportunity-kit";
+import { SitePage, VISITOR, WIDTHS } from "./site";
+import { UserPage } from "./user-kit";
 
-// user-notice · default — /notice/deactivatedOwnAccount (R-4.9, R-4.5)
-const meta: Meta = { title: "users/user-notice/default" };
+// user-notice · default — /notice/deactivatedOwnAccount (R-4.9, R-4.5). The person has been signed out, so the
+// header is a visitor's.
+const meta: Meta = { title: "users/user-notice/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Default: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="medium" data-testid="notice-deactivated-own-account">
-          <Heading level={1}>Your account has been deactivated</Heading>
-          <Text elementType="p">You have deactivated your Digital Marketplace account and have been signed out.</Text>
-          <Text elementType="p">You can reactivate your account at any time by signing in again.</Text>
-        </Stack>
-        <div>
-          <Link href="/" isButton buttonVariant="primary" data-testid="notice-back-to-home">Back to home</Link>
+    <SitePage viewer={VISITOR}>
+      <UserPage>
+        <div className="op-region" data-testid="notice-deactivated-own-account">
+          <PageTitle>Your account has been deactivated</PageTitle>
+          <p className="op-text">You have deactivated your Digital Marketplace account and have been signed out.</p>
+          <p className="op-text">You can reactivate your account at any time by signing in again.</p>
         </div>
-      </Stack>
-    </PageContainer>
+        <Actions>
+          <Link href="/" isButton buttonVariant="primary" data-testid="notice-back-to-home">Back to home</Link>
+        </Actions>
+      </UserPage>
+    </SitePage>
   ),
 };
