@@ -29,3 +29,23 @@ I fixed condition 1 (R-7.19): the footer is now read as the whole footer, not ju
 **Left alone.** Every other page footer reads, including `contentFooter`'s link reads, `openFromFooter` and the footer trim in `mainText`, already goes through `siteFooter()`, so they pick up the fix with no changes of their own. `bindings.yaml` is unchanged, because nothing moved between bound, unbound and absent. No other member was rebound, and nothing outside `tests/adapters/new/` was touched.
 
 Nothing is deferred.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Question: does this adapter bind every surface action and observation on new, and nothing else — specifically, does it answer the R-7.19 revision request from build-slice-1-8? Ruling: approve. The only change is siteFooter() in tests/adapters/new/index.ts taking .first() instead of .last() of `getByRole('contentinfo').or(<parent of the ownership line>)`. Playwright resolves an .or() union in document order, and an ancestor precedes its descendants, so when the ownership line sits in its own block inside the contentinfo landmark the first match is the landmark, the whole footer, which is what the reviewer asked for. Where there is no landmark it still falls back to the block around the ownership line. The change is navigation/locator only, carries no assertion or pass/fail logic, leaves bindings.yaml and everything under tests/acceptance untouched, and the runner-owned tsc check on bf291d383a passed with no diagnostics under adapters/new/, which covers the type check the author could not run. The author's live check reports one matched element containing all five R-7.19 link labels and /content/about for the About link. What would change the ruling: a verify run of slice 1 in which R-7.19 still reads only the ownership line or an empty About link, or the footer locator resolving to more than one element.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `bf291d383a7ee9584a5de1453ad4d7c4b75de66d`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
