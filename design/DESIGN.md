@@ -4978,3 +4978,163 @@ request addresses do.
     sector employee. The page beneath is the same for any of the viewers each criterion names.
 56. **Lists on a phone.** No criterion says anything about a narrow screen. The cards keep the columns'
     facts and the order of the rows, and put the name first because it is what a person is looking for.
+
+## Notification screens in the chosen direction
+
+Every screen of the notifications domain now follows "Site shell and the chosen direction" above: the
+unsubscribe landing, the new-opportunity email control on the list of opportunities, the terms broadcast
+on the terms page's managing screen, the email reference, and the four mail-catcher addresses. Where this
+section and the older "Domain: notifications" section disagree about how a screen looks (the page
+container and outer stack, the card section, the placeholder frame, the key facts list, the plain row of
+profile section links, heading sizes, the trimmed copy of the list around the control), this section is
+the current one. What that section says about behaviour, states, decisions, immediate saves, who is
+offered what, accessibility, test IDs and gaps still holds, except where this section says otherwise.
+Every page keeps its states (`design/screens.yaml` is unchanged), every story keeps this domain's words,
+and every test ID keeps its element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen by
+and the section the page belongs to. The viewer decides the header's navigation and account area, nothing
+else on the page.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| `notification-unsubscribe-landing`: `default`, `loading`, `unsubscribed` | Test Vendor One (`user-kit.tsx`'s `VENDOR_ONE`, `vendor1@example.com`, the address the stories name) | none (the person's own profile, reached from the account menu or the email) |
+| `notification-unsubscribe-landing`: `sign-in-required` | a visitor | none |
+| `notification-optin-opportunity-list`: `default`, `subscribed` | Test Vendor One, signed in | Opportunities |
+| `notification-optin-opportunity-list`: `signed-out` | a visitor | Opportunities |
+| `notification-terms-broadcast`, all four states | an administrator (`opportunity-kit.tsx`'s `ADMIN`, as on the content screens) | Content |
+| `notification-email-reference`: `default`, `loading` | an administrator | none (the address is not in the navigation) |
+| `notification-email-reference`: `not-found` | Test Vendor One (the page beneath is the same for a visitor or a public sector employee) | none |
+| `caught-message`, `caught-message-list`, `mail-delivery-fault`, `mail-delivery-delay` | a visitor (the catcher's requests carry no session) | none |
+
+### The direction's notification components
+
+`design/catalogue/notification-kit.tsx`. All are this project's own compositions of design-system
+components (`Button`, `Checkbox`, `Link`) and tokens, built on `opportunity-kit.tsx` (`OpportunityPage`,
+`PageTitle`, `SectionTitle`, `Region`, `Panel`, `Details`, `Actions`, `Waiting`, `MissingPage`), on
+`user-kit.tsx` (`ProfileTabs`, `VENDOR_TABS`, `UserPage`, `Choices`) and on `content-kit.tsx` (`ContentPage`,
+`ManageHead`, `PageFacts`, `FixedPageWarning`, `PageActions`, `CurrentWording`). None of them is a
+design-system component. `marketplace.tsx`'s `Label` and `statusOf` are used only through the opportunity
+list, which this domain draws on unchanged: no screen of this domain's own shows a status, so nothing of its
+own is coloured.
+
+- **Notification page** (`NotificationPage`). `OpportunityPage` (the page container, the direction's
+  style sheets, the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **New-opportunity email control** (`OptInControl`). The direction's `Panel`: a bordered `section`
+  (`notification-optin-control`) with the H2 "New opportunity emails" in the H4 size, then the state
+  sentence (`notification-optin-state`) and the one secondary `Button` (`notification-optin-toggle`) on
+  one line where they fit, then the `role="status"` region its immediate save reports into. The status
+  region is present before anything is saved and takes no room while empty. On a phone the button goes
+  full width beneath the sentence. It replaces the old card section and its row of heading, sentence and
+  button.
+- **The list's slot** (`OpportunityListPage`'s `notice`). The opportunity list (`opportunity-list-page.tsx`)
+  gained one optional property, `notice`, rendered first in the results column, before the first group.
+  The opportunities domain's own stories do not pass it, so they render exactly as before; this domain's
+  stories pass the control. This is how the control is drawn inside the redesigned list rather than
+  beside a trimmed copy of it.
+- **Unsubscribe settings** (`UnsubscribeSettings`). The users domain's notifications section in the
+  direction (`user-profile-sections.tsx`'s `NotificationsPage`): the H1 "Notifications", the profile
+  section links (`ProfileTabs`, Notifications current), the address sentence
+  (`notifications-email-address`), the scope sentence this domain adds (R-6.16), the checkbox, and the
+  status region. It is written here rather than reusing `NotificationsPage`, because that component has
+  neither the scope sentence nor a cleared checkbox, and both are this domain's states.
+- **Terms broadcast page** (`TermsBroadcastPage`). The content domain's managing screen for a page the
+  service needs, drawn whole as `content-edit · fixed` draws it — the head ("Manage a page" over the H1
+  "Terms and conditions"), the page facts, the fixed-page warning, Edit page (the screen's one primary
+  action) and the current wording — followed by this domain's `Region` "Notify vendors of updated terms":
+  the outcome alert first when there is one, the two sentences, and the secondary button in `Actions`. It
+  replaces the placeholder frame that stood for the content domain's part of the page.
+- **Reference contents and groups** (`ReferenceContents`, `ReferenceGroup`). The contents as a `nav`
+  `Region` whose links are in small text, `small` apart; each event a labelled `section` with its H2 in the
+  H4 size (`email-reference-group-title` on a `span` inside it); each message an `article` under a rule,
+  its H3 (the recipient) in bold body text, its subject and summary as `Details`
+  (`email-reference-subject`, and `email-reference-summary` only where a summary is written), and its body
+  in the email preview frame.
+- **Email preview frame** (`.nt-preview`). Unchanged in what it is — a `div role="group"` named "Email
+  body: <subject>" (`email-reference-body`) with a `--surface-color-border-medium` border — now with
+  `--layout-padding-medium` inside and its lines `small` apart, the message's title in bold body text and
+  its footer link in small secondary text. On a phone its text takes the small size.
+- **Catcher reference** (`CatcherReference`). The response-reference shape the users, content and
+  organizations domains use: the small line "Response reference: this address is the mail catcher's, not
+  the service's", the H1, then Request (or Requests) and Answer `Region`s whose pairs are `Details`. It
+  carries no test IDs (gap 14 of the older section still stands).
+
+### How the seven rules apply here
+
+1. **Opportunities first.** The control sits in the results column at the head of the results, after the
+   search and the filters and directly before the first group, so the opportunities and the way to find
+   them still lead. It appears once, wherever the first group is (R-6.21's note).
+2. **Fixed order.** The list's rows are the opportunities domain's, unchanged.
+3. **Colour only for status.** Nothing on these screens is coloured by this domain. The control's panel,
+   the reference's frames and the response references are neutral. The design system's own alerts (info,
+   success, warning, danger) and its dialogs keep their colours, and the list's status labels are the
+   opportunities domain's.
+4. **Programs.** They appear only as the list's filter and labels, and as words in the sample emails.
+5. **Dense.** H1 in the H3 size; region headings (New opportunity emails, Notify vendors of updated terms,
+   Events that send email, each event, Request, Answer) in the H4 size; each message's recipient in bold
+   body text; details, contents links, status messages and eyebrow lines in small text; regions `large`
+   apart, items `medium`, a label and what it labels `small`. Each screen has one primary button at most:
+   Edit page on the terms page, Unsubscribe or Notify vendors inside a dialog, Back to home on the missing
+   page. The control on the list and Notify vendors of updated terms are secondary; sign-in offers two
+   equal secondary choices.
+6. **Imagery.** None. The service's logo heads every real message (R-6.3) but is not in the preview frame
+   (older section's gap 9).
+7. **Phones.** Regions close to `medium`; the list is the opportunities domain's phone layout, with the
+   control under the filters and before the results, its button full width; the details fall to one
+   column; the sign-in panels stack; actions stack at full width; the header and footer are the shared
+   phone versions. The control is present and usable at 320 pixels and 400% zoom (R-6.27).
+
+### Other changes in this pass
+
+- **The list around the control is the real list.** The opt-in stories used to draw a trimmed copy of an
+  older list (the H1 "Opportunities", filters labelled "Program" and "Status", one card). They now draw
+  `OpportunityListPage` whole, as the opportunities domain's `default` and `signed-out` stories do, so the
+  list's words are that domain's ("Welcome to the Digital Marketplace", "Filter Opportunities", "Open
+  Opportunities"); the control's words are unchanged. The `signed-out` story is that list for a visitor,
+  with nothing in the control's place.
+- **Dialog stories draw the whole page.** The unsubscribe question and the notify-vendors question are
+  drawn over the full settings page and the full managing screen; each story's comment names the story
+  that draws the same page without the dialog.
+- **Status messages are small text.** The unsubscribe and opt-in announcements are in small secondary text
+  inside their `role="status"` regions, as the users and organizations domains' immediate saves report.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID on this domain's pages in `spec/contract/surface.yaml` was already filled before this pass,
+and none is changed. Each is still put in the markup by these stories, on an element that does what the
+surface says: `notification-optin-control` is the control's `Panel`, `notification-optin-state` its
+sentence, `notification-optin-toggle` its button; `notify-vendors-*` and `unsubscribe-*` are the dialogs'
+and the buttons' as before; `email-reference-page` is the page's region wrapper, now `OpportunityPage`'s.
+The four mail-catcher entries stay `null` (older section's gap 14). No test ID was added.
+
+### Gaps found in this pass
+
+57. **The opportunity list's own stories do not show the control.** R-6.21 offers the control to every
+    signed-in person on the list, but the opportunities domain's `default` (a vendor) and `staff` stories,
+    which are the reference and are kept as they are, do not pass it. The build takes the control from this
+    domain's stories: for a signed-in vendor or public sector employee it sits before the Open group, and
+    for staff with unpublished opportunities before the Unpublished group. What the control shows while
+    the list's opportunities are loading is not stated; the slot renders it before the loading status, since
+    the person's choice is known from their account, not from the list.
+58. **"At the top of the first group."** R-6.21's note places the control at the top of the first group. It
+    is drawn at the head of the results, immediately before the first group, as its own labelled panel
+    rather than inside the group's section, so the group (`opportunity-group-open`,
+    `opportunity-group-unpublished`) holds only its heading, its count and its opportunities. A reader
+    meets it in the same place either way.
+59. **The terms page's title and facts.** R-7.12 says a page the service needs is created titled with its
+    own address; the stories show "Terms and conditions" (the surface's title) as an administrator has
+    since titled it. Its published and changed dates and the administrator who changed it are test data.
+60. **Viewers chosen where a criterion names none.** The landing's `loading` state shows the header signed
+    in although the account's record has not yet arrived (as the users domain's `loading` does); the
+    reference page's refusal is drawn for a vendor. The four mail-catcher addresses are not screens of the
+    service at all and have no shell; they are drawn in a visitor's shell only so every story in the
+    catalogue is put together the same way.
+61. **Two drawings of the same settings page.** The users domain's `user-profile-self-notifications`
+    stories have no scope sentence and their dialog does not name the signed-in person; this domain's
+    landing has both (R-6.16, R-6.7). The older section's note that the two should match still stands; the
+    users domain's stories are not this stage's to change.

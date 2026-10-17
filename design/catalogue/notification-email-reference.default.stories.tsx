@@ -1,48 +1,22 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { NotificationPage, ReferenceContents, ReferenceGroup, type SampleGroup } from "./notification-kit";
+import { ADMIN, PageTitle } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // notification-email-reference · default — a signed-in administrator opens the reference page. Every message the
 // service can send is shown, grouped under the event that sends it, each with its subject, the one-line summary of who
 // receives it and why where one is written, and its body as a recipient would see it, built from invented sample data
 // (R-6.13, R-6.19). The build lists every message; this story shows five events as a pattern. Their subjects, summaries
 // and bodies are placeholders, because no criterion gives the content of any message (DESIGN.md, notifications gap 9).
-const meta: Meta = { title: "notifications/notification-email-reference/default" };
+const meta: Meta = { title: "notifications/notification-email-reference/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
-// Each message is set off from the one before by a rule, with the rule's own padding beneath it. Its content is laid
-// out by the stack.
-const message = {
-  paddingBlockStart: "var(--layout-padding-large)",
-  borderBlockStart: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-// The email preview frame. Its border and inner padding are its own; its content is laid out by the stack.
-const body = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const emailTitle = { fontWeight: "var(--typography-font-weights-bold)" } as const;
-
-type Message = {
-  id: string;
-  recipient: string;
-  subject: string;
-  summary?: string;
-  title: string;
-  paragraphs: string[];
-  link?: { text: string; href: string };
-  footer: { text: string; href: string };
-};
-type Group = { id: string; event: string; messages: Message[] };
 
 // Messages the notification preference governs end with Unsubscribe (R-6.6); every other message links to the
 // reader's settings without offering to stop it (R-6.16).
 const unsubscribe = { text: "Unsubscribe", href: "/users/me?tab=notifications&unsubscribe" };
 const settings = { text: "Manage your notification settings", href: "/users/me?tab=notifications" };
 
-const groups: Group[] = [
+const groups: SampleGroup[] = [
   {
     id: "cwu-published",
     event: "A Code With Us opportunity is published",
@@ -137,62 +111,20 @@ const groups: Group[] = [
 
 export const Default: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large" data-testid="email-reference-page">
-        <Stack gap="medium">
-          <Heading level={1}>Email Notification Reference</Heading>
-          <Text elementType="p">
+    <SitePage viewer={ADMIN}>
+      <NotificationPage testId="email-reference-page">
+        <div className="op-head">
+          <PageTitle>Email Notification Reference</PageTitle>
+          <p className="op-text">
             Every email the service sends, shown as its recipient would see it. The names, addresses and records in these
             samples are invented.
-          </Text>
-        </Stack>
-        <nav aria-labelledby="email-reference-contents">
-          <Stack gap="medium">
-            <Heading level={2} id="email-reference-contents">Events that send email</Heading>
-            <Stack as="ul" gap="small">
-              {groups.map((g) => (
-                <li key={g.id}><Link href={`#${g.id}`}>{g.event}</Link></li>
-              ))}
-            </Stack>
-          </Stack>
-        </nav>
+          </p>
+        </div>
+        <ReferenceContents groups={groups} />
         {groups.map((g) => (
-          <Stack as="section" key={g.id} gap="medium" aria-labelledby={g.id}>
-            <Heading level={2} id={g.id}>
-              <span data-testid="email-reference-group-title">{g.event}</span>
-            </Heading>
-            {g.messages.map((m) => (
-              <article key={m.id} aria-labelledby={m.id} style={message}>
-                <Stack gap="medium">
-                  <Heading level={3} id={m.id}>{m.recipient}</Heading>
-                  <Stack as="dl" gap="small">
-                    <div>
-                      <dt style={term}>Subject</dt>
-                      <dd data-testid="email-reference-subject">{m.subject}</dd>
-                    </div>
-                    {m.summary && (
-                      <div>
-                        <dt style={term}>Who receives it and why</dt>
-                        <dd data-testid="email-reference-summary">{m.summary}</dd>
-                      </div>
-                    )}
-                  </Stack>
-                  <div role="group" aria-label={`Email body: ${m.subject}`} style={body} data-testid="email-reference-body">
-                    <Stack gap="medium">
-                      <Text elementType="p"><span style={emailTitle}>{m.title}</span></Text>
-                      {m.paragraphs.map((p) => (
-                        <Text key={p} elementType="p">{p}</Text>
-                      ))}
-                      {m.link && <Text elementType="p"><Link href={m.link.href}>{m.link.text}</Link></Text>}
-                      <Text elementType="p" size="small" color="secondary"><Link href={m.footer.href}>{m.footer.text}</Link></Text>
-                    </Stack>
-                  </div>
-                </Stack>
-              </article>
-            ))}
-          </Stack>
+          <ReferenceGroup key={g.id} group={g} />
         ))}
-      </Stack>
-    </PageContainer>
+      </NotificationPage>
+    </SitePage>
   ),
 };
