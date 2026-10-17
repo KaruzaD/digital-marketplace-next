@@ -1701,7 +1701,7 @@ pages:
       # pages the service needs for itself (seed.content, fixed: true) plus the ordinary
       # pages the seed adds (fixed: false), so a count of the service's own pages is this
       # less the ordinary ones.
-      page_count: { test_id: null }
+      page_count: { test_id: content-list-count }
 
   - id: content-create
     domain: content

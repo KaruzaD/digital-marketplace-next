@@ -4578,3 +4578,163 @@ what the surface says. No test ID was added.
 44. **The user list on a phone.** R-4.14 states the list's order and columns but nothing about a narrow
     screen. The cards keep the columns' facts and the order of the rows; they put the name first
     because it is the link a person is looking for.
+
+## Content screens in the chosen direction
+
+Every screen of the content domain now follows "Site shell and the chosen direction" above: the
+footer's placeholder page, the service level agreement link on the Code With Us learn-more screen,
+the list of pages, creating a page, the managing screen in all its states, the public page, and the
+request addresses. Where this section and the older "Domain: content" section disagree about how a
+screen looks (the page container and outer stack, the inline-styled table and badge, the key facts
+row, the placeholder frame, heading sizes, the footer's link list), this section is the current one.
+What that section says about behaviour, states, forms, validation, dialogs, test IDs and gaps still
+holds, except where this section says otherwise. Every page keeps its states (`design/screens.yaml`
+is unchanged), every story keeps its words, and every test ID filled before this pass keeps its
+element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen
+by and the section the page belongs to. The viewer decides the header's navigation and account area,
+nothing else on the page. The administrator and the vendor are `opportunity-kit.tsx`'s `ADMIN` and
+`VENDOR`; the visitor is `site.tsx`'s `VISITOR`.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| `content-footer` | a visitor (the footer is the same for everyone, R-7.19) | Home (its route is `/`) |
+| `content-service-level-agreement-link` | a visitor | none (the learn-more screens are not in the navigation) |
+| `content-list`, `content-create`, `content-edit`: every state but `not-found` | an administrator | Content |
+| `not-found` of the list, create and managing screens | a vendor, whose header offers no Content section (R-7.6) | none |
+| `content-view`, all three states | a visitor (R-7.1) | none |
+| `content-request` | `default` and `invalid` an administrator; `refused` a vendor, the first requester R-7.10 names; `not-found` a visitor | none |
+
+### The direction's content components
+
+`design/catalogue/content-kit.tsx`. All are this project's own compositions of design-system
+components (`Button`, `ButtonGroup`, `Heading`, `InlineAlert`, `Link`, `Text`, `TextArea`,
+`TextField`) and of `react-aria-components`' `Toolbar` and `FileTrigger`, styled only with tokens,
+built on `marketplace.tsx`'s `Label` and `look`, on `opportunity-kit.tsx` (`OpportunityPage`,
+`PageTitle`, `Region`, `Panel`, `Details`, `Waiting`, `MissingPage`, and its table classes) and on
+`proposal-kit.tsx`'s `AlertTitle`. None of them is a design-system component. `marketplace.tsx`'s
+`statusOf` describes an opportunity's status and has no use here: no content screen shows an
+opportunity.
+
+- **Content page** (`ContentPage`). `OpportunityPage` (the page container, the direction's style
+  sheets, the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **Title bar** (`TitleBar`). The list's H1 and its one action, Create page, on one line where they
+  fit; on a phone the link goes full width beneath the H1.
+- **Manage head** (`ManageHead`). "Manage a page" in small secondary text over the page's own title
+  as the H1, `small` apart: the opportunity and proposal heads' eyebrow line, without labels, because
+  a page has no program and no status.
+- **Page facts** (`PageFacts`). The managing screen's facts as `Details`, in as many columns as fit:
+  Public address (a link), Published, Published by, Last updated, Last updated by (R-7.27). A person
+  is a link to their profile; "System" is plain text. It replaces the old wrapping row of `<dl>` items.
+  The public page shows Published and Last updated the same way.
+- **Notice** (`Notice`) and **fixed-page warning** (`FixedPageWarning`). A success or warning
+  `InlineAlert` in a wrapper carrying its test ID, with its title in the alert's own title markup
+  (`AlertTitle`). Before this pass the content stories gave each alert both `title` and content, so
+  the design system dropped the title ("Gaps in the design system", 4): "The service needs this
+  page", "Page published", "Changes published", "Page removed", "This address is already in use"
+  and "Fix 2 fields to publish …" were not rendered. They now are.
+- **Page actions** (`PageActions`). The design system's `ButtonGroup` ("Page actions"): Edit page,
+  the screen's primary action, and Delete page (`secondary`, `danger`) for an ordinary page only.
+- **Current wording** (`CurrentWording`). A `Region` ("Current wording", H2 in the H4 size) holding
+  the read-only title and address side by side where each has 280 pixels, then the read-only body at
+  full width.
+- **Page form** (`PageForm`, `FieldPair`, `TitleField`, `AddressField`, `LockedAddressField`,
+  `BodyEditor`, `PublishHint`, `PublishProblems`, `PublishRow`, `DuplicateAddress`). The create form
+  and the managing screen's edit form, written once. The fields are `medium` apart; the title and the
+  address share a line where each has 280 pixels and stack on a phone; the body editor takes the
+  column. The address keeps its rule and its resulting public address `small` beneath it; the body
+  editor is the toolbar, the body and the formatting guide `small` apart; the reason Publish is
+  unavailable (text, or the danger list of problems) sits directly before the submit row; the submit
+  row is `ButtonGroup` with Cancel and the one primary button. The address-in-use refusal takes focus
+  when it appears, with a visible focus ring from the tokens. Every field, rule, message, ID and test
+  ID is as "Forms and validation" in the older section gives it.
+- **Page rows** (`PageRows`, `NeededExplained`). The list of pages (R-7.5). On a wide screen it is a
+  table in the opportunity screens' `DataTable` style (`op-table` in a focusable region labelled by its
+  caption), written out here because its caption carries the page count as markup (see "Test IDs").
+  Below the header's switch point each page is a stacked card instead: the title as an H2 in bold body
+  text linking to the managing screen, the public address as a small link beneath it, then "Needed by
+  the service", Created and Last updated on one line of small secondary text, under the same caption
+  as a `<p>` that labels the list. The switch is read in script, as the header's is, so each row and
+  its test IDs appear once; `content-list-table` is on the table or on the cards' list, and the title
+  links inside it are in title order either way. This is rule 7 for this domain's one list.
+- **"Needed by the service"** reads "Yes" as a grey `Label` and "No" as plain text, inside
+  `content-list-fixed`. Grey is the direction's neutral, used for program labels; it marks no status.
+  It replaces the users domain's old circular badge.
+- **Page article** (`PageArticle`) and **rendered body** (`RenderedBody`). The public page's
+  `<article>` (`content-page`), labelled by its H1, its regions `large` apart (`medium` on a phone);
+  and the element the formatted-text renderer writes the body into (`content-page-body`), its items
+  `medium` apart. A body's own headings start at H2 and take the design system's H4 size, as every
+  section heading in the direction does; paragraphs are body text.
+- **Request reference** (`RequestReference`). The users domain's response-reference shape: the small
+  "Response reference" line and the H1, then Request(s) and Answer `Region`s whose pairs are
+  `Details`, each test ID on its value.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** No content screen lists opportunities.
+2. **Fixed order.** Not applicable; no opportunity is shown.
+3. **Colour only for status.** Nothing on these screens is coloured by this domain. "Needed by the
+   service" is a grey label; the managing screen's facts, the list, the cards, the toolbar and the
+   article are neutral. The design system's own alerts (success, warning, danger), its error text and
+   its danger button keep their colours.
+4. **Programs.** Not shown, except as the name on the Code With Us learn-more placeholder.
+5. **Dense.** H1 in the H3 size; region headings (Current wording, Edit the page, What it costs,
+   How Code With Us works, Request, Answer) and a body's H2s in the H4 size; facts, the address rule,
+   the resulting address, the formatting guide link, the table, the cards' facts, the eyebrow lines
+   and the public page's address line in small text; regions `large` apart, items `medium`, a label
+   and what it labels `small`. Each screen has one primary button at most: Create page on the list,
+   Publish page on the create form, Edit page on the managing screen, Publish changes while editing,
+   Back to home on the missing page, the confirm button inside a dialog. Delete page is secondary with
+   `danger`; the formatting buttons are tertiary.
+6. **Imagery.** None. An image an administrator inserts into a body is the page's content, not the
+   direction's imagery.
+7. **Phones.** Regions close to `medium`; the facts fall to one column; the title and address fields
+   stack; the toolbar's buttons wrap; the list of pages becomes stacked cards; Create page goes full
+   width; the header and footer are the shared phone versions.
+
+### Other changes in this pass
+
+- **The footer is the shell's.** `content-footer.default` shows the shell's footer, the original
+  site's eight links with no heading and no copyright line ("Site header and footer"). The older
+  section's `FooterLinks` titled "About this service", its five links and the design system's default
+  contact block and copyright are replaced by it. The five links R-7.19 names keep their order among
+  the eight and their test IDs, and `site-footer` still wraps the footer, so `present_when_signed_out`
+  reads as before. The older section's accessibility line about the "About this service" caption no
+  longer holds; the footer remains the `contentinfo` landmark.
+- **The placeholder frame is a `Panel`.** The learn-more screen's placeholder was a bordered `section`
+  styled in the story; it is now the direction's `Panel`, the same border and padding from tokens.
+- **Trimmed dialog stories say what they trim.** `content-create.publish-confirm` names
+  `content-create.ready`; `content-edit.publish-confirm` names `content-edit.editing`;
+  `content-edit.delete-confirm` names `content-edit.default`.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID filled before this pass is kept, on an element that does what the surface says. One was
+added:
+
+| Page | Observation | Test ID |
+| --- | --- | --- |
+| `content-list` | `page_count` | `content-list-count`: the number of pages the list holds, alone in a `span` inside the list's caption, which reads "Every page, in order of title (5 pages)" |
+
+On `content-list.default` it reads 5 and on `content-list.deleted` 4, the number of rows each story
+shows. On the seeded installation it is the surface's twenty-two needed pages plus the seed's ordinary
+ones (see gap 45).
+
+### Gaps found in this pass
+
+45. **The page count's words and figure.** The surface's `page_count` needs something to read, and no
+    criterion says the list states how many pages it holds or in what words. "(5 pages)" in the
+    caption is the design's own. The figure a fresh installation shows still depends on the older
+    section's gap 2 (R-7.12's twenty-two pages against the rulings that give sixteen).
+46. **The not-found viewer.** R-7.6 names a vendor and a public sector employee, and the older section
+    adds an administrator at an address no page holds. One `not-found` state can show one header; the
+    stories show a vendor's. The page beneath is the same for all of them.
+47. **A long body on a wide screen.** The rule fixes one column 1100 pixels wide, so the public page's
+    body runs to that width. A narrower reading measure for long prose would need a width no token
+    carries; the design keeps the column and records it here rather than typing a size.
