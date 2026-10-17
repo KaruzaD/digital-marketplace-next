@@ -393,9 +393,9 @@ screens:
   - page: evaluation-panel-dashboard
     states: [default, empty, loading]
   - page: evaluation-panel-swu
-    states: [default, invalid, too-few, refused, locked, not-found, loading]
+    states: [default, editing, invalid, too-few, refused, locked, not-found, loading]
   - page: evaluation-panel-twu
-    states: [default, invalid, too-few, refused, locked, not-found, loading]
+    states: [default, editing, invalid, too-few, refused, locked, not-found, loading]
   - page: evaluation-instructions-swu
     states: [default, not-found, loading]
   - page: evaluation-instructions-twu
@@ -452,6 +452,8 @@ screens:
     states: [default, refused, duplicate]
   - page: evaluation-individual-request-twu
     states: [default, refused, duplicate]
+  - page: evaluation-individual-submission-request-swu
+    states: [default, refused]
   - page: evaluation-consensus-request-swu
     states: [default, refused]
   - page: evaluation-consensus-request-twu

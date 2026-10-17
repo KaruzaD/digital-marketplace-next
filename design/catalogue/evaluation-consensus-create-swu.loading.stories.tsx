@@ -1,21 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, ProgressCircle, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { EVALUATOR, EvaluationLoading, WIDTHS } from "./evaluation-kit";
 
 // evaluation-consensus-create-swu · loading — the proponent and the evaluators' scores have not arrived yet
-const meta: Meta = { title: "evaluation/evaluation-consensus-create-swu/loading" };
+const meta: Meta = { title: "evaluation/evaluation-consensus-create-swu/loading", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Loading: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Agree a Sprint With Us consensus</Heading>
-        <Stack direction="row" align="center" gap="small" role="status">
-          <ProgressCircle isIndeterminate aria-label="Loading the evaluators' scores" />
-          <Text>Loading the evaluators' scores…</Text>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <EvaluationLoading viewer={EVALUATOR} title="Agree a Sprint With Us consensus" label="Loading the evaluators' scores" />
   ),
 };

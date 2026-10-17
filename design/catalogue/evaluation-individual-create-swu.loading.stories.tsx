@@ -1,21 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, ProgressCircle, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { EVALUATOR, EvaluationLoading, WIDTHS } from "./evaluation-kit";
 
 // evaluation-individual-create-swu · loading — the proponent's responses have not arrived yet
-const meta: Meta = { title: "evaluation/evaluation-individual-create-swu/loading" };
+const meta: Meta = { title: "evaluation/evaluation-individual-create-swu/loading", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Loading: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Evaluate a Sprint With Us proponent</Heading>
-        <Stack direction="row" align="center" gap="small" role="status">
-          <ProgressCircle isIndeterminate aria-label="Loading the proponent's responses" />
-          <Text>Loading the proponent's responses…</Text>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <EvaluationLoading viewer={EVALUATOR} title="Evaluate a Sprint With Us proponent" label="Loading the proponent's responses" />
   ),
 };
