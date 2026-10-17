@@ -2770,31 +2770,31 @@ pages:
       # second street line, contact title and contact phone, optional. The email must be
       # well formed and a website address, when given, must be a web address. Sent as
       # whoever is signed in, or with no session at all when nobody is.
-      register_by_request: { test_id: null }
+      register_by_request: { test_id: organization-request-register }
       # Input: the organization's profile, the same fields as a registration. Sends the
       # service's profile-update operation for :orgId.
-      change_profile_by_request: { test_id: null }
+      change_profile_by_request: { test_id: organization-request-change-profile }
       # Input: none. Asks the service to archive :orgId.
-      archive_by_request: { test_id: null }
+      archive_by_request: { test_id: organization-request-archive }
     observations:
       # Whether the service accepted the last request (a successful answer carrying the
       # organization: 201 for a registration, 200 for a profile change or an archive).
-      request_accepted: { test_id: null }
+      request_accepted: { test_id: organization-request-accepted }
       # The status code of a refused request; empty when accepted.
-      refusal_status: { test_id: null }
+      refusal_status: { test_id: organization-request-refusal-status }
       # The name the refusal is filed under — permissions for somebody not permitted,
       # notFound for an organization that does not exist, or a field's name for a field
       # error. Absent when accepted.
-      refusal_reason: { test_id: null }
+      refusal_reason: { test_id: organization-request-refusal-reason }
       # The refusal's messages, in the order the service gives them. Empty when accepted.
-      refusal_messages: { test_id: null }
+      refusal_messages: { test_id: organization-request-refusal-messages }
       # The identifier of the organization an accepted registration created, from the
       # service's answer; empty otherwise.
-      organization_identifier: { test_id: null }
+      organization_identifier: { test_id: organization-request-organization-id }
       # Whether :orgId is active, and its legal name, as the service holds them, read
       # afresh after the request (as the signed-in person) rather than taken from the
       # request's answer. The service lets an administrator and the organization's owner
       # or administrators read it, so persona.organizationAdmin can read
       # seed.organizations.qualified after a refused request and see it unchanged.
-      stored_active: { test_id: null }
-      stored_legal_name: { test_id: null }
+      stored_active: { test_id: organization-request-stored-active }
+      stored_legal_name: { test_id: organization-request-stored-legal-name }

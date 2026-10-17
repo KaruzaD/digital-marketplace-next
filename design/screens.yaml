@@ -198,6 +198,10 @@ screens:
     states: [default, invalid]
   - page: affiliation-approval-request
     states: [default, refused, not-pending]
+  - page: affiliation-removal-request
+    states: [default, sole-owner]
+  - page: organization-request
+    states: [default, invalid, refused]
 
   # notifications domain — see design/DESIGN.md, "Domain: notifications"
   - page: notification-unsubscribe-landing

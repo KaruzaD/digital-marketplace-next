@@ -1,39 +1,32 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Heading, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button } from "@bcgov/design-system-react-components";
+import { Actions } from "./opportunity-kit";
+import { ORG_NAME, TermsPage } from "./organization-kit";
+import { SitePage, WIDTHS } from "./site";
+import { VENDOR_ONE } from "./user-kit";
 
 // organization-swu-terms · accepted — the terms have been accepted for this organization: the date is stated and
 // Accept is not offered again (R-3.27)
-const meta: Meta = { title: "organizations/organization-swu-terms/accepted" };
+const meta: Meta = { title: "organizations/organization-swu-terms/accepted", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const panel = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
 
 export const Accepted: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Northwind Digital Co-operative</Text>
-          <Heading level={1}>Sprint With Us Terms &amp; Conditions</Heading>
-        </Stack>
-        <Text elementType="p" data-testid="organization-terms-accepted-on">
-          Northwind Digital Co-operative accepted these terms on September 1, 2026 at 10:30 a.m.
-        </Text>
-        <section aria-labelledby="terms-heading" style={panel} data-testid="organization-terms-body">
-          <Stack gap="medium">
-            <Heading level={2} id="terms-heading">Terms and conditions</Heading>
-            <Text elementType="p">[Sprint With Us terms and conditions text, supplied by the service.]</Text>
-          </Stack>
-        </section>
-        <div>
-          <Button variant="secondary" data-testid="organization-terms-cancel">Back to the organization</Button>
-        </div>
-      </Stack>
-    </PageContainer>
+    <SitePage viewer={VENDOR_ONE} current="organizations">
+      <TermsPage
+        program="Sprint With Us"
+        notice={
+          <p className="op-text" data-testid="organization-terms-accepted-on">
+            {ORG_NAME} accepted these terms on September 1, 2026 at 10:30 a.m.
+          </p>
+        }
+      >
+        <Actions>
+          <Button variant="secondary" data-testid="organization-terms-cancel">
+            Back to the organization
+          </Button>
+        </Actions>
+      </TermsPage>
+    </SitePage>
   ),
 };
