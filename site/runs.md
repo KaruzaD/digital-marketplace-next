@@ -1,5 +1,20 @@
 # Run log
 
+# Run record 2026-10-17
+
+- 12:34:12 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain opportunities --hand-in design-directions`; reason: Hand in the redesign drawn outside the pipeline on the design-directions branch: the shared site header and footer, the home page, the opportunity list and the Code With Us proposal form, with the chosen direction's rules in DESIGN.md
+- 12:37:59 run design: ok, handed in from design-directions at 35b7a503234b
+- 12:37:59 propose design-opportunities-6 at G-DESIGN
+- 12:39:58 rule design-opportunities-6 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+# Run record 2026-10-15
+
+- 08:48:54 oracle up old: http://localhost:3100 (local port 3100)
+
+# Run record 2026-10-05
+
+- 09:44:23 oracle down old
+
 # Run record 2026-10-04
 
 - 18:05:16 drive: step 1: `sdlc run verify --slice 14` — build-slice-14 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
@@ -525,6 +540,7 @@
 - 16:45:41 oracle down old in configuration evaluation_instructions_absent_twu
 - 16:45:41 calibrate old: a full run, forced with --full
 - 16:45:45 run calibrate: ok, cost 0, turns 0
+- 16:45:47 drive: stopped after 10 steps — nothing left to run
 
 # Run record 2026-10-03
 
