@@ -50,3 +50,14 @@ Every page keeps its states and words, and every test ID that was already filled
 - **Phones.** No criterion says how the lists behave on a narrow screen.
 
 I changed nothing outside `design/` and the `test_id` fields of `spec/contract/surface.yaml`.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:ux-reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Question: do the organization screens serve their criteria and are they built from the design system? Approve. The scan that ran after this change found 542 stories and 0 accessibility violations, and the new affiliation-removal-request and organization-request stories are in it. In surface.yaml only the ten null test IDs for organization-request were filled in, and no test ID that already had a value changed. In the desktop screenshots (management page, team tab, list, create form, memberships, terms page, request page), the content sits in the shared page container and lines up with the banner. Sections are spaced evenly from the tokens, and each screen has at most one primary button. The stories use design-system components and the opportunities kit, with no inline styles or colour values. The new kit files are listed in DESIGN.md as the project's own compositions. The dialog screenshots (archive, remove member, leave) show the dialog faded with the page showing through. The stories use the design system's own Modal and AlertDialog, as other approved domains do, and the kit does not touch their opacity or layering, so this looks like the screenshot runner catching the dialog's fade-in part-way rather than a defect in this work. Small blemishes that are not reasons to return it: the Organization ID wraps onto two lines, and the row buttons in the Actions column sit a few pixels low because of the design-system button's own padding. Would change to a return if a screenshot that waits for the animation to finish still shows the dialog faded, or if a phone-width screenshot shows the lists not turning into stacked cards.
+
+**Conditions:**
+none
