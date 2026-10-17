@@ -1,45 +1,21 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Checkbox, Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { UnsubscribeSettings } from "./notification-kit";
+import { SitePage, WIDTHS } from "./site";
+import { VENDOR_ONE } from "./user-kit";
 
 // notification-unsubscribe-landing · unsubscribed — the signed-in person pressed Unsubscribe. The dialog has closed,
 // focus is back on the checkbox, the checkbox is cleared, and the change is announced. It is the signed-in person's
 // own notices that stopped (R-6.7). The announcement's wording is the design's own (DESIGN.md, notifications gap 4).
-const meta: Meta = { title: "notifications/notification-unsubscribe-landing/unsubscribed" };
+const meta: Meta = { title: "notifications/notification-unsubscribe-landing/unsubscribed", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Unsubscribed: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="medium">
-          <Heading level={1}>Notifications</Heading>
-          <nav aria-label="Profile sections">
-            <Stack as="ul" direction="row" gap="medium">
-              <li><Link href="/users/me" data-testid="profile-tab-profile">Profile</Link></li>
-              <li><Link href="/users/me?tab=capabilities" data-testid="profile-tab-capabilities">Capabilities</Link></li>
-              <li><Link href="/users/me?tab=organizations" data-testid="profile-tab-organizations">Organizations</Link></li>
-              <li><Link href="/users/me?tab=notifications" aria-current="page" data-testid="profile-tab-notifications">Notifications</Link></li>
-              <li><Link href="/users/me?tab=legal" data-testid="profile-tab-legal">Legal</Link></li>
-            </Stack>
-          </nav>
-        </Stack>
-        <Stack gap="medium">
-          <Text elementType="p" data-testid="notifications-email-address">
-            Notifications are sent to vendor1@example.com. If this address is wrong, <Link href="/users/me">correct it on your profile</Link>.
-          </Text>
-          <Text elementType="p">
-            This setting covers only emails announcing newly published opportunities. Other emails from the service, such as
-            those about opportunities you watch or proposals you have submitted, are not affected by it.
-          </Text>
-          <Checkbox data-testid="notifications-new-opportunities-checkbox">
-            Email me when new opportunities are posted
-          </Checkbox>
-          <div role="status">
-            <Text elementType="p">You have unsubscribed. vendor1@example.com will no longer be emailed about new opportunities.</Text>
-          </div>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <SitePage viewer={VENDOR_ONE}>
+      <UnsubscribeSettings
+        subscribed={false}
+        announcement="You have unsubscribed. vendor1@example.com will no longer be emailed about new opportunities."
+      />
+    </SitePage>
   ),
 };

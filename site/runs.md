@@ -56,6 +56,12 @@
 - 15:35:37 propose design-organizations-3 at G-DESIGN
 - 15:35:43 drive: step 1: `sdlc rule design-organizations-3 --by agent:ux-reviewer` — design-organizations-3 is open at G-DESIGN, held by agent:ux-reviewer
 - 15:37:09 rule design-organizations-3 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:37:14 drive: stopped after 1 step — nothing left to run
+- 15:37:15 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain notifications`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry. notification-optin-opportunity-list is drawn on the opportunity list: draw its control inside the redesigned list layout, for a signed-in viewer.
+- 15:47:12 run design: ok, cost 3.448873200000001, turns 58, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:47:12 propose design-notifications-3 at G-DESIGN
+- 15:47:18 drive: step 1: `sdlc rule design-notifications-3 --by agent:ux-reviewer` — design-notifications-3 is open at G-DESIGN, held by agent:ux-reviewer
+- 15:48:28 rule design-notifications-3 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
 
 # Run record 2026-10-15
 

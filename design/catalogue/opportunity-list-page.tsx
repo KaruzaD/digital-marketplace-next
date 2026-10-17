@@ -208,9 +208,18 @@ type ListProps = {
   loading?: boolean;
   // Staff only: the Unpublished group opened.
   unpublishedOpen?: boolean;
+  // Something the notifications domain places at the head of the results, before the first group: its new-opportunity
+  // email control (design/DESIGN.md, "Notification screens in the chosen direction"). Left out, the page is unchanged.
+  notice?: ReactNode;
 };
 
-export function OpportunityListPage({ audience, search: initialSearch = "", loading = false, unpublishedOpen = false }: ListProps) {
+export function OpportunityListPage({
+  audience,
+  search: initialSearch = "",
+  loading = false,
+  unpublishedOpen = false,
+  notice,
+}: ListProps) {
   const asStaff = audience === "staff";
   const signedIn = audience !== "visitor";
   const [program, setProgram] = useState<string>("all");
@@ -300,6 +309,7 @@ export function OpportunityListPage({ audience, search: initialSearch = "", load
             </div>
 
             <div className="list-results">
+              {notice}
               {loading ? (
                 <div className="list-count" role="status">
                   <ProgressCircle isIndeterminate aria-label="Loading opportunities" />
