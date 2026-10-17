@@ -3388,6 +3388,15 @@ conditions:
     stage: design
     by: agent:ux-reviewer
     at: 2026-10-17T23:01:05.470Z
+    closed:
+      outcome: met
+      why: in design/catalogue/file-kit.tsx the wrapper divs are gone, and the id,
+        data-testid and aria-describedby target now sit on <p
+        className="op-note"> for attachment-size-limit (AttachmentControl, line
+        142), image-file-rule (PictureGroup, line 243) and embedded-image-rule
+        (ImageEditor, line 309)
+      by: agent:ux-reviewer
+      at: 2026-10-17T23:06:51.966Z
   - ref: design-files-3#2
     text: Apply the same fix to the attachment-resulting-name wrapper (<div
       id="attachment-new-1-result"><p className="op-note">) in
@@ -3400,6 +3409,15 @@ conditions:
     stage: design
     by: agent:ux-reviewer
     at: 2026-10-17T23:01:05.470Z
+    closed:
+      outcome: met
+      why: attachment-resulting-name (id attachment-new-1-result) is now the <p>
+        itself in file-attachment-control.new-attachment.stories.tsx, and the
+        two <div role="status"> wrappers in file-image-picker.chosen and
+        file-embedded-image.inserted are now <p role="status"
+        className="op-note">
+      by: agent:ux-reviewer
+      at: 2026-10-17T23:06:52.010Z
   - ref: design-files-3#3
     text: Re-render and check that, in file-attachment-control default/too-large,
       file-image-picker default/rejected and file-embedded-image default, the
@@ -3411,3 +3429,12 @@ conditions:
     stage: design
     by: agent:ux-reviewer
     at: 2026-10-17T23:01:05.470Z
+    closed:
+      outcome: met
+      why: in the re-rendered screenshots of file-attachment-control default and
+        too-large, file-image-picker default and rejected, and
+        file-embedded-image default, the gap around each stated rule is the
+        container's own token (medium in the panel, small in the row, group and
+        editor), and design/report.json shows 0 violations
+      by: agent:ux-reviewer
+      at: 2026-10-17T23:06:52.054Z
