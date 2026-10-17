@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>design-content-4 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">663</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">657</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">536</span></a></li><li><a href="../runs.html">Run log <span class="count">25</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>design-content-4</h1>
+<p class="lede">G-DESIGN · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G-DESIGN</td></tr><tr><th scope="row">opened</th><td>2026-10-17 22:12</td></tr><tr><th scope="row">holder</th><td>agent:ux-reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Do these screens serve the content criteria, and are they built out of the design system?</h2>
+<p><strong>Recommendation.</strong> I restyled all seven content pages and their 31 stories in the chosen direction.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I restyled all seven content pages and their 31 stories in the chosen direction. I couldn&#39;t compile or scan them myself: this workspace has no <code>node_modules</code> to run <code>tsc</code>. That check runs after my turn and writes <code>design/report.json</code>. The earlier report was clean for every content story.</p>
+<p><strong>What changed.</strong> Every story now renders inside <code>SitePage</code>, with a viewer and current section per state:</p>
+<ul><li><strong>Admin screens:</strong> the list, create and managing screens are seen by an administrator, with Content as the current section.</li><li><strong>Their not-found states:</strong> seen by a vendor, whose header offers no Content section.</li><li><strong>Public page:</strong> all three states are seen by a visitor.</li><li><strong>Footer story:</strong> a visitor on Home.</li><li><strong>Service level agreement link:</strong> a visitor, with no current section.</li><li><strong>Request references:</strong> the requester each criterion names (an administrator, a vendor or a visitor).</li></ul>
+<p>The screens are built from a new <code>design/catalogue/content-kit.tsx</code>, which sits on the existing kits. From <code>opportunity-kit.tsx</code> it uses <code>OpportunityPage</code>, <code>PageTitle</code>, <code>Region</code>, <code>Panel</code>, <code>Details</code>, <code>Waiting</code> and <code>MissingPage</code>. From <code>marketplace.tsx</code> it uses <code>Label</code> and <code>look</code>, and from <code>proposal-kit.tsx</code> it uses <code>AlertTitle</code>. Everything else is design-system components: <code>Button</code>, <code>ButtonGroup</code>, <code>TextField</code>, <code>TextArea</code>, <code>InlineAlert</code>, <code>Modal</code> with <code>AlertDialog</code>, <code>Link</code> and <code>Text</code>. The body editor still uses <code>react-aria-components</code>&#39; <code>Toolbar</code> and <code>FileTrigger</code>. The kit adds no new widget; it replaces the content stories&#39; hand-styled table, badge and facts row, which were growing beside the design system.</p>
+<p><strong>How the seven rules land:</strong></p>
+<ul><li>Nothing on these screens is coloured by this domain. &quot;Needed by the service&quot; reads &quot;Yes&quot; as a grey label and &quot;No&quot; as plain text.</li><li>Headings use the direction&#39;s denser sizes.</li><li>Each screen has at most one primary button: Create page, Publish page, Edit page or Publish changes.</li><li>On phones the list of pages becomes stacked cards. The switch is made in script, so each test ID appears once.</li></ul>
+<p>The home page, opportunity list, Code With Us proposal form and the opportunities domain&#39;s screens are untouched. <code>design/screens.yaml</code> is unchanged, and every story keeps the words it had. Every test ID filled before this pass stays on an element that does what the surface says.</p>
+<p><strong>A fix that adds visible text.</strong> The old content stories gave each <code>InlineAlert</code> both a title and content, and the design system drops the title in that case. So these titles never rendered:</p>
+<ul><li>&quot;The service needs this page&quot;</li><li>&quot;Page published&quot;</li><li>&quot;Changes published&quot;</li><li>&quot;Page removed&quot;</li><li>&quot;This address is already in use&quot;</li><li>&quot;Fix 2 fields to publish …&quot;</li></ul>
+<p>They are now written in the alert&#39;s own title markup and do appear. The footer story now shows the shared footer, with the original site&#39;s eight links. The five links R-7.19 names keep their test IDs. The older section&#39;s &quot;About this service&quot; link heading is gone, and its accessibility note about that heading no longer holds.</p>
+<p><strong>Test IDs.</strong> The only <code>null</code> left on this domain&#39;s pages was <code>content-list.page_count</code>. I filled it with <code>content-list-count</code>: the number alone, in a <code>span</code> inside the list&#39;s caption (&quot;Every page, in order of title (5 pages)&quot;).</p>
+<p><strong>New gaps</strong>, added to <code>design/DESIGN.md</code> under a new section, &quot;Content screens in the chosen direction&quot;:</p>
+<ul><li><strong>45 – Page count:</strong> no criterion says the list states its count, so &quot;(N pages)&quot; is wording I chose. The figure on a fresh installation still depends on the older open question: 22 pages (R-7.12) or 16 (the later rulings).</li><li><strong>46 – Not-found viewer:</strong> one not-found state can show only one header, and three kinds of viewer reach it. The stories show a vendor&#39;s.</li><li><strong>47 – Wide public page:</strong> the page body runs the full 1100-pixel column, because no token gives a narrower reading width.</li></ul>
+<p>I changed nothing under <code>spec/</code> except that one <code>test_id</code>.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:ux-reviewer (persona agent · claude claude-opus-5-5) on 2026-10-17 22:13.</p>
+<div class="body"><p>Do these screens serve the content criteria, and are they built out of the design system? Approve. design/report.json is ok with typecheck and build passing, and all 31 content stories show zero accessibility violations. The screenshots (content-list, -create, -edit, -view, -footer, -service-level-agreement-link and -request defaults, plus content-edit invalid and fixed) show every screen inside the shared page container, left-aligned with the banner, with even spacing at each level and no doubled margins. Each screen has at most one primary button. The InlineAlert titles that were previously dropped now render. The screens are built from design-system components (Button, ButtonGroup, TextField, TextArea, InlineAlert, Modal/AlertDialog, Link, Text) and the existing project kits, styled with tokens. The kit&#39;s only literal sizes are a 280px grid-column minimum and the 767.98px breakpoint, both already used across the other kits. The one surface.yaml change fills the previously null content-list.page_count with content-list-count, which is visible in the list caption; no filled test_id changes. Gaps 45 to 47 are recorded in design/DESIGN.md, as the persona allows. The tier is STANDARD, so nothing escalates. The ruling would change if a later report showed any accessibility violation on a content story, if an already-filled test_id turned out to have been changed, or if the phone-width layouts showed misalignment or doubled spacing.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>
