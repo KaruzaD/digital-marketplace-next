@@ -1,7 +1,7 @@
 {
-  "generated": "2026-10-17T22:09:09.695Z",
+  "generated": "2026-10-17T22:32:24.844Z",
   "axe": "4.13.0",
-  "catalogue": "4f699b6323662b1c70501e7c6bc9a201a6d2c27ea563aa07d76ed82764e1df72",
+  "catalogue": "29e7977c8658e2a98fd968a18c27f22d4eea7f8c95b31e7334de4f122362eb4c",
   "ok": true,
   "messages": [],
   "compile": [
@@ -45,6 +45,18 @@
       "id": "organizations-affiliation-invitation-request-invalid--invalid",
       "title": "organizations/affiliation-invitation-request/invalid",
       "file": "./catalogue/affiliation-invitation-request.invalid.stories.tsx",
+      "violations": []
+    },
+    {
+      "id": "organizations-affiliation-removal-request-default--default",
+      "title": "organizations/affiliation-removal-request/default",
+      "file": "./catalogue/affiliation-removal-request.default.stories.tsx",
+      "violations": []
+    },
+    {
+      "id": "organizations-affiliation-removal-request-sole-owner--sole-owner",
+      "title": "organizations/affiliation-removal-request/sole-owner",
+      "file": "./catalogue/affiliation-removal-request.sole-owner.stories.tsx",
       "violations": []
     },
     {
@@ -2022,6 +2034,24 @@
       "violations": []
     },
     {
+      "id": "organizations-organization-request-default--default",
+      "title": "organizations/organization-request/default",
+      "file": "./catalogue/organization-request.default.stories.tsx",
+      "violations": []
+    },
+    {
+      "id": "organizations-organization-request-invalid--invalid",
+      "title": "organizations/organization-request/invalid",
+      "file": "./catalogue/organization-request.invalid.stories.tsx",
+      "violations": []
+    },
+    {
+      "id": "organizations-organization-request-refused--refused",
+      "title": "organizations/organization-request/refused",
+      "file": "./catalogue/organization-request.refused.stories.tsx",
+      "violations": []
+    },
+    {
       "id": "organizations-organization-swu-terms-accepted--accepted",
       "title": "organizations/organization-swu-terms/accepted",
       "file": "./catalogue/organization-swu-terms.accepted.stories.tsx",
@@ -3241,7 +3271,7 @@
     }
   ],
   "totals": {
-    "stories": 537,
+    "stories": 542,
     "violations": 0,
     "failed": 0
   }

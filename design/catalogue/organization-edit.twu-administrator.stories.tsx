@@ -1,46 +1,22 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Heading, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, InlineAlert, Link } from "@bcgov/design-system-react-components";
+import { Actions, Region } from "./opportunity-kit";
+import { ManagementTop, ORG_ID, OrganizationPage, Requirements } from "./organization-kit";
+import { SitePage, WIDTHS } from "./site";
+import { ADMINISTRATOR } from "./user-kit";
 
 // organization-edit · twu-administrator — a service administrator on the Team With Us qualification tab, the only
 // person offered Edit service areas (R-3.26, R-3.28)
 // Service area names are illustrative: the spec does not carry the service's list.
-const meta: Meta = { title: "organizations/organization-edit/twu-administrator" };
+const meta: Meta = { title: "organizations/organization-edit/twu-administrator", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-const orgId = "4a9e1c20-6d3b-4f1a-8e2c-000000000201";
-const base = `/organizations/${orgId}/edit`;
 
 export const TwuAdministrator: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Edit Organization</Text>
-          <Heading level={1}>Northwind Digital Co-operative</Heading>
-        </Stack>
-        <Stack direction="row" align="center" gap="medium">
-          <Text elementType="p" size="small" color="secondary">
-            Organization ID: <span data-testid="organization-identifier">{orgId}</span>
-          </Text>
-        </Stack>
-        <nav aria-label="Organization sections">
-          <Stack as="ul" direction="row" gap="medium" align="center">
-            <li><Link href={`${base}?tab=organization`} data-testid="organization-tab-organization">Organization</Link></li>
-            <li><Link href={`${base}?tab=team`} data-testid="organization-tab-team">Team members</Link></li>
-            <li><Link href={`${base}?tab=swu-qualification`} data-testid="organization-tab-swu-qualification">Sprint With Us qualification</Link></li>
-            <li><Link href={`${base}?tab=twu-qualification`} aria-current="page" data-testid="organization-tab-twu-qualification">Team With Us qualification</Link></li>
-            <li><Link href={`${base}?tab=changelog`} data-testid="organization-tab-changelog">Changelog</Link></li>
-          </Stack>
-        </nav>
-        <Stack as="section" aria-labelledby="tab-heading" gap="medium">
-          <Heading level={2} id="tab-heading">Team With Us qualification</Heading>
+    <SitePage viewer={ADMINISTRATOR} current="organizations">
+      <OrganizationPage>
+        <ManagementTop current="twu-qualification" />
+        <Region id="tab-heading" title="Team With Us qualification">
           <div data-testid="organization-not-qualified-notice">
             <InlineAlert
               variant="info"
@@ -48,39 +24,34 @@ export const TwuAdministrator: StoryObj = {
               description="It can propose on Team With Us opportunities once every requirement below is met."
             />
           </div>
-          <Stack as="ul" gap="small" aria-label="Team With Us requirements">
-            <li data-testid="organization-twu-requirement-service-area">
-              <Stack direction="row" align="center" gap="small">
-                <span style={badge}>Met</span> Approved for at least one service area
-              </Stack>
-            </li>
-            <li data-testid="organization-twu-requirement-terms-accepted">
-              <Stack direction="row" align="center" gap="small">
-                <span style={badge}>Not met</span> Team With Us terms and conditions accepted
-              </Stack>
-            </li>
-          </Stack>
-          <Stack as="section" aria-labelledby="areas-heading" gap="medium">
-            <Heading level={3} id="areas-heading">Approved service areas</Heading>
-            <ul>
+          <Requirements
+            label="Team With Us requirements"
+            items={[
+              { testId: "organization-twu-requirement-service-area", met: true, text: "Approved for at least one service area" },
+              { testId: "organization-twu-requirement-terms-accepted", met: false, text: "Team With Us terms and conditions accepted" },
+            ]}
+          />
+          <Region id="areas-heading" title="Approved service areas" level={3}>
+            <ul className="op-list">
               <li data-testid="organization-service-area">Full stack developer</li>
               <li data-testid="organization-service-area">Data professional</li>
             </ul>
-            <div>
-              <Button variant="secondary" data-testid="organization-edit-service-areas-button">Edit service areas</Button>
-            </div>
-          </Stack>
-          <Stack as="section" aria-labelledby="terms-heading" gap="medium">
-            <Heading level={3} id="terms-heading">Terms and conditions</Heading>
-            <Text elementType="p">The Team With Us terms and conditions have not been accepted for this organization.</Text>
-            <Text elementType="p">
-              <Link href={`/organizations/${orgId}/team-with-us-terms-and-conditions`} data-testid="organization-view-twu-terms-link">
+            <Actions>
+              <Button variant="secondary" data-testid="organization-edit-service-areas-button">
+                Edit service areas
+              </Button>
+            </Actions>
+          </Region>
+          <Region id="terms-heading" title="Terms and conditions" level={3}>
+            <p className="op-text">The Team With Us terms and conditions have not been accepted for this organization.</p>
+            <p className="op-text">
+              <Link href={`/organizations/${ORG_ID}/team-with-us-terms-and-conditions`} data-testid="organization-view-twu-terms-link">
                 Read the Team With Us terms and conditions
               </Link>
-            </Text>
-          </Stack>
-        </Stack>
-      </Stack>
-    </PageContainer>
+            </p>
+          </Region>
+        </Region>
+      </OrganizationPage>
+    </SitePage>
   ),
 };

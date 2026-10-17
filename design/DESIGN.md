@@ -4738,3 +4738,243 @@ ones (see gap 45).
 47. **A long body on a wide screen.** The rule fixes one column 1100 pixels wide, so the public page's
     body runs to that width. A narrower reading measure for long prose would need a width no token
     carries; the design keeps the column and records it here rather than typing a size.
+
+## Organization screens in the chosen direction
+
+Every screen of the organizations domain now follows "Site shell and the chosen direction" above: the
+organization list, registering an organization, the management page in all its tabs and states, the two
+program-terms pages, a vendor's own organizations (by identifier and as `/users/me`), and the request
+addresses. Two request addresses had no screen before this pass and are added here:
+`affiliation-removal-request` and `organization-request`. Where this section and the older "Domain:
+organizations" section disagree about how a screen looks (the page container and outer stack, the
+circular status badge, the inline-styled tables, the card section, the plain row of section links,
+heading sizes, the "Organization ID:" line), this section is the current one. What that section says
+about behaviour, states, forms, validation, dialogs, who is offered what, test IDs and gaps still holds,
+except where this section says otherwise. Every page keeps its states, every story keeps its words, and
+every test ID filled before this pass keeps its element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen by
+and the section the page belongs to. The viewer decides the header's navigation and account area, nothing
+else on the page. The viewers are the users domain's (`user-kit.tsx`): Test Vendor One
+(`vendor1@example.com`) owns Northwind Digital Co-operative, Test Vendor Two (`vendor2@example.com`)
+administers it, and the administrator and the public sector employee are `admin@example.com` and
+`gov@example.com`. The visitor is `site.tsx`'s `VISITOR`; the invited person in the acceptance requests is
+`organization-kit.tsx`'s `INVITED_VENDOR` (`vendor.four@example.com`, the address those requests send).
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| `organization-list` | `default` a vendor; `administrator` an administrator; `signed-out` and `loading` a visitor; `refused` a public sector employee | Organizations |
+| `organization-create`: `default`, `invalid`, `ready` | the vendor registering | Organizations |
+| `organization-edit`: the owner's states (`default`, `editing`, `invalid`, `logo-*`, `team`, `invite-*`, `admin-rights-confirm`, `remove-member-confirm`, `swu-*`, `twu-qualification`, `changelog`, `loading`) | the owner | Organizations |
+| `organization-edit`: `org-admin` | the organization's administrator who is not its owner | Organizations |
+| `organization-edit`: `archive-confirm`, `team-administrator`, `change-owner`, `twu-administrator`, `service-areas-editing` | a service administrator | Organizations |
+| `not-found` of create and edit | a public sector employee, whom R-3.2 and R-3.3 both name | none |
+| Terms pages | `default` and `accepted` the owner; `administrator` an administrator | Organizations |
+| Memberships pages, every state but `section-unavailable` | the vendor whose organizations they are | none (reached from the account menu's My Organizations) |
+| `organization-user-memberships.section-unavailable` | an administrator | Users |
+| `organization-user-memberships-self.section-unavailable` | a public sector employee | none |
+| Request addresses | the requester the story names | none |
+
+The management page and the terms pages live under `/organizations`, so Organizations is current on them.
+
+### The direction's organization components
+
+`design/catalogue/organization-kit.tsx` and `design/catalogue/organization-memberships.tsx`. All are this
+project's own compositions of design-system components (`Button`, `ButtonGroup`, `Form`, `Heading`,
+`InlineAlert`, `Link`, `TextField`) and of `react-aria-components`' `FileTrigger`, styled only with tokens,
+built on `marketplace.tsx`'s `Label` and `look` and on `opportunity-kit.tsx` (`OpportunityPage`,
+`PageTitle`, `SectionTitle`, `Region`, `Panel`, `Details`, `DataTable`, `Actions`, `Waiting`,
+`MissingPage`), with `proposal-kit.tsx`'s `AlertTitle` and `user-kit.tsx`'s `ProfileTabs`. None of them is a
+design-system component. `marketplace.tsx`'s `statusOf` and `opportunity-kit.tsx`'s `OpportunityHead` and
+`StatusLabel` describe an opportunity and have no use here: no organization screen shows one.
+
+- **Organization page** (`OrganizationPage`). `OpportunityPage` (the page container, the direction's style
+  sheets, the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **Management head** (`OrganizationHead`, `ManagementTop`). The opportunity heads' shape: "Edit
+  Organization" in small secondary text, the qualified labels, the legal name as the H1 in the design
+  system's H3 size; then the Organization ID as a `Details` item (`organization-identifier` on its value),
+  replacing the "Organization ID:" line; then the tabs.
+- **Organization tabs** (`OrganizationTabs`). The five tabs drawn as the opportunity manage page's tabs
+  (`op-tabs`): links in a navigation landmark ("Organization sections") in small text along a rule, the
+  current one marked by `aria-current="page"`, a bar and bold text, never colour alone. Each is
+  `organization-tab-<key>` at `?tab=<key>`. They wrap on a phone.
+- **Labels** (`Membership`, `membershipColour`, and `Label` directly). The direction's `Label` replaces the
+  old circular badge everywhere. Owner, Administrator and Member are kinds of membership, not states, and
+  are grey, the direction's neutral; Pending is a state that waits on someone and is yellow, as a pending
+  team member is on the proposal screens. "Sprint With Us qualified" and "Team With Us qualified" are
+  green, a state in good standing. Each keeps its test ID (`organization-owner-badge`,
+  `organization-pending-badge`, `organization-swu-qualified-badge`, `organization-twu-qualified-badge`).
+- **Profile fields** (`ProfileDetails`, `OrganizationTab`, `ArchiveRegion`). The read-only profile: the
+  logo or "No logo has been added.", the legal name and website, then Address and Contact, each an H3 in
+  bold body text over its fields, in as many columns as fit (each at least 280 pixels, `medium` apart down
+  and `large` across). The Organization tab adds Edit organization (primary) for the owner and a service
+  administrator, or the sentence saying only the owner can change the details; Archive is its own region.
+- **Organization form** (`CreateForm`, `EditForm`). Every field, rule, message, ID and test ID of "Forms
+  and validation" in the older section, written once. Create keeps its three parts as `Panel`s
+  (Organization details, Address, Contact); edit puts Address and Contact under the tab's H2 as H3
+  regions. The fields sit in the same columns as the read-only profile. The reason the submit button is
+  unavailable sits directly before the submit row and is its `aria-describedby`: the sentence, or the
+  danger alert listing the problems (`field-error` on each item). The logo chooser is the files domain's,
+  and the refused logo's alert takes focus when it appears.
+- **Team rows** (`TeamTab`). On a wide screen the opportunity screens' `DataTable` with the team's caption
+  and four columns (Name, Membership, Capabilities, Actions). Below the header's switch point each person
+  is a stacked card instead: the name in bold body text, the membership label and "Capabilities: N" on one
+  line of small text, the row's commands beneath. The switch is read in script, as the header's is, so
+  each row and its test IDs appear once. Team capabilities follow as an H3 region.
+- **Organization rows** (`OrganizationRows`) and **pagination** (`Pagination`). The list as a `DataTable`
+  with one column (visitor, public sector staff) or five (vendor, administrator); on a phone each
+  organization is a stacked card, its name as an H2 in bold body text (a link where the viewer may open
+  it), then Owner, Team size and both qualification marks on one line of small text where R-3.21 shows
+  them. The pages are links in small text, the current one bold with `aria-current="page"`.
+- **Membership rows** (`organization-memberships.tsx`). The owned and the affiliated organizations, each a
+  `DataTable` on a wide screen and stacked cards on a phone; `membership-owned-table` and
+  `membership-affiliated-table` are on the table or on the cards' list. The page's head is the H1 and
+  the users domain's `ProfileTabs` with Organizations current.
+- **Changelog rows** (`ChangelogRows`). A `DataTable` (Date, Change, Member, Made by); on a phone a card per
+  entry, the change and the member first, the date and who made it beneath.
+- **Requirements** (`Requirements`). The requirement list, each item starting with a `Label`: "Met" green
+  or "Not met" yellow (it waits on the organization), always in words.
+- **Page alert** (`PageAlert`) and **dialog body** (`DialogBody`). An alert with content of its own and a
+  test ID on its wrapper, its title in the alert's title markup; and the two small dialogs' body,
+  `large` inside, `medium` on a phone, its title an H2 in the H4 size.
+- **Save status** (`SaveStatus`). The `role="status"` region the three immediate changes report into,
+  present before anything is saved, taking no room while empty.
+- **Terms page** (`TermsPage`). The organization's name in small secondary text over the H1, any line about
+  acceptance, the terms text in a `Panel` (`organization-terms-body`), then what the viewer may do.
+- **Response reference** (`ResponseReference`, `AnswerList`, `ORGANIZATION_REQUESTS`). The users domain's
+  shape: the small "Response reference" line and the H1, then Request and Answer regions whose pairs are
+  `Details`, each test ID on its value, or on the list inside it where the value is a list.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** No organization screen lists opportunities.
+2. **Fixed order.** Not applicable; no opportunity is shown.
+3. **Colour only for status.** The only colours of the domain's own are Pending (yellow), the qualified
+   labels and Met (green), and Not met (yellow). Owner, Administrator and Member are grey; tabs, panels,
+   tables, cards, the pagination and the qualification marks ("Yes"/"No") are neutral. The design
+   system's own alerts, error text and danger buttons keep their colours.
+4. **Programs.** They appear only as words: the qualification tabs, the terms pages and the labels.
+5. **Dense.** H1 in the H3 size; tab and region headings (Organization, Team members, Archive this
+   organization, Organizations you own, Terms and conditions, Request, Answer) in the H4 size; H3s in bold
+   body text; facts, captions, tables, cards' facts, tabs, pagination, file rules and eyebrow lines in
+   small text; regions `large` apart, items `medium`, a label and what it labels `small`. Each screen has
+   one primary button at most: Create organization on the vendor's list and the memberships page, Create
+   organization on a ready form, Edit organization on the Organization tab, Save changes while editing,
+   Add team members on the Team tab, Save service areas, Accept terms and conditions, the confirm button
+   inside a dialog. Archive is secondary with `danger`; row commands are tertiary.
+6. **Imagery.** None. A stored logo is the organization's content, not the direction's imagery.
+7. **Phones.** Regions close to `medium`; the profile's and the form's fields fall to one column; the
+   list, the team, the memberships and the changelog become stacked cards; single page actions go full
+   width; the tabs and pagination wrap; the header and footer are the shared phone versions.
+
+### Other changes in this pass
+
+- **Dialog stories draw the whole page.** The archive, administrator-rights, remove-member, invite and
+  change-owner stories, and the memberships pages' accept, decline and leave stories, used to trim the
+  page behind the dialog to the one control that opened it. They now draw the page whole (the
+  Organization tab, the Team members tab as the owner or the administrator sees it, the memberships
+  page), so the picture is the screen a person sees. Each story's comment names the story that draws the
+  same page without the dialog.
+- **Invitation alerts sit in the whole Team tab.** `invite-refused`, `invite-invalid-type` and
+  `invite-unregistered` showed only the alert and Add team members. The alert is now the first item of the
+  full Team members tab.
+- **Titles the design system dropped are rendered.** The create and edit forms' problem lists ("Fix 2
+  fields to …"), the refused-invitations alert ("2 invitations were not sent") and the refused logo's alert
+  gave `InlineAlert` both a title and content, so the design system rendered no title (the site shell's
+  gap 4). They now carry their titles in the alert's own title markup.
+- **The section-unavailable states** use the users domain's shared sections (`VendorProfileForAdministrator`,
+  `PublicSectorOwnProfile`), so they are the same screen the users domain draws for its own refused
+  sections.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### The two new request addresses
+
+Both are response references, read by the adapter as names for parts of the request and the answer, as
+the domain's other request addresses are.
+
+**`affiliation-removal-request`** — states `default` and `sole-owner`, both asked by a service
+administrator (R-3.11's example names one).
+
+- `default`: an administrator ends an ordinary member's membership; it is accepted, and the membership
+  becomes inactive rather than erased (R-3.10). The answer shows the outcome
+  (`affiliation-removal-request-accepted`) and no refusal.
+- `sole-owner`: the same request for the only owner of an organization with two further active members.
+  It is refused (`affiliation-removal-request-refusal-status`) with the surface's message "Unable to remove
+  membership. This is the sole owner for this organization." as the one item of the ordered list
+  `affiliation-removal-request-refusal-messages`, and nothing changes (R-3.11).
+- The request itself is `affiliation-removal-request-end`. These four test IDs were already filled in the
+  surface; this pass is the first to put them in a story.
+
+**`organization-request`** — states `default`, `invalid` and `refused`. Every state lists the three
+requests the surface names, each carrying its action's test ID, then says which was sent and by whom.
+
+- `default`: a vendor who has accepted the terms registers an organization; it is accepted ("Accepted: 201
+  Created", the surface's own figure), the answer carries the new identifier, and the organization read
+  afresh is active with the legal name sent (R-3.2, R-3.22, R-3.23).
+- `invalid`: the same registration with a contact email of "not-an-email" (R-3.22's own example); refused,
+  filed under the field's name, with one message, and nothing created.
+- `refused`: an organization administrator who is not the owner sends a profile change; refused as not
+  permitted, filed under "permissions", and the organization read afresh is unchanged: still active, its
+  legal name as before (R-3.18). The story says an archive request from the same person is refused the
+  same way.
+
+### Test IDs in this pass
+
+Every test ID filled before this pass is kept, on an element that does what the surface says. The ten
+`null`s on `organization-request` are now filled, each with an identifier the stories put in the markup:
+
+| Entry | Test ID | Where |
+| --- | --- | --- |
+| `register_by_request` | `organization-request-register` | the Register request's value, every state |
+| `change_profile_by_request` | `organization-request-change-profile` | the profile-change request's value, every state |
+| `archive_by_request` | `organization-request-archive` | the Archive request's value, every state |
+| `request_accepted` | `organization-request-accepted` | the Outcome in `default` |
+| `refusal_status` | `organization-request-refusal-status` | the Outcome in `invalid` and `refused` |
+| `refusal_reason` | `organization-request-refusal-reason` | "Filed under" in `invalid` (`contactEmail`) and `refused` (`permissions`) |
+| `refusal_messages` | `organization-request-refusal-messages` | the ordered list of messages in `invalid` and `refused` |
+| `organization_identifier` | `organization-request-organization-id` | the new identifier in `default` |
+| `stored_active` | `organization-request-stored-active` | "Active, read afresh" in `default` and `refused` |
+| `stored_legal_name` | `organization-request-stored-legal-name` | "Legal name, read afresh" in `default` and `refused` |
+
+A field that is empty or absent for an answer (a refusal's fields on an accepted request, the identifier
+on a refused one) is left out of that state, which the adapter reads as empty, as the domain's other
+request addresses do.
+
+### Gaps found in this pass
+
+48. **Request methods.** The surface names the operations of `affiliation-removal-request` and
+    `organization-request` (end a membership; register, change the profile, archive) and their address,
+    not the HTTP methods. The stories write DELETE, POST, PUT and DELETE as the design's reading; the
+    build states the real ones.
+49. **Refusal status numbers.** `organization-request`'s `refusal_status` is "the status code of a refused
+    request", but no criterion gives a number for R-3.2's, R-3.18's or R-3.22's refusals, nor for R-3.11's.
+    The stories use the domain's words ("Refused: not permitted", "Refused: invalid request"), as the
+    older section's gap 18 does; only the accepted 201 is the surface's own.
+50. **Messages no criterion words.** The message for an invalid contact email and the permission message
+    on `organization-request` are placeholders. The field's name in the answer is written as the service's
+    own (`contactEmail`), which the surface describes ("a field's name") but does not spell.
+51. **States with no criterion.** The surface's `refusal_reason` names `notFound` for an organization that
+    does not exist, and says a registration may be sent "with no session at all". No criterion turns on
+    either, so neither has a state; each would have the `refused` story's shape.
+52. **Legal observations on the memberships page.** `organization-user-memberships` (by identifier) lists
+    `app_terms_link`, `accepted_on_notice`, `terms_updated_warning`, `program_terms_links` and
+    `accept_updated_terms_modal`, whose test IDs (`legal-*`) are on the profile's Legal section in the users
+    domain's stories, not on the Organizations section; `organization-user-memberships-self` does not list
+    them. They are kept as filled. Whether they belong on this page is for the contract.
+53. **Colours of membership and qualification.** No criterion says how Pending, Met, Not met or a qualified
+    organization is distinguished. Yellow for what waits on someone, green for good standing and grey for
+    kinds of membership are the design's own, following the direction's use of the same colours.
+54. **Test data that does not agree with itself.** `invite-open` invites `vendor4@example.com` while Test
+    Vendor Four is already a member in the Team tab now drawn behind the dialog, and the acceptance
+    requests send `vendor.four@example.com`. The words are the stories' own and are kept; a build's
+    fixtures should not copy the clash.
+55. **Viewers chosen where a story named none.** The changelog is drawn for the owner (who made its two
+    latest changes), the list's `loading` for a visitor, the list's `refused` for a public sector employee
+    (R-3.20's refusal; the older section's gap 1 still stands), and both `not-found` states for a public
+    sector employee. The page beneath is the same for any of the viewers each criterion names.
+56. **Lists on a phone.** No criterion says anything about a narrow screen. The cards keep the columns'
+    facts and the order of the rows, and put the name first because it is what a person is looking for.
