@@ -1,23 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Link } from "@bcgov/design-system-react-components";
+import { Label } from "./marketplace";
+import { Actions, DataTable, OpportunityPage, PageTitle, Region, STAFF, StatusLabel } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // opportunity-dashboard · default — a public sector employee sees only the opportunities they created (R-1.3)
-const meta: Meta = { title: "opportunities/opportunity-dashboard/default" };
+const meta: Meta = { title: "opportunities/opportunity-dashboard/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
 
 const rows = [
   { id: "7c1e2d40-5b1a-4c2e-9d3f-000000000101", program: "code-with-us", title: "Build an accessible permit tracker", programName: "Code With Us", status: "Published", updated: "September 10, 2026" },
@@ -27,43 +16,40 @@ const rows = [
 
 export const Default: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-      <Heading level={1}>Dashboard</Heading>
-      <div>
-        <Link href="/opportunities/create" isButton buttonVariant="primary" data-testid="dashboard-create-opportunity">Create an opportunity</Link>
-      </div>
-      <Stack as="section" gap="medium" aria-labelledby="dashboard-mine-heading">
-        <Heading level={2} id="dashboard-mine-heading">My opportunities</Heading>
-        <div role="region" aria-labelledby="dashboard-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-          <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="dashboard-opportunities-table">
-            <caption id="dashboard-caption" style={{ textAlign: "start" }}>
-              <Text size="small" color="secondary">Opportunities you created</Text>
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" style={cell}>Title</th>
-                <th scope="col" style={cell}>Program</th>
-                <th scope="col" style={cell}>Status</th>
-                <th scope="col" style={cell}>Last updated</th>
+    <SitePage viewer={STAFF} current="dashboard">
+      <OpportunityPage>
+        <PageTitle>Dashboard</PageTitle>
+        <Actions>
+          <Link href="/opportunities/create" isButton buttonVariant="primary" data-testid="dashboard-create-opportunity">
+            Create an opportunity
+          </Link>
+        </Actions>
+        <Region id="dashboard-mine-heading" title="My opportunities">
+          <DataTable
+            captionId="dashboard-caption"
+            caption="Opportunities you created"
+            columns={["Title", "Program", "Status", "Last updated"]}
+            testId="dashboard-opportunities-table"
+          >
+            {rows.map((r) => (
+              <tr key={r.id} data-testid="dashboard-opportunity-row">
+                <td>
+                  <Link href={`/opportunities/${r.program}/${r.id}/edit`} data-testid="dashboard-opportunity-link">
+                    {r.title}
+                  </Link>
+                </td>
+                <td>
+                  <Label>{r.programName}</Label>
+                </td>
+                <td>
+                  <StatusLabel>{r.status}</StatusLabel>
+                </td>
+                <td>{r.updated}</td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} data-testid="dashboard-opportunity-row">
-                  <td style={cell}>
-                    <Link href={`/opportunities/${r.program}/${r.id}/edit`} data-testid="dashboard-opportunity-link">{r.title}</Link>
-                  </td>
-                  <td style={cell}>{r.programName}</td>
-                  <td style={cell}><span style={badge} data-testid="opportunity-status">{r.status}</span></td>
-                  <td style={cell}>{r.updated}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Stack>
-      </Stack>
-    </PageContainer>
+            ))}
+          </DataTable>
+        </Region>
+      </OpportunityPage>
+    </SitePage>
   ),
 };

@@ -282,7 +282,9 @@ function PhoneHeader({ viewer, current, signInTestId, signUpTestId }: HeaderProp
           </Button>
         </div>
       </Header>
-      <div id={menuId} className="site-menu" hidden={!open}>
+      {/* The open menu is one labelled region, so the service's name and the account actions sit inside a landmark
+          with the navigation rather than outside every landmark. */}
+      <section id={menuId} className="site-menu" aria-label="Menu" hidden={!open}>
         <p className="site-menu-name">Digital Marketplace</p>
         <nav aria-label="Main">
           <ul>
@@ -330,7 +332,7 @@ function PhoneHeader({ viewer, current, signInTestId, signUpTestId }: HeaderProp
             </>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

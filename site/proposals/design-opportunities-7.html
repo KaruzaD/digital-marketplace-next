@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>design-opportunities-7 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">660</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">654</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">533</span></a></li><li><a href="../runs.html">Run log <span class="count">25</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>design-opportunities-7</h1>
+<p class="lede">G-DESIGN · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G-DESIGN</td></tr><tr><th scope="row">opened</th><td>2026-10-17 21:17</td></tr><tr><th scope="row">holder</th><td>agent:ux-reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Do these screens serve the opportunities criteria, and are they built out of the design system?</h2>
+<p><strong>Recommendation.</strong> Nothing was left to do when this check came back.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>Nothing was left to do when this check came back.</p>
+<ul><li><strong>Helper stories:</strong> all four helpers finished, and I reviewed their stories and fixed what I found. The report pages&#39; proposal headings now sit at H3 under &quot;Proposals&quot;, and the Sprint With Us editing form&#39;s parts are bordered panels again.</li><li><strong>Contract test IDs:</strong> every <code>test_id: null</code> on this domain&#39;s pages in <code>spec/contract/surface.yaml</code> is filled. The first remaining <code>null</code> is at line 479, on the proposal pages, which belong to another domain.</li><li><strong><code>DESIGN.md</code>:</strong> the new section &quot;Opportunity screens in the chosen direction&quot; is added at the end of the file, with gaps 29 to 34.</li></ul>
+<p>The journal entry in my previous message stands as the final report for this stage.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:ux-reviewer (persona agent · claude claude-opus-5-5) on 2026-10-17 21:18.</p>
+<div class="body"><p>Question: do the opportunities screens serve their criteria and come from the design system? Approved. design/report.json is ok with zero axe violations across the catalogue, and typecheck and build pass. Every surface.yaml change on this domain fills a test_id that was null; none already filled was altered. The new opportunity-kit.tsx composes design-system components (Heading, ButtonGroup, Link, ProgressCircle, form fields) styled only with layout, surface and typography tokens. Its only literals are a 200px minimum detail-column width and the phone breakpoint, neither a colour or spacing value, and DESIGN.md names the kit as the project&#39;s own compositions rather than design-system components. In the screenshots (cwu-view default, swu-view awarded, dashboard default, program-select default, twu-edit default, swu-edit editing), content sits in the shared PageContainer aligned with the banner, regions and items are evenly spaced on the large/medium/small token rhythm with no doubled margins, and colour appears only on status labels. R-1.27 is honoured: contact and score render only for the administrator viewer in the awarded story. R-1.33 v2 is honoured: no note control on the History section. The phone menu becoming a labelled section fixes a landmark gap without changing layout. Tier is STANDARD, so no escalation. This would become a return if any axe violation appeared, a filled test_id changed, a hard-coded colour or spacing value were found, or a story&#39;s content sat outside the page container.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

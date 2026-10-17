@@ -1,21 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, ProgressCircle, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { ADMIN, OpportunityPage, PageTitle, Waiting } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // opportunity-cwu-edit · loading — the opportunity has not arrived yet
-const meta: Meta = { title: "opportunities/opportunity-cwu-edit/loading" };
+const meta: Meta = { title: "opportunities/opportunity-cwu-edit/loading", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Loading: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Manage a Code With Us opportunity</Heading>
-        <Stack direction="row" align="center" gap="small" role="status">
-          <ProgressCircle isIndeterminate aria-label="Loading opportunity" />
-          <Text>Loading opportunity…</Text>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <SitePage viewer={ADMIN} current="dashboard">
+      <OpportunityPage>
+        <PageTitle>Manage a Code With Us opportunity</PageTitle>
+        <Waiting label="Loading opportunity" />
+      </OpportunityPage>
+    </SitePage>
   ),
 };

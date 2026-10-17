@@ -3947,3 +3947,247 @@ violations at all three widths; the catalogue scan checks desktop width only.
 5. **Line heights differ from the Figma library.** The CSS tokens set the H3 size at 28 pixels on a
    48-pixel line, where the Figma library's H3 style uses a 42-pixel line, so headings in the stories stand
    taller than in the Figma drafts.
+
+## Opportunity screens in the chosen direction
+
+Every screen of the opportunities domain now follows "Site shell and the chosen direction" above.
+The home page and the opportunity list were already drawn that way and are unchanged; this section
+covers the rest: the dashboard, choosing a program, the three programs' create, view, manage and
+report pages, `/status`, and the four request addresses. Where this section and the older
+"Domain: opportunities" section disagree about how a screen looks (the status badge, the key facts
+list, the opportunity card, the card section, the inline-styled table, heading sizes), this section
+is the current one. What that section says about behaviour, states, who is offered what, dialogs,
+validation, test IDs and gaps still holds, except where this section says otherwise.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is
+seen by and the section the page belongs to:
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| Opportunity views | `default` a vendor, `signed-out` a visitor, `author` the public sector employee who wrote it, `awarded` an administrator, `loading` a visitor | Opportunities |
+| Dashboard, choosing a program, create, manage, complete report | the public sector employee or the administrator the story names | Dashboard |
+| `not-found` of any page | the person the refusal is about (a vendor, a visitor, or staff who are not administrators) | none |
+| `/status` and the request addresses | the requester the story names (a visitor where there is no session) | none |
+
+The viewer decides the header's navigation and account area, nothing else on the page.
+
+### The direction's opportunity components
+
+`design/catalogue/opportunity-kit.tsx`. All are this project's own compositions of design-system
+components (`Heading`, `Link`, `ButtonGroup`, `ProgressCircle`, `Text`) and tokens, built on
+`marketplace.tsx`'s `Label` and `look`, and laid out with `layout.tsx`'s `PageContainer`. None of them
+is a design-system component.
+
+- **Opportunity page** (`OpportunityPage`). The page container, the direction's style sheets, and
+  the page's regions in one column, `--layout-margin-large` apart (`medium` on a phone). It replaces
+  `PageContainer` with an outer `Stack` on every story of this domain.
+- **Opportunity head** (`OpportunityHead`). Rule 2 on a single opportunity: an optional small line
+  saying what the page is ("Manage a Sprint With Us opportunity", "Team With Us opportunity report"),
+  the program as a grey `Label` and the status as a coloured `Label`, the title as the H1 in the
+  design system's H3 size, then the facts in small text in the fixed order — "Closes" (or "Closed")
+  and the proposal deadline on their own line, then the value (named: Reward, Total maximum budget
+  or Maximum budget), the location and Remote OK — and the teaser in body text. A head shows only the
+  facts its page has; it never reorders them.
+- **Status label** (`StatusLabel`, `statusColour`). The `Label` coloured by the status's words:
+  grey for Draft and Completed, yellow while the opportunity waits on someone (Under review, any
+  evaluation stage, Processing), green for Open, Published and Awarded, red for Cancelled. It always
+  carries the status in words and is the only coloured thing on these screens (rule 3). It carries
+  `opportunity-status`; a status shown where the old design had no test ID uses `Label` with
+  `statusColour` so no test ID is added.
+- **Details** (`Details`). The facts beyond the head's, as a `<dl>` of term and value pairs in as
+  many columns as fit (each at least 200 pixels), terms in bold small text, values in small text.
+  It replaces the old key facts list and every "Label: value" line, including the Opportunity ID.
+- **Region** (`Region`) and **section title** (`SectionTitle`). A labelled `<section>` with an H2
+  in the design system's H4 size (or an H3 in bold body text), its items `medium` apart.
+- **Panel** (`Panel`). A bordered `<section>` or `<article>` with `--layout-padding-medium` inside
+  and an H2: one part of a long form, a program choice, a proposal in the report. It replaces the
+  old card section.
+- **Fieldset** (`Fieldset`). A repeated item of a form (a phase, a question, a resource, a panel
+  member): a token border, a legend in bold body text, its fields `medium` apart.
+- **Action bar** (`ActionBar`). The design system's `ButtonGroup` ("Opportunity actions") inside a
+  wrapper that carries `opportunity-actions`, because `ButtonGroup` passes no `data-*`. The wrapper is
+  always present; when nothing is offered it is empty and takes no space.
+- **Manage tabs** (`ManageTabs`). The manage page's tabs as links in a navigation landmark
+  ("Opportunity sections"), each `opportunity-tab-<key>` at `?tab=<key>`, in small text along a
+  rule, the current one marked by `aria-current="page"`, a bar and bold text, never colour alone —
+  the same marking as the header's navigation. They wrap onto further lines on a phone. Several
+  Sprint With Us and Team With Us tabs have addresses whose query value is not their test ID's
+  suffix (`?tab=evaluationPanel` is `opportunity-tab-evaluation-panel`; likewise `teamQuestions`,
+  `codeChallenge`, `teamScenario` and `resourceQuestions`). Those stories keep their addresses and
+  test IDs and write the same markup out by hand; the look and behaviour are the component's.
+- **Data table** (`DataTable`). A native table with a caption and column headers, in small text,
+  inside a focusable region labelled by its caption that scrolls sideways on a narrow screen. It is
+  the dashboard and the History tab.
+- **Actions** (`Actions`). A row of links or buttons that wraps, and on a phone stacks at full
+  width.
+- **Waiting** and **missing page** (`Waiting`, `MissingPage`). The loading status beside a spinner,
+  and the users domain's "Page not found" (`not-found-page`) in the direction's type.
+
+`design/catalogue/opportunity-view-page.tsx` is the opportunity view, one component for the three
+programs, with the stories' record text.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** The dashboard's table of opportunities follows directly after the H1
+   and the one action; the view puts the opportunity's head and facts before anything else.
+2. **Fixed order.** Every opportunity head shows program and status, title, closing date, value,
+   location and Remote OK, then the teaser. On the views all of these are present; the manage and
+   report pages show the labels and title in the head and the remaining facts in their Summary or
+   Opportunity section, in the same order.
+3. **Colour only for status.** Program labels are grey. Nothing else is coloured: not the tabs,
+   not the panels, not the dashboard's program column.
+4. **Programs.** Outside the home page a program appears as its label. Choosing a program shows the
+   three as equal panels, each with its maximum budget and its Create link; none is the primary
+   action, so the three links are secondary buttons.
+5. **Dense.** Facts, details, captions, tables and tabs are in small body text; the H1 is in the
+   design system's H3 size and section headings in its H4 size; regions are `large` apart, items
+   `medium`, a label and what it labels `small`. Each screen has one primary button at most: Start a
+   proposal on a vendor's view, Create an opportunity on the dashboard, Submit for review or Publish
+   on a form or a manage page, the confirm button inside a dialog.
+6. **Imagery.** None on these screens.
+7. **Phones.** Regions close to `medium`; the head's facts wrap onto two lines; details fall to one
+   column; actions stack at full width; tables scroll inside their region; the header and footer are
+   the shared phone versions.
+
+### The opportunity view
+
+The order is: the page's own messages (Sprint With Us), the head, the details (Remote work,
+Published, Created by and Last changed by where the viewer may see them, Opportunity ID), the one
+thing the viewer can do, the successful proponent when awarded, then the sections — Description,
+the program's own section (Skills; Phases and Skills; Resources), Scope (Sprint With Us), Key dates,
+Addenda, and Terms and Conditions (Team With Us).
+
+- **Status wording** follows the opportunity list: a vendor or a visitor sees "Open"; the author
+  and an administrator see the stage ("Published", "Awarded").
+- **What the viewer can do.** A vendor: the Watch checkbox with its sentence and status region,
+  and Start a proposal (primary). The author: Manage this opportunity (secondary). A visitor:
+  nothing. An administrator on an awarded opportunity: Watch.
+- **The successful proponent** (`awarded`). The name (`opportunity-successful-proponent`) to
+  everyone; the contact details (`opportunity-successful-proponent-contact`) and the score
+  (`opportunity-successful-proponent-score`) as two details beneath it, rendered only for a viewer
+  permitted to see proposal scores (R-1.27). The `awarded` story is therefore seen by an
+  administrator; a vendor or a visitor sees the same page without those two details.
+- **Key dates** are a details list, each date with its own test ID: `opportunity-assignment-date`,
+  `opportunity-start-date` and, on Team With Us, `opportunity-completion-date`. The Code With Us view
+  shows no completion date, as the contract records; it is read on the manage page. Sprint With Us
+  shows the assignment date only; its other dates are its phases'.
+- **The page's own messages** (Sprint With Us, `opportunity-page-messages`). A wrapper always
+  present above the head, empty when no notice applies, holding each notice as an `info`
+  `InlineAlert`. The stories show the notice for a visitor while the opportunity accepts proposals
+  (`signed-out`) and for an awarded opportunity (`awarded`). See gap 30 for their wording.
+- **Embedded service pages.** Sprint With Us embeds the scope page in a Scope section
+  (`opportunity-scope`); Team With Us embeds its terms and conditions page in a Terms and Conditions
+  section (`opportunity-terms`). Each renders the page's body as the service holds it; the stories
+  show a placeholder line.
+
+### The manage page
+
+The order is: the head ("Manage a … opportunity", program, status, title), the details (Opportunity
+ID), the action bar, the tabs, any page alert, and the current tab's section. The action bar's
+wrapper (`opportunity-actions`) is the contract's `offered_state_changes` on the Team With Us manage
+page: it holds exactly the changes of state the signed-in person is offered from the current state,
+and is empty when there are none. The History tab's section is `opportunity-history-section`: the
+contract's `note_control_offered` reads true if that section holds any control for adding a note,
+and it holds none on any program (R-1.33 v2). The Opportunity tab's date pickers in the `editing`
+stories are the contract's dates on the manage page (`opportunity-deadline-field`,
+`opportunity-assignment-date-field`, `opportunity-start-date-field`,
+`opportunity-completion-date-field`). The evaluator's Instructions and Evaluation tabs are the
+evaluation domain's, drawn in its stories (`opportunity-tab-instructions`,
+`opportunity-tab-evaluation`), and the contract binds them there.
+
+### Forms
+
+The create forms and the Opportunity tab in edit mode keep every field, rule, message and test ID of
+"Forms and validation" above. Each part of the form is a `Panel` (an H2 on a create page, an H3
+under the tab's H2 on the manage page); each repeated item a `Fieldset`. The submit row stays the
+design system's `ButtonGroup`; the group-level errors keep `Text color="danger"`, the design
+system's own error colour, which is status in the sense of rule 3.
+Each evaluation question (a Sprint With Us team question or a Team With Us resource question) is a
+`Fieldset` carrying `evaluation-question`, in list order: the contract's `evaluation_question_fields`
+for the question at a given place is the fields inside that fieldset — Question
+(`question-text-field`), Guideline (`question-guideline-field`), Response word limit
+(`question-word-limit-field`), Maximum score (`question-score-field`) and Minimum score
+(`question-minimum-score-field`) — and no position or order field. On the manage page the
+contract reads these "on the team questions tab while editing"; the design has no separate editing
+form on that tab, so they are bound in the Opportunity tab's form (`editing`), the only place the
+questions are edited (gap 33).
+
+### Dashboard, report, status and request addresses
+
+- **Dashboard.** The H1, Create an opportunity (primary), then the table of opportunities as a
+  `DataTable` with a grey program `Label` and a coloured `StatusLabel` in each row. The empty and
+  loading states keep their words.
+- **Complete report.** The head ("… opportunity report", program, status, title), then one
+  `<article>` (`opportunity-full-report`) holding the Opportunity, Addenda, History and Proposals
+  sections, each proposal a `Panel` article. Nothing is hidden or tabbed, so it reads and prints as
+  one document.
+- **`/status`** keeps its two test IDs on the page wrapper and the sentence.
+- **Request addresses** (`opportunity-watch-request`, `opportunity-counters`,
+  `opportunity-history-request`, `opportunity-status-request`). The response references keep their
+  structure and every test ID: a small "Response reference" line and the H1, then Request and Answer
+  regions whose pairs are `Details`.
+
+### The phone menu's landmark
+
+On a phone the open menu panel was a plain `div` after the banner, so its "Digital Marketplace"
+line and the account actions sat outside every landmark (axe `region` on the running app). The
+open panel is now one `<section aria-label="Menu">`, a labelled region holding the service's name,
+the Main navigation and the account actions; the Main and Account navigations stay inside it.
+`aria-controls` on the Menu button still points at it.
+
+### Test IDs added in this pass
+
+All bind elements in the stories above, and are filled in `spec/contract/surface.yaml`:
+
+| Page | Observation | Test ID |
+| --- | --- | --- |
+| cwu, swu, twu view | `assignment_date` | `opportunity-assignment-date` |
+| cwu, twu view | `start_date` | `opportunity-start-date` |
+| twu view | `completion_date` | `opportunity-completion-date` |
+| cwu, swu, twu view | `successful_proponent_contact_details` | `opportunity-successful-proponent-contact` |
+| cwu, swu, twu view | `successful_proponent_score` | `opportunity-successful-proponent-score` |
+| swu view | `scope_section` | `opportunity-scope` |
+| swu view | `page_messages` | `opportunity-page-messages` |
+| twu view | `terms_section` | `opportunity-terms` |
+| cwu, swu, twu edit | `proposal_deadline` | `opportunity-deadline-field` |
+| cwu, swu, twu edit | `assignment_date` | `opportunity-assignment-date-field` |
+| cwu, twu edit | `start_date` | `opportunity-start-date-field` |
+| cwu, twu edit | `completion_date` | `opportunity-completion-date-field` |
+| cwu, swu edit | `note_control_offered` | `opportunity-history-section` |
+| swu, twu edit | `instructions_tab` | `opportunity-tab-instructions` |
+| swu, twu edit | `evaluation_tab` | `opportunity-tab-evaluation` |
+| twu edit | `offered_state_changes` | `opportunity-actions` |
+| swu, twu create and edit | `evaluation_question_fields` | `evaluation-question` |
+
+Every test ID filled before this pass is kept, on an element that does what it did.
+
+### Gaps found in this pass
+
+29. **The awarded view shows two audiences.** R-1.27 separates the name, which everyone sees, from
+    the contact details and score, which only a reader permitted to see scores sees. One `awarded`
+    state can show only one of them; the story shows the permitted reader (an administrator).
+    Whether a separate state should show a vendor's view is for the spec, though nothing differs
+    but the two details' absence. The contact details' and score's wording and format are not
+    stated; the stories' values are test data.
+30. **The Sprint With Us view's own notices.** The contract names four cases in which the page
+    raises a notice above the opportunity, but no criterion gives their words. The stories' two
+    sentences ("Sign in as a vendor to submit a proposal to this opportunity." and "This
+    opportunity has been awarded.") are the design's own and need the spec's wording. The other two
+    cases (a vendor who has already proposed; a vendor whose organizations are not qualified) have
+    no state of their own on this page and no wording.
+31. **The embedded service pages.** The scope page and the Team With Us terms page are the content
+    domain's; the stories show a placeholder for their body, and what the section shows when the
+    page cannot be read is not stated beyond "empty".
+32. **The Code With Us view's completion date.** The earlier stories listed a completion date on
+    the Code With Us view; the contract records that the view shows none, so it has been removed
+    from that view and is read on the manage page.
+33. **Where evaluation questions are edited on the manage page.** The contract says the question
+    fields are read "on the team questions tab while editing" (and the resource questions tab). In
+    this design those tabs belong to the evaluation stage and show proponents' answers, and the
+    questions are edited in the Opportunity tab's form. The binding (`evaluation-question`) is the
+    same element either way; which tab carries the editor is for the spec to confirm.
+34. **Viewers chosen where a story named none.** Several manage stories (the Addenda and History
+    tabs, consensus, the loading states) did not say who is looking. They are drawn for an
+    administrator, the one viewer offered every action those states can show.

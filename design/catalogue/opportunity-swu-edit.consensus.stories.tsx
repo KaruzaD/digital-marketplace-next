@@ -1,94 +1,83 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, ButtonGroup, Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, Link } from "@bcgov/design-system-react-components";
+import { ADMIN, ActionBar, Details, OpportunityHead, OpportunityPage, Region } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // opportunity-swu-edit · consensus — at the consensus stage the opportunity's owner or an administrator may finalise
 // the agreed scores; this is the one path out of the stage (R-1.41, R-1.50, R-5.14). The same action bar sits above
 // every tab, including the evaluation domain's Consensus tab.
-const meta: Meta = { title: "opportunities/opportunity-swu-edit/consensus" };
+const meta: Meta = { title: "opportunities/opportunity-swu-edit/consensus", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
 const base = "/opportunities/sprint-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000201/edit";
+
+// The tabs' addresses use the service's tab names (?tab=teamQuestions), which differ from their test IDs' suffixes, so
+// they are written in ManageTabs' markup here rather than with ManageTabs.
+const tabs = [
+  { tab: "summary", testId: "opportunity-tab-summary", label: "Summary" },
+  { tab: "opportunity", testId: "opportunity-tab-opportunity", label: "Opportunity" },
+  { tab: "addenda", testId: "opportunity-tab-addenda", label: "Addenda" },
+  { tab: "history", testId: "opportunity-tab-history", label: "History" },
+  { tab: "proposals", testId: "opportunity-tab-proposals", label: "Proposals" },
+  { tab: "teamQuestions", testId: "opportunity-tab-team-questions", label: "Team questions" },
+  { tab: "codeChallenge", testId: "opportunity-tab-code-challenge", label: "Code challenge" },
+  { tab: "teamScenario", testId: "opportunity-tab-team-scenario", label: "Team scenario" },
+  { tab: "evaluationPanel", testId: "opportunity-tab-evaluation-panel", label: "Evaluation panel" },
+  { tab: "consensus", testId: "opportunity-tab-consensus", label: "Consensus" },
+];
 
 export const Consensus: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Manage a Sprint With Us opportunity</Text>
-          <Heading level={1}>Modernize the licence renewal service</Heading>
-        </Stack>
-        <Stack direction="row" align="center" gap="medium">
-          <Text elementType="p">Status: <span style={badge} data-testid="opportunity-status">Team questions: consensus</span></Text>
-          <Text elementType="p" size="small" color="secondary">
-            Opportunity ID: <span data-testid="opportunity-identifier">7c1e2d40-5b1a-4c2e-9d3f-000000000201</span>
-          </Text>
-        </Stack>
-        <ButtonGroup ariaLabel="Opportunity actions">
+    <SitePage viewer={ADMIN} current="dashboard">
+      <OpportunityPage>
+        <OpportunityHead
+          eyebrow="Manage a Sprint With Us opportunity"
+          program="sprint-with-us"
+          status="Team questions: consensus"
+          title="Modernize the licence renewal service"
+        />
+        <Details
+          items={[{ term: "Opportunity ID", value: "7c1e2d40-5b1a-4c2e-9d3f-000000000201", testId: "opportunity-identifier" }]}
+        />
+        <ActionBar>
           <Button variant="secondary" data-testid="opportunity-edit-button">Edit</Button>
           <Button variant="primary" data-testid="finalize-consensus-button">Finalize consensus scores</Button>
           <Button variant="secondary" danger data-testid="opportunity-cancel-button">Cancel opportunity</Button>
-        </ButtonGroup>
-        <nav aria-label="Opportunity sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href={`${base}?tab=summary`} aria-current="page" data-testid="opportunity-tab-summary">Summary</Link></li>
-            <li><Link href={`${base}?tab=opportunity`} data-testid="opportunity-tab-opportunity">Opportunity</Link></li>
-            <li><Link href={`${base}?tab=addenda`} data-testid="opportunity-tab-addenda">Addenda</Link></li>
-            <li><Link href={`${base}?tab=history`} data-testid="opportunity-tab-history">History</Link></li>
-            <li><Link href={`${base}?tab=proposals`} data-testid="opportunity-tab-proposals">Proposals</Link></li>
-            <li><Link href={`${base}?tab=teamQuestions`} data-testid="opportunity-tab-team-questions">Team questions</Link></li>
-            <li><Link href={`${base}?tab=codeChallenge`} data-testid="opportunity-tab-code-challenge">Code challenge</Link></li>
-            <li><Link href={`${base}?tab=teamScenario`} data-testid="opportunity-tab-team-scenario">Team scenario</Link></li>
-            <li><Link href={`${base}?tab=evaluationPanel`} data-testid="opportunity-tab-evaluation-panel">Evaluation panel</Link></li>
-            <li><Link href={`${base}?tab=consensus`} data-testid="opportunity-tab-consensus">Consensus</Link></li>
-          </Stack>
+        </ActionBar>
+        <nav className="op-tabs" aria-label="Opportunity sections">
+          <ul>
+            {tabs.map((t) => (
+              <li key={t.tab}>
+                <Link href={`${base}?tab=${t.tab}`} aria-current={t.tab === "summary" ? "page" : undefined} data-testid={t.testId}>
+                  {t.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </nav>
-        <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-          <Heading level={2} id="tab-heading">Summary</Heading>
-          <Text elementType="p">
+        <Region id="tab-heading" title="Summary">
+          <p className="op-text">
             Finalizing records the agreed scores against each proponent and moves up to four proponents who met every minimum
             score into the code challenge. It cannot be undone.
-          </Text>
-          <Stack as="dl" direction="row" gap="medium">
-            <Stack gap="small">
-              <dt style={term}>Proposal deadline</dt>
-              <dd>September 11, 2026 at 4:00 p.m. Pacific time</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Created by</dt>
-              <dd data-testid="opportunity-created-by">Test Public Servant</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Last changed by</dt>
-              <dd data-testid="opportunity-last-changed-by">Test Administrator</dd>
-            </Stack>
-          </Stack>
-          <Stack as="section" gap="medium" aria-labelledby="reporting-heading">
-            <Heading level={3} id="reporting-heading">Reporting</Heading>
-            <Stack as="dl" direction="row" gap="medium">
-              <Stack gap="small">
-                <dt style={term}>Views</dt>
-                <dd data-testid="reporting-views">518</dd>
-              </Stack>
-              <Stack gap="small">
-                <dt style={term}>Watchers</dt>
-                <dd data-testid="reporting-watchers">21</dd>
-              </Stack>
-              <Stack gap="small">
-                <dt style={term}>Proposals submitted</dt>
-                <dd data-testid="reporting-proposals">6</dd>
-              </Stack>
-            </Stack>
-          </Stack>
-        </Stack>
-      </Stack>
-    </PageContainer>
+          </p>
+          <Details
+            items={[
+              { term: "Proposal deadline", value: "September 11, 2026 at 4:00 p.m. Pacific time" },
+              { term: "Created by", value: "Test Public Servant", testId: "opportunity-created-by" },
+              { term: "Last changed by", value: "Test Administrator", testId: "opportunity-last-changed-by" },
+            ]}
+          />
+          <Region id="reporting-heading" title="Reporting" level={3}>
+            <Details
+              items={[
+                { term: "Views", value: "518", testId: "reporting-views" },
+                { term: "Watchers", value: "21", testId: "reporting-watchers" },
+                { term: "Proposals submitted", value: "6", testId: "reporting-proposals" },
+              ]}
+            />
+          </Region>
+        </Region>
+      </OpportunityPage>
+    </SitePage>
   ),
 };
