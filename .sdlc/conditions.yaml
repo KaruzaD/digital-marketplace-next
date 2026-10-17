@@ -3373,3 +3373,41 @@ conditions:
         docs/decisions/0064-an-individual-submission-covers-the-proposals-it-names.md.
       by: agent:reviewer
       at: 2026-10-04T17:41:46.399Z
+  - ref: design-files-3#1
+    text: "In design/catalogue/file-kit.tsx, remove the doubled spacing around the
+      stated rules: the <p className=\"op-note\"> inside the wrapper divs for
+      attachment-size-limit (AttachmentControl), image-file-rule (PictureGroup)
+      and embedded-image-rule (ImageEditor) keeps the browser's paragraph margin
+      on top of the stack gap, because the kits zero only direct children.
+      Either put the id and data-testid on the <p> itself and drop the wrapper,
+      or zero the nested paragraph's margin with var(--layout-margin-none). Keep
+      every test ID on an element that does what surface.yaml says."
+    from: design-files-3
+    family: design-files
+    gate: G-DESIGN
+    stage: design
+    by: agent:ux-reviewer
+    at: 2026-10-17T23:01:05.470Z
+  - ref: design-files-3#2
+    text: Apply the same fix to the attachment-resulting-name wrapper (<div
+      id="attachment-new-1-result"><p className="op-note">) in
+      design/catalogue/file-attachment-control.new-attachment.stories.tsx, and
+      to any other story in this domain that wraps a paragraph this way inside
+      .op-panel, .fl-row, .fl-group or .fl-editor.
+    from: design-files-3
+    family: design-files
+    gate: G-DESIGN
+    stage: design
+    by: agent:ux-reviewer
+    at: 2026-10-17T23:01:05.470Z
+  - ref: design-files-3#3
+    text: Re-render and check that, in file-attachment-control default/too-large,
+      file-image-picker default/rejected and file-embedded-image default, the
+      gaps around each stated rule equal the container's own token gap (medium
+      in the panel, small in the row, group and editor).
+    from: design-files-3
+    family: design-files
+    gate: G-DESIGN
+    stage: design
+    by: agent:ux-reviewer
+    at: 2026-10-17T23:01:05.470Z
