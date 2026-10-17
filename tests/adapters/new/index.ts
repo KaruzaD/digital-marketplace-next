@@ -176,13 +176,15 @@ export default function create(
     return lines.join("\n");
   }
 
-  // The site's footer: its links over "Owned and operated by the B.C. Government.", with no
-  // landmark role of its own. A footer drawn as a contentinfo landmark is taken first.
+  // The site's footer: the contentinfo landmark, or, where the footer has no landmark role, the
+  // block around "Owned and operated by the B.C. Government.". When the landmark holds that line
+  // in a small block of its own, both match; the outermost (first in document order) is the
+  // whole footer, links and all.
   function siteFooter(): Locator {
     return page
       .getByRole("contentinfo")
       .or(page.getByText("Owned and operated by the B.C. Government.", { exact: true }).locator("xpath=.."))
-      .last();
+      .first();
   }
 
   async function textLines(): Promise<string[]> {

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bind-adapter-new-91 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">657</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">651</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">531</span></a></li><li><a href="../runs.html">Run log <span class="count">25</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>bind-adapter-new-91</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-17 20:03</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does this adapter bind every surface action and observation on new, and nothing else?</h2>
+<p><strong>Recommendation.</strong> I fixed condition 1 (R-7.19): the footer is now read as the whole footer, not just the small block holding the ownership line.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I fixed condition 1 (R-7.19): the footer is now read as the whole footer, not just the small block holding the ownership line. The type check did not run, so the change is checked only against the live page.</p>
+<p><strong>What changed.</strong> In <code>tests/adapters/new/index.ts</code>, <code>siteFooter()</code> (around line 181) used to pick the <em>last</em> match of &quot;the contentinfo landmark, or the parent of the &#39;Owned and operated by the B.C. Government.&#39; line&quot;. On the page the ruling saw, both of those match: the ownership line sits in its own small block inside the landmark. Taking the last match picked that inner block, so <code>presentWhenSignedOut</code> returned only the ownership line and <code>aboutLink</code> came back empty. It now takes the <em>first</em> match. An outer element always comes before the elements inside it on a page, so the first match is the whole footer: the landmark when there is one, and the block around the ownership line when there is not. I updated the comment above it. That was the only edit.</p>
+<p><strong>Checked on the target.</strong> On <code>http://localhost:4300/</code> the footer is now a single contentinfo landmark, and the page I opened did not show the ownership line at all. Its layout differs a little from the one in the ruling&#39;s evidence, but both layouts resolve to the same element under the new rule. Run against the live page, the new locator:</p>
+<ul><li>matched exactly one element, the whole footer;</li><li>had text ending &quot;ABOUT THIS SERVICE / About / Disclaimer / Privacy / Accessibility / Copyright / © 2026 Government of British Columbia.&quot;;</li><li>returned <code>/content/about</code> for the About link.</li></ul>
+<p><strong>Not done.</strong> I could not run <code>tsc</code> or a standalone Playwright script, because the sandbox refused both commands. The change only swaps <code>.last()</code> for <code>.first()</code>, so it cannot alter any types, but the type check has not been run.</p>
+<p><strong>Left alone.</strong> Every other page footer reads, including <code>contentFooter</code>&#39;s link reads, <code>openFromFooter</code> and the footer trim in <code>mainText</code>, already goes through <code>siteFooter()</code>, so they pick up the fix with no changes of their own. <code>bindings.yaml</code> is unchanged, because nothing moved between bound, unbound and absent. No other member was rebound, and nothing outside <code>tests/adapters/new/</code> was touched.</p>
+<p>Nothing is deferred.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-17 20:04.</p>
+<div class="body"><p>Question: does this adapter bind every surface action and observation on new, and nothing else — specifically, does it answer the R-7.19 revision request from build-slice-1-8? Ruling: approve. The only change is siteFooter() in tests/adapters/new/index.ts taking .first() instead of .last() of <code>getByRole(&#39;contentinfo&#39;).or(&lt;parent of the ownership line&gt;)</code>. Playwright resolves an .or() union in document order, and an ancestor precedes its descendants, so when the ownership line sits in its own block inside the contentinfo landmark the first match is the landmark, the whole footer, which is what the reviewer asked for. Where there is no landmark it still falls back to the block around the ownership line. The change is navigation/locator only, carries no assertion or pass/fail logic, leaves bindings.yaml and everything under tests/acceptance untouched, and the runner-owned tsc check on bf291d383a passed with no diagnostics under adapters/new/, which covers the type check the author could not run. The author&#39;s live check reports one matched element containing all five R-7.19 link labels and /content/about for the About link. What would change the ruling: a verify run of slice 1 in which R-7.19 still reads only the ownership line or an empty About link, or the footer locator resolving to more than one element.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>
