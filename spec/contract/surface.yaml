@@ -1317,7 +1317,7 @@ pages:
     actions:
       # The tab opens read-only; Edit makes the panel changeable. It is offered only at
       # the stages listed above.
-      start_editing: { test_id: null }
+      start_editing: { test_id: evaluation-panel-edit }
       add_panel_member: { test_id: evaluation-panel-add-member }
       remove_panel_member: { test_id: evaluation-panel-remove-member }
       choose_panel_chair: { test_id: evaluation-panel-chair-field }
@@ -1339,7 +1339,7 @@ pages:
     route: /opportunities/team-with-us/:opportunityId/edit?tab=evaluationPanel
     title: "Evaluation Panel"
     actions:
-      start_editing: { test_id: null }
+      start_editing: { test_id: evaluation-panel-edit }
       add_panel_member: { test_id: evaluation-panel-add-member }
       remove_panel_member: { test_id: evaluation-panel-remove-member }
       choose_panel_chair: { test_id: evaluation-panel-chair-field }
@@ -2278,20 +2278,20 @@ pages:
     actions:
       # Input: the proponents to name, as seed.proposals handles (or proposal identifiers),
       # and an optional note. Sends the submission for exactly those proposals.
-      submit_scores_for_consensus_naming: { test_id: null }
+      submit_scores_for_consensus_naming: { test_id: evaluation-submission-request-submit }
     observations:
       # Whether the service accepted the submission (a successful answer carrying the
       # opportunity).
-      request_accepted: { test_id: null }
+      request_accepted: { test_id: evaluation-submission-request-accepted }
       # The refusal's messages, in the order the service gives them; empty when accepted.
       # A named proposal the evaluator holds no complete draft of is refused with "This
       # evaluation could not be submitted for review because it is incomplete. Please
       # edit, complete and save the appropriate form before trying to submit it again."
-      refusal_messages: { test_id: null }
+      refusal_messages: { test_id: evaluation-submission-request-refusal-messages }
       # The opportunity's status as the service holds it, read afresh after the request
       # (as the signed-in person) rather than taken from the request's answer:
       # EVAL_QUESTIONS_INDIVIDUAL or EVAL_QUESTIONS_CONSENSUS.
-      stored_status: { test_id: null }
+      stored_status: { test_id: evaluation-submission-request-status }
 
   # One consensus — the chair's agreed scores and notes for one proponent — as a request.
   # :userId is the panel member whose consensus it is, which is the chair: on the seeded

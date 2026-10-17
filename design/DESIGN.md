@@ -5319,3 +5319,275 @@ in the panel, `small` in a row, the group and the editor. The two status lines (
 wrapper and are now a `<p role="status">`. The rule for a build: an element that carries an id, a test ID or a
 role for a single paragraph is that paragraph, not a `<div>` around it. No test ID moved to a different
 meaning; each is on the element that shows the text the surface names.
+
+## Evaluation screens in the chosen direction
+
+Every story of the evaluation domain now follows "Site shell and the chosen direction" above: the
+dashboard's Evaluations section, the panel, instructions, evaluation and consensus tabs of the manage
+page, the four scoring forms of each program, and the request addresses' response references. Where
+this section and the older "Domain: evaluation" section disagree about how a screen looks (the page
+container and outer stack, the inline-styled status badge, the inline-styled tables, the plain row of tab
+links, the inline-styled fieldsets and response block, the `Stack as="dl"` references, heading sizes),
+this section is the current one. What that section says about behaviour, who is offered what, dialogs,
+validation, accessibility, test IDs and gaps still holds, except where this section says otherwise.
+
+Every page keeps its states, every story keeps its words, and every test ID that was filled keeps its
+element. Two things were added because the contract now asks for them, not because the direction did:
+the panel tab opens read-only with an Edit button (a new `editing` state), and the evaluator's
+submission naming its proponents has a response reference of its own
+(`evaluation-individual-submission-request-swu`). Both are described below.
+
+### How the stories are built
+
+The Sprint With Us and Team With Us versions of each page were two copies of one design that differed
+only in their words. They are now drawn once. `design/catalogue/evaluation-pages.tsx` holds one
+component per page (`Dashboard`, `PanelTab`, `InstructionsTab`, `IndividualListTab`,
+`ConsensusListTab`, `IndividualCreate`, `IndividualEdit`, `ConsensusCreate`, `ConsensusEdit`, and the
+references `IndividualRequest`, `SubmissionRequest`, `ConsensusRequest`, `PanelRequest`), each taking
+the state it draws. `design/catalogue/evaluation-kit.tsx` holds the program data: `SWU` and `TWU` carry
+the program's name, the question words ("team questions" / "resource questions"), the address segment,
+how many proponents are carried forward ("four" / "three"), the next stage ("code challenge" / "challenge"),
+the manage page's stage tabs, and the stories' record text (questions, responses, each evaluator's
+scores and comments, the agreed ones). The record text is the earlier stories', moved, not rewritten.
+Each story file is a few lines: its comment, its meta, and one render of a page with a program and a
+state. A build reads the page components as it would read the earlier stories.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen by
+and the section the page belongs to. The viewer decides the header's navigation and account area,
+nothing else on the page. The addresses are test data.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| Dashboard, every state | an evaluator (`EVALUATOR`, a public sector employee on three panels) | Dashboard |
+| Panel tab: `default`, `editing`, `invalid`, `too-few`, `refused`, `locked`, `loading` | the opportunity's owner (`opportunity-kit.tsx`'s `STAFF`) | Dashboard |
+| Instructions and Evaluation tabs; the individual forms | an evaluator (`EVALUATOR`) | Dashboard |
+| Consensus tab: `default`, `ready`, `submit-confirm`, `submitted`, `loading`; the consensus forms | the chair, who also evaluates (`EVALUATOR`) | Dashboard |
+| Consensus tab: `finalize-confirm`, `not-all-submitted`, `no-screenable` | an administrator (`ADMIN`) | Dashboard |
+| Consensus tab: `withheld` | the owner, not on the panel (`STAFF`) | Dashboard |
+| `evaluation-consensus-create-*`: `chair-only` | an evaluator who is not the chair (`EVALUATOR_TWO`) | Dashboard |
+| `not-found` of the panel tab | a panel member (`EVALUATOR`), as R-5.18 says | none |
+| `not-found` of the instructions, evaluation and individual create pages; of the consensus forms | the owner, who is not an evaluator (`STAFF`) | none |
+| `not-found` of the consensus tab | an evaluator who is not the chair (`EVALUATOR_TWO`) | none |
+| `not-found` of the individual edit pages | a public sector employee with no connection to the opportunity (`UNRELATED_STAFF`), as R-5.11 says | none |
+| Request addresses | the requester the story names: an evaluator, the chair, an evaluator who is not the chair, or the owner | none |
+
+### The direction's evaluation components
+
+`design/catalogue/evaluation-kit.tsx`. These are this project's own components, not the design
+system's. Each is a composition of design-system components (`Heading`, `Link`, `ButtonGroup`,
+`InlineAlert`, `Text`) and tokens, built on `marketplace.tsx`'s `Label` and on `opportunity-kit.tsx`
+(`OpportunityPage`, `OpportunityHead`, `Details`, `ActionBar`, `Region`, `Panel`, `PageTitle`,
+`SectionTitle`, `Actions`, `DataTable`, `StatusLabel`, `Waiting`, `MissingPage`). `marketplace.tsx`'s
+`statusOf` has no use here: no evaluation screen shows an opportunity's status as the public sees it,
+only its stage, so the head's status goes through `StatusLabel` as on the opportunities domain's manage
+pages. They replace every inline-styled piece the older section lists (the status badge, the data table,
+the repeated-item group, the key facts list and the response block).
+
+- **Evaluation page** (`EvaluationPage`, `EvaluationMissing`, `EvaluationLoading`). The shell with its
+  viewer and section, `OpportunityPage` (the page container, the direction's style sheets, the regions
+  `large` apart, `medium` on a phone), and this kit's style sheet. They replace `PageContainer` and the
+  outer `Stack` on every story of this domain. The missing page is the users domain's, in the
+  direction's type. A loading page shows its H1 at once and `Waiting` under it.
+- **Manage frame** (`ManageFrame`). The opportunities domain's manage page around one of this domain's
+  tabs: the head ("Manage a … opportunity", the grey program label, the coloured status label, the title
+  as the H1 in the H3 size), the Opportunity ID as a detail, the action bar (`opportunity-actions`,
+  always present, empty when nothing is offered), the tabs, any page alert, then the tab's region (H2
+  in the H4 size). The tabs are written out in `ManageTabs`' markup because several tabs' query values
+  are not their test IDs' suffixes; which tabs each viewer gets is `TABS` (evaluator, chair, the owner
+  of a published opportunity) or the program's `stageTabs` (the owner and an administrator from closing).
+- **Evaluation status** (`EvaluationStatus`, `evaluationColour`). The `Label` coloured by an evaluation's
+  or a consensus's state in words: grey for Not started, blue for a draft (as a draft proposal is
+  marked), green for Submitted. Whether a draft is complete is in its words ("Draft: complete",
+  "Draft: incomplete"), never in its colour alone. It carries `evaluation-status` or
+  `evaluation-consensus-status`.
+- **Scoring head** (`ScoringHead`). The head of a scoring form, in the order of `ProposalHead`: what the
+  page is ("Evaluate a Sprint With Us proponent", "Team With Us consensus"), the program label and the
+  evaluation's status label, the proponent's anonymous name as the H1 (`proposal-proponent-name`), then
+  the opportunity's title and "Proponent 2 of 3" as small facts on their own line. The status moved out
+  of a "Status:" line into the head and keeps its test ID, as the proposals domain moved its own.
+- **Rows** (`Rows`). The direction's rows for this domain's lists: the evaluator's proponents, the
+  consensus list, the panel's members, and each question's evaluators' scores. A caption in small text
+  names the list, which is a `ul` labelled by it. Where the list is at least 560 pixels wide each row is
+  one bordered line whose cells sit in aligned columns under a header line; narrower, each row is a
+  stacked card whose cells are labelled by their column's name. The switch follows the width of the
+  list (a container query), as the opportunity rows' does. The header line is hidden from assistive
+  technology, because every cell carries its column's name in text that is visually hidden in the column
+  layout, so a screen reader hears "Your evaluation Draft: complete" whichever way it is drawn. The row's
+  first cell (a proponent, a person) needs no name; an action link names itself. This replaces the
+  inline-styled tables, which scrolled sideways on a phone (rule 7; see the proposals section's gap 40,
+  which this resolves for this domain).
+- **Question box** (`QuestionBox`, `QuestionText`, `QuestionWorth`). One question of a scoring form: the
+  opportunity kit's fieldset look (`op-fieldset`, a token border, `--layout-padding-medium` inside, a
+  legend in bold body text), with the id `question-<n>` the error summaries link to; its contents
+  `medium` apart. A read-only question (a submitted evaluation, the chair-only view) is the opportunity
+  kit's `Panel` with an H2 "Question 1" in the H4 size, because nothing in it is a field.
+- **Response** (`Response`). The proponent's words, set apart by a `--layout-border-width-medium` rule
+  at their start in `--surface-color-border-medium` and `--layout-padding-small` inside, with a small
+  "Proponent 2's response" line above. The older section says why the design system's `Callout` does
+  not fit.
+- **Panel scores** (`PanelScores`). Each question's "Evaluators' scores for question 1" as `Rows`
+  (Evaluator, Score, Comment; the comment column twice the width of the others), with
+  `evaluation-panel-member-score` and `evaluation-panel-member-notes` on each value.
+- **Panel member row** (the `ev-member` fieldset in `PanelTab`). While the panel is edited, one bordered
+  fieldset per member, legend "Evaluator 1" in bold small text; inside, on one line that wraps, the
+  person's name in bold small text with their email address after it in secondary text, the Chair
+  checkbox and Remove; the row's own problem on a line beneath, in the design system's danger text.
+- **Select-and-add cluster** (`ev-cluster`). The person to add and Add an evaluator on one line where they
+  fit, the choice taking the room (at least 240 pixels before it wraps); on a phone the button goes full
+  width beneath. It is the proposals domain's cluster for team members, drawn in this kit's style sheet.
+- **Alerts** (`ErrorSummary`, `Refusal`, `Notice`, `Focused`, `GroupError`). An error summary is a
+  danger `InlineAlert` that takes focus, its title in the alert's own title markup (the site shell's
+  gap 4: the earlier stories gave the alert a `title` and content, so the title was never shown; it now
+  is), then the sentence on what happened, then one `field-error` link per problem. A refusal is a danger
+  alert with `role="alert"` that takes focus; a notice an `info` alert. Their wrappers carry the test IDs,
+  because `InlineAlert` passes no `data-*`.
+- **Response reference** (`Reference`, `Ordered`). The other domains' shape in the direction: the small
+  "Response reference: this address answers with data, not a page" line and the H1, then the Request (or
+  Requests) and Answer regions whose pairs are `Details`. A test ID on a whole part is on its value; an
+  ordered answer is an `op-list` `<ol>` carrying the test ID, one item per question or member.
+
+The tokens this kit writes are `--layout-margin-{none,xsmall,small,medium,hair}`,
+`--layout-padding-{none,small,medium,large}`, `--layout-border-width-{small,medium}`,
+`--layout-border-radius-medium`, `--surface-color-border-{default,medium,active}`,
+`--typography-{regular,bold}-small-body`, `--typography-regular-body` and
+`--typography-color-{primary,secondary}`. No colour, size or radius value is written. The two pixel
+values in the style sheet are layout thresholds no token carries: the 560-pixel container width at which
+rows become columns, and the 240-pixel minimum of the add choice before it wraps (the proposals domain's
+figure). The visually hidden text uses the same one-pixel clip as `marketplace.tsx`'s `Hidden`.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** On the dashboard the two lists of opportunities follow the H1, the one action
+   and the section links, as on the opportunities domain's dashboard. Every tab puts the opportunity's
+   head before anything else; every scoring form names the opportunity under the proponent's name.
+2. **Fixed order.** The manage heads show program and status, then the title; the remaining facts are
+   the opportunities domain's Summary tab's, not repeated here. The dashboard rows show title, program
+   and status as the opportunity dashboard does.
+3. **Colour only for status.** Program labels are grey. The only coloured things are the opportunity's
+   stage label, an evaluation's or consensus's status label, and the design system's own alert and
+   danger colours. Rows, question boxes, the response rule, panel rows and the references are neutral.
+4. **Programs** appear as their labels.
+5. **Dense.** H1 in the H3 size; region headings and read-only questions in the H4 size; the
+   instructions' headings and legends in bold body text, the panel rows' legends in bold small text;
+   captions, facts, details, row cells, the worth line, the response label and catalogue notes in small
+   text. Regions `large` apart, items `medium`, a label and what it labels `small`. Each screen has one
+   primary button at most: Save evaluation panel while editing, Submit scores for consensus, Submit final
+   consensus scores, Finalize consensus scores in the action bar for the owner and an administrator,
+   Save and go to next proponent on a scoring form, and a dialog's confirm. The panel's Edit evaluation
+   panel is secondary: it sits beside the opportunity's own Edit and Cancel opportunity, and opening a
+   form is not the page's main action.
+6. **Imagery.** None.
+7. **Phones.** Regions close to `medium`; every list's rows become stacked cards; the manage tabs wrap;
+   details fall to one column; the panel row's name, Chair and Remove wrap; the add cluster's button and
+   the page actions go full width; the dashboard's tables scroll inside their region, as the
+   opportunity dashboard's do on the same page; the header and footer are the shared phone versions.
+
+### The panel tab opens read-only
+
+The surface now says the tab opens read-only and that Edit makes the panel changeable, offered only at
+the stages the panel may change (the note on `evaluation-panel-swu`'s `start_editing`). So:
+
+- **`default`** is now the panel as it stands: the two introductory sentences, the members as rows with
+  their roles ("Evaluator and chair", "Evaluator"), and Edit evaluation panel (`evaluation-panel-edit`).
+- **`editing`** (new) is what `default` used to show: the form.
+- **`locked`** is the same rows with the notice and no Edit.
+- `invalid`, `too-few` and `refused` are the form as before, now drawn whole under the frame instead of
+  trimmed.
+
+The form changed in one way, again because the surface says so: `add_panel_member` "takes the person to
+seat, chosen from the list of public sector accounts the tab offers, each shown as their name followed
+by their email address in brackets", and "a newly seated member is an evaluator and not the chair". The
+earlier design added an empty row with a person `Select` in it. Now a person is chosen in "Public sector
+employee to add" (`evaluation-panel-member-choice`, every option "Name (email)") and added with Add an
+evaluator (`evaluation-panel-add-member`, the same element kind as before: the button that adds). Each
+row shows the person it holds, by name and email address, rather than a `Select`, so the per-row
+`evaluation-panel-member-field` extra ID is gone. The checks on save are unchanged: a person named twice
+is shown on the second row in the words the `invalid` story always had ("Test Evaluator One is already
+on the panel. Choose a different person."), a refused member on their row, too few members after the
+rows, no chair on the Chair field. The Chair field keeps its options in the same "Name (email)" form.
+Editing adds Cancel (`evaluation-panel-cancel`), so a person who opened the form can return to the
+read-only panel without saving.
+
+### The submission naming its proponents
+
+`evaluation-individual-submission-request-swu` (states `default` and `refused`) is the request the
+evaluator's "Submit scores for consensus" sends, written out so a test can name fewer than every
+proponent (R-5.25, R-5.27; the surface's note). Its reference shows the PUT to the opportunity, tagged
+`submitIndividualQuestionEvaluations`, with `{ note, proposals }` as `spec/contract/openapi.yaml` gives
+it. `default`: two of three proponents named and accepted, no refusal messages, and the opportunity's
+status, read afresh, moved to consensus once every evaluator's scores for the two named are in.
+`refused`: a named proponent's draft is incomplete, R-5.25's message is the only refusal, nothing is
+submitted, and the status stays at individual evaluation. Both states show the status in words and as
+the service's code (`EVAL_QUESTIONS_INDIVIDUAL`, `EVAL_QUESTIONS_CONSENSUS`), which the surface names.
+
+### Other changes in this pass
+
+- **Frames are drawn, not trimmed.** Stories that said "the status and tabs are as in the default story
+  and are trimmed here" now draw the manage frame, because it is one shared component and the picture is
+  more use to a reviewer with it. The same goes for the scoring forms' invalid states, which now show the
+  opportunity line, back link, responses and evaluators' scores. The duplicate refusals and the empty
+  dashboard keep their catalogue notes. `submit-confirm` now shows the `ready` page behind its dialog.
+- **Who sees the action bar.** The panel tab on a published opportunity now shows the opportunities
+  domain's action bar as its Addenda tab does (Edit, Cancel opportunity). The administrator's consensus
+  states show Edit, Finalize consensus scores and Cancel opportunity, as the opportunities domain's
+  `consensus` story does; the owner's `withheld` and `locked` show Finalize consensus scores alone, as
+  before. An evaluator's and the chair's tabs show the bar empty.
+- **The consensus tab for an administrator** now draws the stage tabs (Proposals, Team questions … ),
+  which the earlier `finalize-confirm` trimmed.
+- **The dashboard's section links** are the manage tabs' markup with no current item, in-page links to
+  the two regions' headings.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID filled before this pass is kept, on an element that does what the surface says. Filled in
+this pass, each put in the markup by the stories above:
+
+| Page | Entry | Test ID |
+| --- | --- | --- |
+| panel-swu, panel-twu | `start_editing` | `evaluation-panel-edit` (Edit evaluation panel, `default`) |
+| individual-submission-request-swu | `submit_scores_for_consensus_naming` | `evaluation-submission-request-submit` |
+| individual-submission-request-swu | `request_accepted` | `evaluation-submission-request-accepted` ("Yes: …" or "No") |
+| individual-submission-request-swu | `refusal_messages` | `evaluation-submission-request-refusal-messages` (an `ol`, empty when accepted) |
+| individual-submission-request-swu | `stored_status` | `evaluation-submission-request-status` |
+
+Extra IDs the stories carry for the adapter, not named in the surface: `evaluation-panel-member-choice`
+(the person to add) and `evaluation-panel-cancel` (Cancel while editing) are new;
+`evaluation-panel-member-field` is gone with the per-row `Select`. `evaluation-individual-table` and
+`evaluation-consensus-table` are now on the rows' `ul`, and `evaluation-proponent-row` and
+`evaluation-panel-member-row` on each row's `li` (the editing form's fieldsets keep the latter).
+`evaluation-status` and `evaluation-consensus-status` are on the status label, in a row or in a scoring
+form's head.
+
+### Gaps found in this pass
+
+67. **What the panel tab shows after a save.** The surface's note says saving "publishes a new version of
+    the opportunity (the screen confirms 'Opportunity Changes Published')". No criterion gives that
+    confirmation or says whether the tab returns to read-only after it, so there is no `saved` state; the
+    words would be the opportunities domain's.
+68. **Duplicates through the add choice.** With a person chosen from a list and added, the form could
+    simply not offer anyone already seated, as the proposals domain's team-member choice does, and then
+    a duplicate could not be composed on the screen. The surface keeps `duplicate_member_error`, so the
+    choice still offers everyone and the duplicate is refused on save, as before. Whether the choice
+    should leave out people already seated is for the spec.
+69. **"Not offered" against "disabled".** R-5.25 v3 says that until every evaluation is complete
+    "submission is not offered". The surface's `submit_disabled_until_complete` observes the submit
+    button's disabled state, so the button is shown disabled and described, as before. If "not offered"
+    means absent, the surface's observation and the criterion disagree.
+70. **The submission reference's outcome.** Whether the seeded starting point
+    (`swuSubmissionNamesTwoOfThree`) moves to consensus after the named submission depends on what the
+    other evaluators have already submitted, which the seed, not the criteria, decides. The `default`
+    story shows the move happening and says on what condition; the record text is illustrative.
+71. **Program wording in the submission reference.** The surface gives this address for Sprint With Us
+    only. Team With Us takes the same tag on its own opportunity address (`openapi.yaml`), but there is no
+    Team With Us page to draw it on.
+72. **Tables on the dashboard.** The dashboard is shared with the opportunities domain, whose own list
+    there is a `DataTable` that scrolls on a phone. The Evaluations list keeps the same table so the one
+    page does not show two kinds of list. Turning both into rows is the opportunities domain's change to
+    make first.
+73. **Who may open the panel tab's Edit.** R-5.16 says when the panel may change; R-5.18 who opens the
+    tab. Neither says whether an administrator and the owner are both offered Edit; the stories show the
+    owner.

@@ -1,7 +1,7 @@
 {
-  "generated": "2026-10-17T23:02:23.881Z",
+  "generated": "2026-10-17T23:28:52.411Z",
   "axe": "4.13.0",
-  "catalogue": "e163514ce5ce92338b83c4cb7210aef471f1fa900ae1d028df12de9eea6e018d",
+  "catalogue": "0775998cdb338e8f5cb7501c8749ed7732d63f42a0f1ba25644602adcb701834",
   "ok": true,
   "messages": [],
   "compile": [
@@ -762,6 +762,18 @@
       "violations": []
     },
     {
+      "id": "evaluation-evaluation-individual-submission-request-swu-default--default",
+      "title": "evaluation/evaluation-individual-submission-request-swu/default",
+      "file": "./catalogue/evaluation-individual-submission-request-swu.default.stories.tsx",
+      "violations": []
+    },
+    {
+      "id": "evaluation-evaluation-individual-submission-request-swu-refused--refused",
+      "title": "evaluation/evaluation-individual-submission-request-swu/refused",
+      "file": "./catalogue/evaluation-individual-submission-request-swu.refused.stories.tsx",
+      "violations": []
+    },
+    {
       "id": "evaluation-evaluation-instructions-swu-default--default",
       "title": "evaluation/evaluation-instructions-swu/default",
       "file": "./catalogue/evaluation-instructions-swu.default.stories.tsx",
@@ -834,6 +846,12 @@
       "violations": []
     },
     {
+      "id": "evaluation-evaluation-panel-swu-editing--editing",
+      "title": "evaluation/evaluation-panel-swu/editing",
+      "file": "./catalogue/evaluation-panel-swu.editing.stories.tsx",
+      "violations": []
+    },
+    {
       "id": "evaluation-evaluation-panel-swu-invalid--invalid",
       "title": "evaluation/evaluation-panel-swu/invalid",
       "file": "./catalogue/evaluation-panel-swu.invalid.stories.tsx",
@@ -873,6 +891,12 @@
       "id": "evaluation-evaluation-panel-twu-default--default",
       "title": "evaluation/evaluation-panel-twu/default",
       "file": "./catalogue/evaluation-panel-twu.default.stories.tsx",
+      "violations": []
+    },
+    {
+      "id": "evaluation-evaluation-panel-twu-editing--editing",
+      "title": "evaluation/evaluation-panel-twu/editing",
+      "file": "./catalogue/evaluation-panel-twu.editing.stories.tsx",
       "violations": []
     },
     {
@@ -3271,7 +3295,7 @@
     }
   ],
   "totals": {
-    "stories": 542,
+    "stories": 546,
     "violations": 0,
     "failed": 0
   }
