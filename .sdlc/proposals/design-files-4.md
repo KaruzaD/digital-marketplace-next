@@ -35,3 +35,16 @@ I fixed the doubled spacing around the stated rules on the files screens. I didn
 **Components.** I added none. The screens are still built from the design system's `Button`, `TextField`, `TextArea`, `Link`, `InlineAlert` and `ProgressCircle`, plus `FileTrigger` and `Toolbar` from react-aria-components. The kit's own stacks and rows are the same ones `DESIGN.md` already lists as the project's own components.
 
 **Gaps.** I found no new gaps in the spec. The ones recorded earlier in the files section (62–66) still stand.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:ux-reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+The doubled spacing around the files screens' stated rules is gone. attachment-size-limit, both image-file-rule paragraphs (ids image-file-rule and embedded-image-rule), attachment-resulting-name and the two status lines now sit on their <p> directly, so the kit's direct-child margin reset and the container's token gap set the spacing. The screenshots show even gaps: medium in the panel, small in the row, group and editor. design/report.json reports 0 accessibility violations across 542 stories, and the typecheck and build pass. surface.yaml and screens.yaml are unchanged, so no test ID moved. The components are the design system's or the project's own token-styled kit, with content in the shared page container lined up with the header. New hard-coded spacing, a nested wrapper put back, or any accessibility violation would change this ruling.
+
+**Conditions:**
+- condition-met design-files-3#1: in design/catalogue/file-kit.tsx the wrapper divs are gone, and the id, data-testid and aria-describedby target now sit on <p className="op-note"> for attachment-size-limit (AttachmentControl, line 142), image-file-rule (PictureGroup, line 243) and embedded-image-rule (ImageEditor, line 309)
+- condition-met design-files-3#2: attachment-resulting-name (id attachment-new-1-result) is now the <p> itself in file-attachment-control.new-attachment.stories.tsx, and the two <div role="status"> wrappers in file-image-picker.chosen and file-embedded-image.inserted are now <p role="status" className="op-note">
+- condition-met design-files-3#3: in the re-rendered screenshots of file-attachment-control default and too-large, file-image-picker default and rejected, and file-embedded-image default, the gap around each stated rule is the container's own token (medium in the panel, small in the row, group and editor), and design/report.json shows 0 violations
