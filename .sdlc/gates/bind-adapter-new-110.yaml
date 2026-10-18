@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: does this bind-adapter revision bind the surface actions and observations on target new, and nothing else, and does it carry out the three revision requests the slice-17 build review left owed? Ruling: approve. All three requests had the same cause. On the Evaluation section of the Sprint With Us and Team With Us pages, the proponent rows are list items with no cell role, so the shared row reader rowsText dropped them, and evaluationStatus() (which returns rows("evaluation_status") at tests/adapters/new/index.ts:2577) read an empty string. In R-5.35 that meant the test's not.toBe(before) compared two empty strings. The fix is to locators only. rowsText takes an optional reader for rows that have no cell role. Only proponentRows passes it. The new bareProponentRow builds each line from the row's own test IDs (proposal-proponent-name, evaluation-status, evaluation-open-proponent) and falls back to the row's child elements. Nothing in it asserts anything or decides a pass. The other callers of rowsText behave as before. The name-only member, which splits on ' | ' and keeps the first part, still gets the name first. Nothing under tests/acceptance changed (an empty git diff against main confirms it). The runner's typecheck passed with no diagnostics under adapters/new/. The author ran the new reading in a browser against the seeded Sprint With Us opportunity ...000701 and got 'Proponent 1 | Not started | Start evaluation'. They did not walk the Team With Us page or the second Sprint With Us opportunity. Both draw the same list items and go through the same reader, and the next verify run on this slice settles them either way. What would change the ruling: an assertion or a pass decision inside the adapter, any edit under tests/acceptance, or verify still reading empty evaluation statuses on these pages after this change.
+conditions: []
+cost: 0.3308756
+turns: 4
+session: "7e0898a7-6637-407e-8f50-e547c1f6cec7"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.302 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T21:49:41.880Z
