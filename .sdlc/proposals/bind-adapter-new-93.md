@@ -29,3 +29,23 @@ I applied it to all three groups, as the condition asked. The part that drops th
 **What I checked.** I opened `/opportunities` signed out on the running target. There the headings are just "Open" and "Closed", with no count, and the new patterns still match them. I did not sign in as staff or an administrator to see the counted headings myself; for that form I'm relying on the reviewer's evidence. I haven't run the tests against the change.
 
 Nothing else changed. `bindings.yaml` stays as it was, since no member's status changed, and I touched no other binding and wrote nothing outside `tests/adapters/new/`.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:tech-lead
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+The question is whether the new adapter binds the opportunity list's groups as the application draws them. Both untaken requests from build-slice-8-13 trace to one cause, which the reviewer's evidence established (R-1.3.txt, R-1.3-2.txt, R-1.38.txt): staff and administrators see group headings that carry a count ('Open Opportunities 3', 'Open Opportunities 5'), and the fully anchored OPPORTUNITY_GROUPS patterns did not match them, so groupSection and the heading fallback found nothing and openGroup() returned ''. The diff is three regex edits adding an optional trailing count, plus a comment, all in tests/adapters/new/index.ts, which is exactly the change the evidence calls for and nothing beyond it. Reading opportunityGroup on the branch confirms the stage's claim that the rest of the reader already handles a count: an inline count is now removed by header.test(lines[0]), and a count on its own line by the /^\d+$/ shift. The anchors still exclude anything that is not a group heading, the bare 'Open'/'Closed' headings seen signed out still match, and opportunityStatus shares the patterns and benefits from the same fix. The escalation was triggered by the request-loop limit, not by any inability of the pipeline: each earlier round fixed a different fault, and this one fixes the last at its source. The typecheck passed. The stage did not run the tests or see the counted headings signed in, but the reviewer's evidence quotes those headings directly. This ruling would change if a slice-8 run showed openGroup() still reading '' under a counted heading, or rows starting with the count.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `1b1a6251b18d39cf80ce54839ba71877ea165e07`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
