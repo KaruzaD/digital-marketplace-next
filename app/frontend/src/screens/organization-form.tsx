@@ -1,14 +1,5 @@
 import { FormEvent, ReactNode, useRef, useState } from "react";
-import {
-  Button,
-  ButtonGroup,
-  Form,
-  Heading,
-  InlineAlert,
-  Link,
-  Text,
-  TextField,
-} from "@bcgov/design-system-react-components";
+import { Button, ButtonGroup, Form, InlineAlert, Link, TextField } from "@bcgov/design-system-react-components";
 import {
   OrganizationProfile,
   PROFILE_FIELDS,
@@ -20,7 +11,9 @@ import {
 import { uploadPicture } from "../api/files";
 import { Organization, SaveAnswer } from "../api/organizations";
 import { ImagePicker, PictureRejection, checkChosenPicture, keptSentence } from "../app/image-picker";
-import { Stack } from "../app/page-layout";
+import { Panel, Region, SectionTitle } from "../app/opportunity-kit";
+import { FieldGrid } from "../app/organization-kit";
+import { AlertTitle } from "../app/proposal-kit";
 import { TitledAlert } from "../app/titled-alert";
 
 /**
@@ -33,6 +26,10 @@ import { TitledAlert } from "../app/titled-alert";
  * required field skipped over is reported too; never on each keystroke. The submit button stays
  * available: submitting with a problem reports every offending field, moves focus to that list,
  * and creates or saves nothing (R-3.22; decision record 0049).
+ *
+ * Laid out as `design/catalogue/organization-kit.tsx`'s `CreateForm` and `EditForm`: registering
+ * in three panels, editing under the tab's H2 with Address and Contact as H3 regions, the fields
+ * in as many columns as fit, and the reason the submit button is described by directly before it.
  */
 
 export type ProfileValues = Record<ProfileField, string>;
@@ -238,12 +235,10 @@ export function OrganizationForm({
 
   const hint =
     problemFields.length > 0 ? (
-      <div id={hintId} ref={summary} tabIndex={-1}>
+      <div id={hintId} ref={summary} tabIndex={-1} className="og-focus">
         <InlineAlert variant="danger">
-          <span className="title" id="alert-title">
-            {`Fix ${problemFields.length} ${problemFields.length === 1 ? "field" : "fields"} ${goal}`}
-          </span>
-          <ul>
+          <AlertTitle>{`Fix ${problemFields.length} ${problemFields.length === 1 ? "field" : "fields"} ${goal}`}</AlertTitle>
+          <ul className="og-errors">
             {problemFields.map((name) => (
               <li key={name} data-testid="field-error">
                 <Link href={`#${IDS[name]}`}>
@@ -255,9 +250,9 @@ export function OrganizationForm({
         </InlineAlert>
       </div>
     ) : !valid ? (
-      <Text id={hintId} elementType="p" size="small" color="secondary">
+      <p id={hintId} className="op-note">
         {`Fill in every required field ${goal}.`}
-      </Text>
+      </p>
     ) : null;
 
   const refused = refusal ? (
@@ -267,13 +262,13 @@ export function OrganizationForm({
       title={kind === "create" ? "The organization could not be created" : "Your changes could not be saved"}
     >
       {refusal.length > 0 ? (
-        <ul>
+        <ul className="og-errors">
           {refusal.map((reason) => (
             <li key={reason}>{reason}</li>
           ))}
         </ul>
       ) : (
-        <Text elementType="p">Nothing you entered has been lost. Check the details and try again.</Text>
+        <p className="op-text">Nothing you entered has been lost. Check the details and try again.</p>
       )}
     </TitledAlert>
   ) : null;
@@ -302,64 +297,46 @@ export function OrganizationForm({
   if (kind === "create") {
     return (
       <Form validationBehavior="aria" onSubmit={submit}>
-        <Stack gap="medium">
-          <Card headingId="org-details-heading" heading="Organization details">
+        <div className="og-form">
+          <Panel id="org-details-heading" title="Organization details">
             {logoPicker}
-            {field("legalName")}
-            {field("websiteUrl")}
-          </Card>
-          <Card headingId="org-address-heading" heading="Address">
-            {(["streetAddress1", "streetAddress2", "city", "region", "mailCode", "country"] as const).map(field)}
-          </Card>
-          <Card headingId="org-contact-heading" heading="Contact">
-            {(["contactName", "contactTitle", "contactEmail", "contactPhone"] as const).map(field)}
-          </Card>
+            <FieldGrid>{DETAILS_FIELDS.map(field)}</FieldGrid>
+          </Panel>
+          <Panel id="org-address-heading" title="Address">
+            <FieldGrid>{ADDRESS_FIELDS.map(field)}</FieldGrid>
+          </Panel>
+          <Panel id="org-contact-heading" title="Contact">
+            <FieldGrid>{CONTACT_FIELDS.map(field)}</FieldGrid>
+          </Panel>
           {refused}
           {hint}
           {buttons}
-        </Stack>
+        </div>
       </Form>
     );
   }
 
   return (
     <Form validationBehavior="aria" onSubmit={submit}>
-      <Stack gap="medium">
-        <Heading level={2} id="tab-heading">
-          Edit organization
-        </Heading>
-        <Text elementType="p">Fields not marked “(optional)” are required.</Text>
+      <div className="og-form">
+        <SectionTitle id="tab-heading">Edit organization</SectionTitle>
+        <p className="op-text">Fields not marked “(optional)” are required.</p>
         {logoPicker}
-        {field("legalName")}
-        {field("websiteUrl")}
-        <Heading level={3}>Address</Heading>
-        {(["streetAddress1", "streetAddress2", "city", "region", "mailCode", "country"] as const).map(field)}
-        <Heading level={3}>Contact</Heading>
-        {(["contactName", "contactTitle", "contactEmail", "contactPhone"] as const).map(field)}
+        <FieldGrid>{DETAILS_FIELDS.map(field)}</FieldGrid>
+        <Region id="address-heading" title="Address" level={3}>
+          <FieldGrid>{ADDRESS_FIELDS.map(field)}</FieldGrid>
+        </Region>
+        <Region id="contact-heading" title="Contact" level={3}>
+          <FieldGrid>{CONTACT_FIELDS.map(field)}</FieldGrid>
+        </Region>
         {refused}
         {hint}
         {buttons}
-      </Stack>
+      </div>
     </Form>
   );
 }
 
-// A card section's border and inner padding are its own; its contents are laid out by the stack.
-const panel = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-
-function Card({ headingId, heading, children }: { headingId: string; heading: string; children: ReactNode }) {
-  return (
-    <section aria-labelledby={headingId} style={panel}>
-      <Stack gap="medium">
-        <Heading level={2} id={headingId}>
-          {heading}
-        </Heading>
-        {children}
-      </Stack>
-    </section>
-  );
-}
+export const DETAILS_FIELDS = ["legalName", "websiteUrl"] as const satisfies readonly ProfileField[];
+export const ADDRESS_FIELDS = ["streetAddress1", "streetAddress2", "city", "region", "mailCode", "country"] as const satisfies readonly ProfileField[];
+export const CONTACT_FIELDS = ["contactName", "contactTitle", "contactEmail", "contactPhone"] as const satisfies readonly ProfileField[];

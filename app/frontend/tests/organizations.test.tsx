@@ -675,3 +675,104 @@ describe("the person's own organizations (R-3.6, R-3.23)", () => {
     expect(screen.getByTestId("organization-create-link").getAttribute("href")).toBe("/organizations/create");
   });
 });
+
+// ------------------------------------------------------------------------ the chosen direction
+
+/** Makes the window read as a phone's, below the header's switch point. */
+function asPhone() {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+}
+
+describe("the organization screens follow the chosen direction (decision record 0079)", () => {
+  it("draws the list on a phone as one card per organization, its name an H2 and its facts beneath", async () => {
+    asPhone();
+    serve(() =>
+      json(200, [
+        { ...listed("a", "Aurora Data Collective"), logoImageFile: LOGO_ID },
+        listed(ORG_ID, "Northern Pines Digital Ltd.", {
+          owner: { id: "o", name: "Blake Placeholder" },
+          numTeamMembers: 3,
+          swuQualified: true,
+          twuQualified: false,
+        }),
+      ]),
+    );
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt("/organizations");
+
+    const rows = await screen.findAllByTestId("organization-list-row");
+    expect(rows).toHaveLength(2);
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByRole("list", { name: /Registered organizations by legal name/ })).toBeTruthy();
+    const [theirs, mine] = rows as [HTMLElement, HTMLElement];
+    expect(within(theirs).getByRole("heading", { level: 2 }).textContent).toBe("Aurora Data Collective");
+    expect(within(theirs).getByRole("img", { name: "Aurora Data Collective logo" })).toBeTruthy();
+    expect(within(theirs).queryByTestId("organization-list-owner")).toBeNull();
+    expect(within(theirs).queryByTestId("organization-list-name-link")).toBeNull();
+    expect(within(mine).getByRole("article", { name: "Northern Pines Digital Ltd." })).toBeTruthy();
+    expect(within(mine).getByTestId("organization-list-name-link").getAttribute("href")).toBe(`/organizations/${ORG_ID}/edit`);
+    expect(within(mine).getByTestId("organization-list-owner").textContent).toBe("Blake Placeholder");
+    expect(within(mine).getByTestId("organization-list-team-size").textContent).toBe("3");
+    expect(within(mine).getByTestId("organization-swu-qualified-mark").textContent).toBe("Yes");
+    expect(within(mine).getByTestId("organization-twu-qualified-mark").textContent).toBe("No");
+    expect(screen.getByTestId("organization-list-pagination").textContent).toContain("Page 1 of 1");
+  });
+
+  it("heads the management page with the eyebrow, the qualified labels, the H1, the identifier as a detail and the tabs", async () => {
+    serve(() => json(200, organization({ twuQualified: true })));
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(`/organizations/${ORG_ID}/edit?tab=organization`);
+
+    const identifier = await screen.findByTestId("organization-identifier");
+    expect(identifier.tagName).toBe("DD");
+    expect(identifier.previousElementSibling?.textContent).toBe("Organization ID");
+    expect(screen.getByText("Edit Organization").tagName).toBe("P");
+    expect(screen.getByTestId("organization-swu-qualified-badge").textContent).toBe("Sprint With Us qualified");
+    expect(screen.getByTestId("organization-twu-qualified-badge").textContent).toBe("Team With Us qualified");
+    const tabs = screen.getByRole("navigation", { name: "Organization sections" });
+    expect(within(tabs).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Organization",
+      "Team members",
+      "Sprint With Us qualification",
+      "Team With Us qualification",
+      "Changelog",
+    ]);
+  });
+
+  it("puts the address and contact in H3 regions of the tab, and Archive in its own region inside it", async () => {
+    serve(() => json(200, organization({ streetAddress2: null })));
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(`/organizations/${ORG_ID}/edit`);
+    await screen.findByTestId("organization-identifier");
+
+    const tab = screen.getByRole("region", { name: "Organization" });
+    const address = within(tab).getByRole("region", { name: "Address" });
+    expect(within(address).getByRole("heading", { level: 3 }).textContent).toBe("Address");
+    expect(within(address).getByTestId("organization-city-field").textContent).toBe("Victoria");
+    expect(within(address).getByTestId("organization-address-line-2-field").textContent).toBe("Not entered");
+    const contact = within(tab).getByRole("region", { name: "Contact" });
+    expect(within(contact).getByTestId("organization-contact-email-field").textContent).toBe("org.owner@example.test");
+    const archive = within(tab).getByRole("region", { name: "Archive this organization" });
+    expect(within(archive).getByRole("heading", { level: 3 })).toBeTruthy();
+    expect(within(archive).getByTestId("organization-archive-button")).toBeTruthy();
+  });
+
+  it("registers in three panels, with the reason Create waits on described by it", async () => {
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt("/organizations/create");
+
+    const details = await screen.findByRole("region", { name: "Organization details" });
+    expect(within(details).getByTestId("organization-logo-button")).toBeTruthy();
+    expect(within(details).getByTestId("organization-legal-name-field")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Address" })).getByTestId("organization-country-field")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Contact" })).getByTestId("organization-contact-email-field")).toBeTruthy();
+    const submit = screen.getByTestId("organization-submit-button");
+    const hint = document.getElementById(submit.getAttribute("aria-describedby") ?? "");
+    expect(hint?.textContent).toBe("Fill in every required field to create the organization.");
+  });
+});
