@@ -28,3 +28,23 @@ I added one shared locator, `scrumMasterRadio`, and both `onPhase` and `tickScru
 **What I did not check.** I did not see a pending member's option on the live target: the only person the seeded organization offered was a member who is not pending. That wording comes from the ruling and the design catalogue it cites. I also did not re-run the three R-2.19 cases the condition asks to re-check (missing phase capability, phase cost over budget, total cost over budget). They go through the same scrum master step and now reach it, but whether they pass is for the next calibration run.
 
 The only file changed is `tests/adapters/new/index.ts`, plus some comments in it describing the new wording. `bindings.yaml` is unchanged: `set_scrum_master`, `add_phase_team_member` and `pending_team_member` were already listed as bound. Every route I opened resolved on the target.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:tech-lead
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+The question is whether this adapter revision binds the scrum master radio and the pending-member option on the Sprint With Us proposal forms as the running target draws them, and nothing beyond that. I approve. It reached me because bind-adapter was sent work back more times than policy.loops.request allows, not because the pipeline cannot do what the proposal needs, so it is ruled here rather than escalated. The diff matches the evidence it cites: .sdlc/evidence/slice-15/R-2.7.txt lines 44-51 show a radiogroup 'Scrum master for the implementation phase (required)' holding a radio named only 'Charlie Placeholder', and the new shared scrumMasterRadio locator finds the radio by the member's name inside that group or the proposal-scrum-master test ID, keeping the old name only as a fallback. onPhase, tickScrumMaster and so proposalSwuEdit.setScrumMaster all use it. The approved catalogue (design/catalogue/proposal-swu-create.default.stories.tsx:21) uses the wording '(membership pending)', and pickListed and choicesOffered now accept it, which is the same fix applied where the chooser is read. Only tests/adapters/new/index.ts changes, bindings.yaml is untouched, and the runner's typecheck on this revision passed with no diagnostics. The DESIGN.md mismatch that caused these failures stays with the design stage under its own open request, build-slice-15-6#8, and the three R-2.19 cases nobody has re-run are left to the next calibration run. I would return this if that run showed the scrum master radio still unfound, or a pending member still not added, on the create or edit form.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `6097916f25b459cbc88a00eec69ac3bb873de916`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
