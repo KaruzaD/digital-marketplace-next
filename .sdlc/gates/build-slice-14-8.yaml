@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: does slice 14 (a vendor can propose on a Code With Us opportunity) do what its criteria say? Ruling: approve. The verify result is pass and current for this proposal (tree 30edc73, 18/18 claimed criteria met). The application is unchanged from build-slice-14-7, whose only condition was addressed to derive-tests (R-3.28 case isolation) and asked nothing of build. The diff is a design-direction restyle: a new proposal-kit, and the CWU create/manage form, manage page and vendor dashboard rebuilt on it, with every test ID, field, rule and state gate preserved. These behaviours still hold: draft saving with any field blank (R-2.12); terms gating on submit and acceptance recorded (R-2.3); client-side checks plus the deliberately unchecked closed-opportunity path (R-2.13, R-2.14, R-2.15); the existing-proposal redirect (R-2.2); delete and withdraw offered by state (R-2.4, R-2.23); the dashboard's own-versus-organization split (R-2.24). Dropping the create page's maxLength routes over-long text to the field-named refusal R-2.13 describes, and decision record 0072 records that. Unit tests cover the new seams: status colours, the focused error summary, the terms dialog's words and order, the draft-saved arrival notice, and the attachment add/remove round trip for R-8.31. No secrets or personal data: fixtures use placeholder UUIDs and example.test addresses. The ruling would change if a criterion-relevant test ID, field or check had been dropped, or if a criterion failed or went stale against this tree.
+conditions: []
+cost: 0.7504859999999999
+turns: 2
+session: "b881d6b5-e1d7-4f22-b20f-a6f44261e748"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T05:07:50.693Z

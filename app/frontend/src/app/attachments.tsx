@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Button, Link, Text, TextField } from "@bcgov/design-system-react-components";
 import {
   FILE_SIZE_LIMIT_BYTES,
@@ -10,7 +10,8 @@ import {
 } from "@rules/files";
 import { downloadFile } from "../api/files";
 import { Attachment, AttachmentUpload, uploadAttachment } from "../api/opportunities";
-import { Actions, Panel, SectionTitle } from "./opportunity-kit";
+import { Panel, SectionTitle } from "./opportunity-kit";
+import { FormPart } from "./proposal-kit";
 import { TitledAlert } from "./titled-alert";
 
 /**
@@ -298,22 +299,43 @@ export function AttachmentControl({
   headingLevel,
   host = "opportunity",
   saved = true,
+  part,
+  words,
 }: {
   state: AttachmentsState;
   headingLevel: 2 | 3;
   host?: AttachmentHost;
   /** Whether the host has been saved before, so that removing something takes a way of reading it away. */
   saved?: boolean;
+  /** Drawn as a numbered part of a long proposal form with this title, in place of a panel. */
+  part?: string;
+  /**
+   * The words of a page whose story words the control its own way (the Code With Us proposal
+   * form): no introduction, the limit stated in a sentence of its own, and the button's name.
+   */
+  words?: { readonly limit: string; readonly add: string };
 }) {
   const input = useRef<HTMLInputElement>(null);
   const { kept, fresh } = state;
   const empty = kept.length === 0 && fresh.length === 0;
-  return (
-    <Panel id="form-attachments" title="Attachments" level={headingLevel}>
+  // Called, not rendered as a component of its own, so the frame is never remounted and a field
+  // inside it keeps its focus as the vendor types.
+  const frame = (children: ReactNode) =>
+    part ? (
+      <FormPart id="form-attachments" title={part}>
+        {children}
+      </FormPart>
+    ) : (
+      <Panel id="form-attachments" title="Attachments" level={headingLevel}>
+        {children}
+      </Panel>
+    );
+  return frame(
+    <>
       <FileStyles />
-      <p className="op-text">{attachmentIntro(host, saved)}</p>
+      {words ? null : <p className="op-text">{attachmentIntro(host, saved)}</p>}
       {empty ? (
-        <p className="op-text">No attachments have been added.</p>
+        words ? null : <p className="op-text">No attachments have been added.</p>
       ) : (
         <ul className="fl-rows" data-testid="attachment-list">
           {kept.map((attachment) => (
@@ -344,8 +366,8 @@ export function AttachmentControl({
           ))}
         </ul>
       )}
-      <p id="attachment-size-limit" className="op-note" data-testid="attachment-size-limit">
-        {SIZE_RULE}
+      <p id="attachment-size-limit" className={words ? "pf-text" : "op-note"} data-testid="attachment-size-limit">
+        {words ? words.limit : SIZE_RULE}
       </p>
       {/* The control's own file input, opened by the button. React Aria's FileTrigger is not used:
           the design system bundles its own copy of React Aria, so FileTrigger's press handler
@@ -365,17 +387,17 @@ export function AttachmentControl({
           if (files.length > 0) state.add(files);
         }}
       />
-      <Actions>
+      <div className={part ? "pf-attach" : "op-actions"}>
         <Button
           variant="secondary"
           aria-describedby="attachment-size-limit"
           data-testid="attachment-add-button"
           onPress={() => input.current?.click()}
         >
-          Add attachment
+          {words ? words.add : "Add attachment"}
         </Button>
-      </Actions>
-    </Panel>
+      </div>
+    </>,
   );
 }
 
