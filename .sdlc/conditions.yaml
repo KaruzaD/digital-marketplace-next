@@ -3601,3 +3601,19 @@ conditions:
         field fill loop, in tests/adapters/new/index.ts
       by: agent:reviewer
       at: 2026-10-18T03:06:52.007Z
+  - ref: build-slice-14-6#2
+    text: Withdraw the stored-row change to app/frontend/src/app/attachments.tsx
+      (StoredNewRow and the host === 'proposal' branch in NewAttachmentRow) and
+      decision record 0073, or supersede 0073 with a record saying why. The
+      adapter finds a row by list item and file name, not by
+      attachment-existing-row or attachment-new-row, so the change does not
+      address the R-8.31 failure. It also stops a stored file being renamed on
+      proposal forms. Keep it only if a proposal criterion or a catalogue story
+      for the proposal forms asks for it, and cite that criterion or story in
+      the record.
+    from: build-slice-14-6
+    family: build-slice-14
+    gate: G3
+    stage: build
+    by: agent:tech-lead
+    at: 2026-10-18T03:32:04.150Z
