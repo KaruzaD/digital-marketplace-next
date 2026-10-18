@@ -6701,6 +6701,8 @@ export default function create(
   // fields to create the organization" lists them. A created organization opens at
   // /organizations/<id>/edit.
   const orgCreate = signedInScreen("organization-create", "/organizations/create");
+  const PROVINCE_LABEL = /^\s*province\s*(or|\/)\s*state/i;
+  const POSTAL_LABEL = /^\s*postal\s*(code|\/\s*zip)/i;
   const ORG_FIELDS: Record<string, RegExp> = {
     legalName: /^\s*legal name/i,
     name: /^\s*legal name/i,
@@ -6725,17 +6727,19 @@ export default function create(
     streetAddressLineTwo: /^\s*address line 2/i,
     secondAddressLine: /^\s*address line 2/i,
     city: /^\s*city/i,
-    region: /^\s*province or state/i,
-    province: /^\s*province or state/i,
-    state: /^\s*province or state/i,
-    provinceOrState: /^\s*province or state/i,
-    stateOrProvince: /^\s*province or state/i,
-    mailCode: /^\s*postal code/i,
-    postalCode: /^\s*postal code/i,
-    zip: /^\s*postal code/i,
-    zipCode: /^\s*postal code/i,
-    postalOrZipCode: /^\s*postal code/i,
-    postalCodeOrZipCode: /^\s*postal code/i,
+    // "Province or state" / "Postal code or ZIP code" here; the proposal form draws the same
+    // fields as "Province / State" and "Postal / ZIP Code", and either wording is taken.
+    region: PROVINCE_LABEL,
+    province: PROVINCE_LABEL,
+    state: PROVINCE_LABEL,
+    provinceOrState: PROVINCE_LABEL,
+    stateOrProvince: PROVINCE_LABEL,
+    mailCode: POSTAL_LABEL,
+    postalCode: POSTAL_LABEL,
+    zip: POSTAL_LABEL,
+    zipCode: POSTAL_LABEL,
+    postalOrZipCode: POSTAL_LABEL,
+    postalCodeOrZipCode: POSTAL_LABEL,
     country: /^\s*country/i,
     contactName: /^\s*contact name/i,
     contactTitle: /^\s*contact title/i,
@@ -10076,21 +10080,29 @@ export default function create(
   const PCWU_CREATE = "proposal-cwu-create";
   const PCWU_EDIT = "proposal-cwu-edit";
 
+  // The create form now labels both address lines "Street Address" (the first "(required)"),
+  // where it once said "Street address" and "Street address line 2 (optional)"; the two lines
+  // are therefore told apart by position among the boxes labelled for a street, never by label.
+  const STREET_LINE_ONE = /^\s*street address(?! line 2)/i;
+  const STREET_LINE_TWO = /^\s*street address line 2/i;
+  const STREET_ANY = /^\s*(street address|address line 2)/i;
+  const streetLine = (label: RegExp): number => (label === STREET_LINE_ONE ? 0 : label === STREET_LINE_TWO ? 1 : -1);
+
   // Each field by the start of its label, with the spellings a test may give its value under.
   const PROPOSAL_FIELDS: [RegExp, string[]][] = [
     [/^\s*legal name/i, ["legalName", "name", "proponentName", "individualName", "fullName"]],
     [/^\s*email address/i, ["email", "emailAddress", "contactEmail"]],
     [/^\s*phone number/i, ["phone", "phoneNumber", "contactPhone"]],
-    [/^\s*street address(?! line 2)/i, [
+    [STREET_LINE_ONE, [
       "street", "street1", "streetAddress", "streetAddress1", "streetAddressOne",
       "address", "addressLine", "addressLine1", "addressLineOne",
     ]],
-    [/^\s*street address line 2/i, [
+    [STREET_LINE_TWO, [
       "street2", "streetAddress2", "streetAddressTwo", "addressLine2", "addressLineTwo", "address2", "addressTwo",
     ]],
     [/^\s*city/i, ["city"]],
-    [/^\s*province or state/i, ["region", "province", "state", "provinceState", "provinceOrState"]],
-    [/^\s*postal code/i, ["postalCode", "mailCode", "postal", "zip", "zipCode"]],
+    [PROVINCE_LABEL, ["region", "province", "state", "provinceState", "provinceOrState"]],
+    [POSTAL_LABEL, ["postalCode", "mailCode", "postal", "zip", "zipCode"]],
     [/^\s*country/i, ["country"]],
     [/^\s*proposal\s*\(/i, ["proposalText", "proposal", "text", "body"]],
     [/^\s*additional comments/i, ["additionalComments", "comments", "additionalComment"]],
@@ -10112,8 +10124,12 @@ export default function create(
   const proposalTermsAgreed = new Set<"program" | "app">();
   // What the form said when it last refused a submit, as the alert's lines.
   let proposalRefusal: string[] = [];
-  const PROGRAM_TERMS = /^\s*i accept the code with us terms/i;
-  const APP_TERMS = /^\s*i accept the digital marketplace terms/i;
+  // The dialog (now "Review Terms and Conditions") draws its boxes as "I acknowledge that I have
+  // read, fully understand and agree to the Code With Us Terms & Conditions. (required)" and
+  // the same for the "Digital Marketplace Terms & Conditions for E-Bidding"; the older "I
+  // accept the … terms and conditions" is taken too.
+  const PROGRAM_TERMS = /^\s*i (accept|acknowledge\b.*\bagree to) the code with us terms/i;
+  const APP_TERMS = /^\s*i (accept|acknowledge\b.*\bagree to) the digital marketplace terms/i;
 
   const proposalMain = (): Locator => page.getByRole("main");
   const proposalBox = (label: RegExp): Locator => seen(proposalMain().getByRole("textbox", { name: label })).first();
@@ -10188,16 +10204,21 @@ export default function create(
     return text ? byKey(text) || text : "";
   }
 
-  // "An individual" or "An organization", by the label the radio is drawn under.
+  // "An individual" or "An organization", by the label the radio is drawn under. The create
+  // page now draws them as "Individual" and "Organization" under "Will you be submitting a
+  // proposal for this opportunity as an Individual or Organization? (required)", with neither
+  // ticked to start with; the manage page's "Edit" keeps "An individual" / "An organization"
+  // under "Who is submitting this proposal?". Either wording is taken.
   async function chooseProponent(where: string, kind: "individual" | "organization"): Promise<void> {
     const words = kind === "organization" ? "An organization" : "An individual";
-    const radio = seen(proposalMain().getByRole("radio", { name: new RegExp(`^\\s*${words}\\s*$`, "i") })).first();
+    const named = new RegExp(`^\\s*(an\\s+)?${kind}\\s*$`, "i");
+    const radio = seen(proposalMain().getByRole("radio", { name: named })).first();
     if (!(await radio.count())) {
-      unbound(where, `no "${words}" choice under "Who is submitting this proposal?" on ${page.url()}; it offers ${await offered()}`);
+      unbound(where, `no "${words}" (or "${kind === "organization" ? "Organization" : "Individual"}") choice in the proponent question on ${page.url()}; it offers ${await offered()}`);
     }
     if (await radio.isChecked()) return;
     if (await isDisabled(radio)) throw new Error(`${where} — the "${words}" choice is disabled on ${page.url()}`);
-    await seen(proposalMain().getByRole("radiogroup").getByText(words, { exact: true })).first().click();
+    await seen(proposalMain().getByRole("radiogroup").getByText(named)).first().click();
     await settle();
     if (!(await radio.isChecked())) await radio.check({ force: true }).catch(() => undefined);
   }
@@ -10271,7 +10292,8 @@ export default function create(
     for (const [key, value] of rest) {
       const slot = PROPOSAL_FIELDS.find(([, keys]) => keys.map(squash).includes(squash(key)));
       const label = slot ? slot[0] : labelFor(key);
-      const box = proposalBox(label);
+      const line = streetLine(label);
+      const box = line >= 0 ? seen(proposalMain().getByRole("textbox", { name: STREET_ANY })).nth(line) : proposalBox(label);
       if (!(await box.count())) {
         unbound(where, `no field on ${page.url()} takes "${key}" (looked for one labelled ${label}); it offers ${await offered()}`);
       }
@@ -10287,6 +10309,10 @@ export default function create(
   // A test hands an action only the values its criterion is about; every other required
   // field is given something valid, so the form will submit on what the test did give. A
   // field the test named, even as empty, is never touched; nor is one already filled.
+  // The organization chooser with nothing picked: it read "Select an item" once, and on the
+  // create form now reads just "Organization" until one is picked, when it shows the
+  // organization's legal name instead.
+  const CHOOSER_EMPTY = /^\s*(select an item|organization)?\s*$/i;
   async function completeProposal(): Promise<void> {
     const boxes = seen(proposalMain().getByRole("textbox", { name: /\(required\)/i }));
     for (let i = 0; i < (await boxes.count()); i++) {
@@ -10305,7 +10331,7 @@ export default function create(
       (await chooser.count()) &&
       !proposalNamed.has("organization") &&
       !proposalOrganizationWithheld &&
-      /select an item/i.test(await chooser.innerText().catch(() => ""))
+      CHOOSER_EMPTY.test(await chooser.innerText().catch(() => "x"))
     ) {
       await chooser.click();
       const first = seen(page.getByRole("option")).first();
@@ -10345,7 +10371,10 @@ export default function create(
     if (await dialogShown(300)) return tickAgreedTerms();
     if (!(await onProposal(where))) return false;
     const ask = async (): Promise<boolean> => {
-      const submit = seen(proposalMain().getByRole("button", { name: /^\s*(submit proposal|save changes and submit)\s*$/i })).first();
+      // "Submit" on the create form (beside "Save Draft" and "Cancel"), "Submit proposal" on the
+      // proposal's screen, "Save changes and submit" with its fields open. The bare word is
+      // taken only as a button's whole name, so no other button on the form answers to it.
+      const submit = seen(proposalMain().getByRole("button", { name: /^\s*(submit( proposal)?|save changes and submit)\s*$/i })).first();
       if (!(await submit.count())) {
         unbound(where, `no "Submit proposal" on ${page.url()}; it offers ${await offered()}`);
       }
@@ -10474,6 +10503,24 @@ export default function create(
     }
   }
 
+  // The proposal's status as the restyled manage page's head draws it: "Manage a Code With Us
+  // proposal", then the program and the status side by side ("Code With Us" / "Draft"), then
+  // the opportunity's title as the heading. Seen as a vendor on a draft saved from the create
+  // page. The status is the line above the heading that names one, alone or after the
+  // program's name; "" when the head carries none.
+  const PROPOSAL_STATUS_WORDS = "draft|submitted|withdrawn|under review|evaluated|awarded|not awarded|disqualified";
+  const PROPOSAL_HEAD_STATUS = new RegExp(`^(?:code with us\\s+)?(${PROPOSAL_STATUS_WORDS})$`, "i");
+  async function proposalHeadStatus(): Promise<string> {
+    if (!(await proposalShown())) return "";
+    const title = (await seen(proposalMain().getByRole("heading", { level: 1 })).first().innerText().catch(() => "")).trim();
+    for (const line of await textLines()) {
+      if (title && line === title) break;
+      const found = PROPOSAL_HEAD_STATUS.exec(line);
+      if (found) return found[1];
+    }
+    return "";
+  }
+
   // The definition that directly follows the term named by label, in the order main draws
   // them: "" when the term has none.
   async function definitionAfterTerm(label: RegExp): Promise<string> {
@@ -10546,7 +10593,7 @@ export default function create(
   // it said when it last refused a submit.
   async function proposalFieldMessages(): Promise<string> {
     if (!(await proposalShown())) return "";
-    if (await openDialog().count()) return lined(await openDialog().first().innerText()).filter((line) => /tick|accept/i.test(line) && !/^\s*i accept/i.test(line)).join("\n");
+    if (await openDialog().count()) return lined(await openDialog().first().innerText()).filter((line) => /tick|accept/i.test(line) && !/^\s*i (accept|acknowledge)/i.test(line)).join("\n");
     const found = lined(await formMessages());
     for (const line of proposalRefusal) if (!found.includes(line)) found.push(line);
     return found.join("\n");
@@ -10610,7 +10657,10 @@ export default function create(
       const where = `${PCWU_CREATE}.cancel`;
       await closeDialog();
       if (!(await onProposal(where))) return;
-      const group = (await proposalActions().count()) ? proposalActions() : saveChoices();
+      // The create form's "Submit", "Save Draft" and "Cancel" sit in no named group now, below
+      // "The opportunity" in the "Opportunity and actions" side panel.
+      const panel = seen(proposalMain().getByRole("complementary", { name: /opportunity and actions/i })).first();
+      const group = (await proposalActions().count()) ? proposalActions() : (await saveChoices().count()) ? saveChoices() : (await panel.count()) ? panel : proposalMain();
       await press(where, /^\s*cancel\s*$/i, group);
     },
     fieldError: () => proposalFieldMessages(),
@@ -10677,7 +10727,7 @@ export default function create(
     submitProposal: async () => {
       const where = `${PCWU_EDIT}.submit_proposal`;
       if (!(await onProposal(where))) return;
-      if (!(await proposalFieldsOpen()) && !(await seen(proposalActions().getByRole("button", { name: /^\s*submit proposal\s*$/i })).count())) {
+      if (!(await proposalFieldsOpen()) && !(await seen(proposalActions().getByRole("button", { name: /^\s*submit( proposal)?\s*$/i })).count())) {
         noteRefusal(`${where} — ${page.url()} (Status: ${(await proposalTerm(/^status$/i)) || "not shown"}) does not offer "Submit proposal"; its actions: ${(await proposalActionNames()) || "none"}`);
         return;
       }
@@ -10732,7 +10782,9 @@ export default function create(
       }
       return lines.join("\n");
     },
-    status: () => proposalTerm(/^status$/i),
+    // Under its "Status" term, or, on the restyled head that labels it no longer, the label
+    // beside the program over the title ("Code With Us" / "Draft", read as "Draft").
+    status: async () => (await proposalTerm(/^status$/i)) || proposalHeadStatus(),
     submittedAt: () => proposalTerm(/^submitted( on| at)?$/i),
     // The vendor's screen shows no score or rank in any state walked (draft, submitted,
     // withdrawn); none shown reads as nothing.
