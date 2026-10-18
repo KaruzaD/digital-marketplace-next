@@ -66,3 +66,14 @@ All earlier tests pass unchanged.
 - **User list:** the user list's phone cards and export dialog layout are still to be added to the user kit when the user list (slice 4) is restyled.
 
 I changed nothing outside `app/` and `docs/decisions/`.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Question: does slice 3 (own profile, picture and notification choice) still do what its criteria say after this restyle? Approve. Verify is pass-unasserted against the current tree c02d0d9: 23 of the 24 claimed criteria passed and none failed. The only criterion never put to the application is R-8.16, which says an upload's working copy is written on the server and then removed. Its not-testable reason is real: nothing the service sends back shows that working directory, and only reading the server's filesystem could check it. This change does not touch upload handling, so accepting the slice with R-8.16 unasserted adds no risk. The diff is limited to app/ and docs/decisions/ (plus the verify-written results file). It changes only how slice 3's screens look and keeps the test IDs, wording and behaviour that decision record 0023 depends on: the status label stays on the person's own profile (R-4.1) and the scope sentence stays on the notifications section (R-6.16). Restyling the administrator's view is justified because it is the same page, and its controls do not change. No protected path is touched, and there are no secrets or real personal data (fixtures use placeholder names and example.test addresses). Thirteen new unit tests cover the new shared user-kit pieces, focus handling and layouts. Returning focus to the checkbox after unsubscribing uses a setTimeout and a lookup by test ID, which is fragile but tested and correct. The ruling would change if the verify result became stale against a newer tree or any slice-3 criterion failed.
+
+**Conditions:**
+none
