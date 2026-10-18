@@ -14407,3 +14407,8 @@ rebind:
     app_tree: 30edc73448a7f24c6f483b8d20418fd8d2706c5b
     by: runner:verify
     at: 2026-10-18T03:44:51.764Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T04:23:41.307Z
