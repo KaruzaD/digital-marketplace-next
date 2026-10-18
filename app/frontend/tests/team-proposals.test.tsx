@@ -6,7 +6,8 @@ import type { Account } from "../src/api/accounts";
 import type { IdentityClient } from "../src/auth/identity-client";
 import { resetSessionForTests } from "../src/auth/session";
 import { routeTree } from "../src/router";
-import { teamMemberChoices } from "../src/screens/proposal-team-form";
+import { hourlyBid } from "../src/screens/proposal-team-edit";
+import { phaseRequirementsSentence, teamMemberChoices } from "../src/screens/proposal-team-form";
 
 /**
  * Proposing on Sprint With Us and Team With Us opportunities, as the screens do it
@@ -220,8 +221,117 @@ describe("the people a team may name (R-2.18)", () => {
   }));
 
   it("offers Sprint With Us pending invitees, marked, and Team With Us active members only, never one already named", () => {
-    expect(teamMemberChoices("sprint-with-us", people, ["u-owner"]).map((choice) => choice.label)).toEqual(["Dana Placeholder", "Quinn Placeholder (pending)"]);
+    expect(teamMemberChoices("sprint-with-us", people, ["u-owner"]).map((choice) => choice.label)).toEqual(["Dana Placeholder", "Quinn Placeholder (membership pending)"]);
     expect(teamMemberChoices("team-with-us", people, ["u-owner"]).map((choice) => choice.label)).toEqual(["Dana Placeholder"]);
+  });
+});
+
+describe("what a phase says of its team (R-2.19, phase_requirements)", () => {
+  const base = { complete: false, empty: false, pending: false, missing: [] as string[], required: ["User Research", "Backend Development"] };
+
+  it("names the capabilities a complete team holds, and every reason an incomplete one falls short", () => {
+    expect(phaseRequirementsSentence({ ...base, complete: true })).toBe("This phase’s team meets its requirements. User Research and Backend Development: held.");
+    expect(phaseRequirementsSentence({ ...base, complete: true, required: [] })).toBe("This phase’s team meets its requirements.");
+    expect(phaseRequirementsSentence({ ...base, empty: true, missing: ["User Research"] })).toBe(
+      "This phase’s team is incomplete. Name at least one team member. Not yet held: User Research.",
+    );
+    expect(phaseRequirementsSentence({ ...base, pending: true })).toBe(
+      "This phase’s team is incomplete. Every member must be a confirmed member of the organization, not pending.",
+    );
+  });
+});
+
+describe("what a Team With Us team bids by the hour", () => {
+  it("weights each rate by its resource's target allocation", () => {
+    expect(
+      hourlyBid([
+        { hourlyRate: 150, resource: { targetAllocation: 100 } },
+        { hourlyRate: 140, resource: { targetAllocation: 50 } },
+      ]),
+    ).toBe(220);
+    expect(hourlyBid([{ hourlyRate: 90, resource: { targetAllocation: null } }])).toBe(90);
+  });
+});
+
+describe("the Sprint With Us and Team With Us forms in the chosen direction", () => {
+  it("draws the create page as numbered parts beside the opportunity summary, with the catalogue's test IDs", async () => {
+    aNewProposal("sprint-with-us", sprint());
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(`/opportunities/sprint-with-us/${OPPORTUNITY}/proposals/create`);
+    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Create a Sprint With Us proposal");
+    await waitFor(() => expect(screen.getAllByTestId("proposal-team-member-choice")).toHaveLength(2));
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "1. Organization",
+      "2. Team",
+      "3. Capabilities",
+      "4. Cost",
+      "5. Team questions",
+      "6. References",
+      "7. Attachments",
+    ]);
+    const summary = screen.getByTestId("proposal-opportunity-summary");
+    expect(summary.textContent).toContain("Modernize the licence renewal service");
+    expect(summary.textContent).toContain("Maximum budget $500,000");
+    // One cost wrapper for each phase's field and one for the total.
+    expect(screen.getAllByTestId("proposal-cost")).toHaveLength(3);
+    expect(screen.getByTestId("attachment-add-button").textContent).toBe("Add attachment");
+  });
+
+  it("draws the Team With Us create page in five parts, the choice offering active members only", async () => {
+    aNewProposal("team-with-us", team());
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(`/opportunities/team-with-us/${OPPORTUNITY}/proposals/create`);
+    await waitFor(() => expect(Array.from(selectLabelled("Team member to add to resource 1").options).length).toBeGreaterThan(1));
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "1. Organization",
+      "2. Team",
+      "3. Cost",
+      "4. Resource questions",
+      "5. Attachments",
+    ]);
+    expect(screen.getByTestId("proposal-team-member-choice")).toBeTruthy();
+  });
+
+  it("offers a submitted proposal's form Save changes and Cancel only, and a draft's Save changes and submit as well", async () => {
+    const answering = (status: string) =>
+      serve((_method, path) => {
+        if (path === `/api/proposals/sprint-with-us/${PROPOSAL}`) return json(200, swuProposal({ status }));
+        if (path === `/api/opportunities/sprint-with-us/${OPPORTUNITY}`) return json(200, sprint());
+        if (path === "/api/ownedOrganizations") return json(200, [{ id: ORGANIZATION, legalName: "Northern Pines Digital Ltd." }]);
+        if (path.startsWith("/api/organizations/")) return json(200, organization());
+        if (path === "/api/affiliations") return json(200, members);
+        return json(200, []);
+      });
+    answering("SUBMITTED");
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    const first = renderAt(`/opportunities/sprint-with-us/${OPPORTUNITY}/proposals/${PROPOSAL}/edit`);
+    fireEvent.click(await screen.findByTestId("proposal-edit-button"));
+    expect(await screen.findByTestId("proposal-save-changes")).toBeTruthy();
+    expect(screen.queryByTestId("proposal-save-and-submit")).toBeNull();
+    expect(screen.getByTestId("proposal-cancel-edit")).toBeTruthy();
+    expect(screen.getByTestId("proposal-identifier").textContent).toBe(PROPOSAL);
+    first.unmount();
+
+    answering("DRAFT");
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(`/opportunities/sprint-with-us/${OPPORTUNITY}/proposals/${PROPOSAL}/edit`);
+    fireEvent.click(await screen.findByTestId("proposal-edit-button"));
+    expect(await screen.findByTestId("proposal-save-and-submit")).toBeTruthy();
+  });
+
+  it("shows the read-only team with each member's membership and capabilities once the organization's people are read", async () => {
+    serve((_method, path) => {
+      if (path === `/api/proposals/sprint-with-us/${PROPOSAL}`) return json(200, swuProposal());
+      if (path === `/api/opportunities/sprint-with-us/${OPPORTUNITY}`) return json(200, sprint());
+      if (path === "/api/affiliations") return json(200, members);
+      return json(200, []);
+    });
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(`/opportunities/sprint-with-us/${OPPORTUNITY}/proposals/${PROPOSAL}/edit`);
+    const prototype = await screen.findByRole("region", { name: "Prototype phase team" });
+    await waitFor(() => expect(prototype.textContent).toContain("Active"));
+    expect(prototype.textContent).toContain("User Research");
+    expect(screen.getByTestId("proposal-actions").textContent).toBe("EditWithdraw");
   });
 });
 
@@ -243,20 +353,21 @@ describe("the Sprint With Us create page (R-2.1, R-2.18, R-2.19, R-2.21)", () =>
     const sections = await screen.findAllByTestId("proposal-phase-team");
     expect(sections.map((section) => section.querySelector("legend")?.textContent)).toEqual(["Prototype phase", "Implementation phase"]);
     // The only organization is chosen already, and its people are offered once they are read.
-    await waitFor(() => expect(Array.from(selectLabelled("Team member to add to the prototype phase").options).map((option) => option.textContent)).toContain("Quinn Placeholder (pending)"));
+    await waitFor(() => expect(Array.from(selectLabelled("Team member to add to the prototype phase").options).map((option) => option.textContent)).toContain("Quinn Placeholder (membership pending)"));
     expect(screen.getByTestId("proposal-submit").hasAttribute("disabled")).toBe(true);
 
     choose("Team member to add to the prototype phase", "u-pending");
     fireEvent.click(screen.getAllByTestId("proposal-add-team-member")[0]!);
     expect(await screen.findByTestId("proposal-pending-team-member")).toBeTruthy();
     const prototype = screen.getAllByTestId("proposal-phase-requirements")[0]!;
-    expect(prototype.textContent).toContain("must be confirmed (not pending) members");
-    expect(prototype.textContent).toContain("User Research: not held");
+    expect(prototype.textContent).toBe(
+      "This phase’s team is incomplete. Every member must be a confirmed member of the organization, not pending. Not yet held: User Research.",
+    );
 
     choose("Team member to add to the prototype phase", "u-researcher");
     fireEvent.click(screen.getAllByTestId("proposal-add-team-member")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Remove Quinn Placeholder from the prototype phase" }));
-    await waitFor(() => expect(screen.getAllByTestId("proposal-phase-requirements")[0]!.textContent).toContain("meets its requirements"));
+    await waitFor(() => expect(screen.getAllByTestId("proposal-phase-requirements")[0]!.textContent).toBe("This phase’s team meets its requirements. User Research: held."));
 
     choose("Team member to add to the implementation phase", "u-owner");
     fireEvent.click(screen.getAllByTestId("proposal-add-team-member")[1]!);
@@ -304,7 +415,7 @@ describe("the Sprint With Us create page (R-2.1, R-2.18, R-2.19, R-2.21)", () =>
     await waitFor(() => expect(Array.from(selectLabelled("Team member to add to the implementation phase").options).length).toBeGreaterThan(1));
     choose("Team member to add to the implementation phase", "u-owner");
     fireEvent.click(screen.getAllByTestId("proposal-add-team-member")[1]!);
-    fireEvent.click(within(await screen.findByRole("radiogroup", { name: "Scrum master for the implementation phase" })).getByRole("radio"));
+    fireEvent.click(within(await screen.findByRole("radiogroup", { name: /^Scrum master for the implementation phase/ })).getByRole("radio"));
     fireEvent.click(screen.getByTestId("proposal-save-draft"));
     await waitFor(() => expect(requests.some((request) => request.method === "POST")).toBe(true));
     const created = requests.find((request) => request.method === "POST");
@@ -368,7 +479,7 @@ describe("the Team With Us create page (R-2.10, R-2.17, R-2.20)", () => {
     resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
     renderAt(CREATE);
     expect((await screen.findByTestId("proposal-service-area-error")).textContent).toContain("does not provide Data professional");
-    await waitFor(() => expect(Array.from(selectLabelled("Team member to add to resource 1").options).map((option) => option.textContent)).not.toContain("Quinn Placeholder (pending)"));
+    await waitFor(() => expect(Array.from(selectLabelled("Team member to add to resource 1").options).map((option) => option.textContent)).not.toContain("Quinn Placeholder (membership pending)"));
 
     choose("Team member to add to resource 1", "u-owner");
     fireEvent.click(screen.getByTestId("proposal-add-team-member"));
@@ -415,7 +526,8 @@ describe("the Sprint With Us manage page (R-2.9, R-2.22)", () => {
     expect(screen.getByTestId("proposal-status").textContent).toBe("Submitted");
     fireEvent.click(screen.getByTestId("proposal-edit-button"));
     expect(await screen.findByText("It cannot be changed while the proposal is submitted. Withdraw the proposal first to change it.")).toBeTruthy();
-    choose("Organization", OTHER_ORGANIZATION);
+    // The organization is the form's first part.
+    choose("1. Organization", OTHER_ORGANIZATION);
     fireEvent.click(screen.getByTestId("proposal-save-changes"));
     const errors = await screen.findAllByTestId("field-error");
     expect(errors.map((error) => error.textContent)).toEqual(["Organization: Organization cannot be changed once the proposal has been submitted"]);
@@ -560,7 +672,8 @@ describe("the read-only Sprint With Us and Team With Us proposal pages (R-2.25)"
     renderAt(`/opportunities/team-with-us/${OPPORTUNITY}/proposals/${PROPOSAL}`);
     expect((await screen.findByTestId("proposal-identifier")).textContent).toBe(PROPOSAL);
     expect(screen.getByText("Team With Us proposal", { selector: "p" })).toBeTruthy();
-    expect(screen.getByText("$120")).toBeTruthy();
+    expect(screen.getByText("$120.00")).toBeTruthy();
+    expect(screen.getByText("Bid: $60.00 an hour, each rate weighted by its resource's target allocation.")).toBeTruthy();
     expect(screen.getByText("Manage this proposal").getAttribute("href")).toBe(`/opportunities/team-with-us/${OPPORTUNITY}/proposals/${PROPOSAL}/edit`);
   });
 });

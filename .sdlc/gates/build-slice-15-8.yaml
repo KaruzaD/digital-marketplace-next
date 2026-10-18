@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Should slice 15 (a vendor proposing on Sprint With Us and Team With Us opportunities) merge? Approve. The verify result is current for this proposal (application tree 5374089) and passed all 17 claimed criteria, including R-2.19, with none unasserted. The three conditions on build-slice-15-7 went to bind-adapter and asked nothing of the build. The diff is a restyle of slice 15's own create and manage screens and the shared Proposals tab table, recorded in decision record 0078. Behaviour stays as decisions 0058 and 0059 set it: submit refusals still come from the shared rule functions, and the R-2.22 organization lock still comes from Save changes. Withholding 'Save changes and submit' on an already-submitted proposal removes only a redundant action. The new seams (phaseRequirementsSentence, hourlyBid, the numbered form parts, the buttons offered for submitted versus draft proposals, the team table's membership columns) have unit tests. No secret, credential or logging appears in the touched screens, and the new team lookup reads only the organization named on the vendor's own proposal, showing nothing when that read is refused. This would become a return if the result went stale, a claimed criterion failed, or the manage-page team lookup were shown to expose organization members to a reader not entitled to them.
+conditions: []
+cost: 0.6332568
+turns: 2
+session: "66780fd4-38c1-4f3f-bfe3-d72283e226e5"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T16:44:15.820Z

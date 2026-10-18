@@ -1,40 +1,43 @@
-import { RefObject, useEffect, useRef, useState } from "react";
-import { AlertDialog, Button, ButtonGroup, Heading, Link, Modal, Text } from "@bcgov/design-system-react-components";
+import { useEffect, useState } from "react";
+import { AlertDialog, Button, Link, Modal, Text } from "@bcgov/design-system-react-components";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { fileContentAddress } from "@rules/files";
-import { SERVICE_AREAS, SWU_PHASES, SWU_PHASE_NAMES } from "@rules/other-program-drafts";
-import { isAcceptingProposals } from "@rules/proposals";
+import { SWU_PHASES, SWU_PHASE_NAMES } from "@rules/other-program-drafts";
+import { isAcceptingProposals, proposalStatusLabel } from "@rules/proposals";
 import { Scoresheet, rankLabel } from "@rules/proposal-evaluation";
 import { TEAM_PROGRAM_NAMES, TeamProgram, offeredTeamProposalActions, organizationIsLocked } from "@rules/team-proposals";
 import { Account, changeOwnAccount } from "../api/accounts";
 import { downloadFile } from "../api/files";
+import { TeamMember, fetchTeam } from "../api/organizations";
 import { OtherProgramOpportunity, fetchOtherProgramOpportunity } from "../api/other-programs";
 import { ActingFor, fetchOrganizationsActingFor } from "../api/proposals";
 import { TeamProposal, TeamProposalSaveAnswer, changeTeamProposal, deleteTeamProposal, fetchTeamProposal } from "../api/team-proposals";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Actions, DataTable, Details, PageTitle, Region, SectionTitle, Waiting, type Detail } from "../app/opportunity-kit";
+import { Focused, ProposalActions, ProposalHead, ProposalPage, ProposalStatus, ProposalTabs } from "../app/proposal-kit";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
 import { TitledAlert } from "../app/titled-alert";
-import { ContactFacts, Fact, deadlineLabel, momentLabel } from "./opportunity-parts";
+import { deadlineLabel, momentLabel } from "./opportunity-parts";
 import { ProposalHistory } from "./proposal-cwu-edit";
-import { ProposalStatusBadge, TermsDialog } from "./proposal-cwu-form";
-import { TeamProposalForm, teamValuesFrom } from "./proposal-team-form";
+import { TermsDialog } from "./proposal-cwu-form";
+import { TeamProposalForm, areaName, teamSummary, teamValuesFrom } from "./proposal-team-form";
 
 /**
  * Manage a Sprint With Us or Team With Us proposal, at
  * `/opportunities/<program>/:opportunityId/proposals/:proposalId/edit` (proposal-swu-edit,
- * proposal-twu-edit; decision record 0058): its key facts, the actions its state allows, and its
- * Proposal and History tabs (`?tab=…`).
+ * proposal-twu-edit; decision records 0058 and 0078), drawn as its stories draw it: the head with
+ * the status label, the details, the links, the action bar, the tabs, then the tab's region. Edit
+ * turns the Proposal tab into the create page's long form, filled in, with the head, details and
+ * tabs above it.
  *
  * It is the vendor's page: the vendor who wrote it, or who owns or administers its organization.
  * Anybody else is shown the missing page (R-2.24). A draft may be edited, submitted or deleted; a
  * submitted one edited or withdrawn, its organization staying until it is withdrawn (R-2.22); a
  * withdrawn one edited or put back in (R-2.4, R-2.23). Every submission passes through the terms
  * dialog (R-2.3), and a refusal — the organization no longer qualified, the deadline passed — is said
- * above the tabs in the service's words (R-2.16). The History tab lists every change of state to
- * everyone who may read the proposal (R-2.9).
+ * under the action bar in the service's words (R-2.16). The History tab lists every change of state
+ * to everyone who may read the proposal (R-2.9).
  */
 
 type Tab = "proposal" | "scoresheet" | "history";
@@ -94,10 +97,10 @@ function ManageLoader({ program, account, opportunityId, proposalId }: { program
   if (!vendor || loaded.kind === "missing") return <NotFound />;
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{TITLES[program]}</Heading>
-        <Loading label="Loading proposal…" />
-      </Stack>
+      <ProposalPage>
+        <PageTitle>{TITLES[program]}</PageTitle>
+        <Waiting label="Loading proposal" />
+      </ProposalPage>
     );
   }
   if (loaded.proposal.opportunity.id !== opportunityId.toLowerCase()) return <NotFound />;
@@ -108,6 +111,26 @@ type Notice =
   | { readonly kind: "done"; readonly text: string }
   | { readonly kind: "not-submitted"; readonly reasons: readonly string[] }
   | { readonly kind: "refused"; readonly title: string; readonly reasons: readonly string[] };
+
+/**
+ * The people of the proposal's organization, for the membership and capabilities its team table
+ * shows; nothing when the organization's team cannot be read.
+ */
+function useOrganizationTeam(organizationId: string | undefined): ReadonlyMap<string, TeamMember> | null {
+  const [team, setTeam] = useState<ReadonlyMap<string, TeamMember> | null>(null);
+  useEffect(() => {
+    setTeam(null);
+    if (!organizationId) return;
+    let current = true;
+    void fetchTeam(organizationId).then((answer) => {
+      if (current && answer.kind === "listed") setTeam(new Map(answer.members.map((member) => [member.userId, member])));
+    });
+    return () => {
+      current = false;
+    };
+  }, [organizationId]);
+  return team;
+}
 
 function Manage({
   program,
@@ -127,25 +150,37 @@ function Manage({
   const [proposal, setProposal] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [formVersion, setFormVersion] = useState(0);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNoticeState] = useState<Notice | null>(null);
+  // Each notice is a new message, focused as it appears.
+  const [noticeVersion, setNoticeVersion] = useState(0);
   const [dialog, setDialog] = useState<"terms" | "withdraw" | "delete" | null>(null);
   const [busy, setBusy] = useState(false);
-  const noticeRef = useRef<HTMLDivElement>(null);
+  const people = useOrganizationTeam(proposal.organization?.id);
 
-  useEffect(() => {
-    if (notice && notice.kind !== "done") noticeRef.current?.focus();
-  }, [notice]);
+  function setNotice(next: Notice | null) {
+    setNoticeState(next);
+    setNoticeVersion((version) => version + 1);
+  }
 
   const tabs = tabsFor(proposal);
   const tab: Tab = tabs.includes(search.tab as Tab) ? (search.tab as Tab) : "proposal";
   const base = `/opportunities/${program}/${opportunity.id}/proposals/${proposal.id}`;
   const offers = offeredTeamProposalActions(proposal.status);
+  const status = proposalStatusLabel(proposal.status);
+  const title = proposal.opportunity.title || "Untitled opportunity";
   // The organization already named stays a choice even when the vendor no longer administers it.
   const named = proposal.organization;
   const choices = named && !organizations.some((organization) => organization.id === named.id) ? [...organizations, named] : organizations;
   const names: Record<string, string> = {};
   for (const phase of SWU_PHASES) for (const member of proposal.phases[phase]?.members ?? []) names[member.member.id] = member.member.name;
   for (const member of proposal.team) names[member.member.id] = member.member.name;
+
+  const head = <ProposalHead eyebrow={TITLES[program]} program={program} status={status} title={title} />;
+  const identifiers: Detail[] = [
+    { term: "Proposal ID", value: proposal.id, testId: "proposal-identifier" },
+    { term: "Opportunity ID", value: opportunity.id, testId: "opportunity-identifier" },
+  ];
+  const tabLinks = <ProposalTabs base={`${base}/edit`} current={tab} tabs={tabs.map((key) => ({ key, label: TAB_NAMES[key] }))} />;
 
   function goToTab(next: Tab) {
     const params = { opportunityId: opportunity.id, proposalId: proposal.id };
@@ -196,139 +231,120 @@ function Manage({
     settle(answer, "", "Your proposal was not deleted");
   }
 
+  if (tab === "proposal" && editing) {
+    return (
+      <TeamProposalForm
+        key={formVersion}
+        program={program}
+        purpose="edit"
+        opportunity={opportunity}
+        organizations={choices}
+        initial={teamValuesFrom(proposal, opportunity)}
+        initialAttachments={proposal.attachments}
+        initialNames={names}
+        organizationLocked={organizationIsLocked(proposal.status)}
+        // A submitted proposal is saved as it stands; there is nothing more to submit.
+        offerSubmit={proposal.status !== "SUBMITTED"}
+        head={
+          <>
+            {head}
+            <Details items={identifiers} />
+            {tabLinks}
+            <SectionTitle id="tab-heading">Proposal</SectionTitle>
+          </>
+        }
+        intro={<p className="op-text">A draft can be saved with any field blank. Every required field is needed to submit.</p>}
+        summary={teamSummary(program, opportunity, status)}
+        refusalTitle="Your changes were not saved"
+        onSend={async (action, content) => {
+          if (action === "save") return changeTeamProposal(program, proposal.id, "edit", content);
+          const accepted = await changeOwnAccount(account.id, "acceptTerms");
+          if (accepted.kind !== "saved") return { kind: "failed" };
+          const saved = await changeTeamProposal(program, proposal.id, "edit", content);
+          if (saved.kind !== "saved" || saved.proposal.status === "SUBMITTED") return saved;
+          return changeTeamProposal(program, proposal.id, "submit");
+        }}
+        onSaved={(saved, action) => {
+          setProposal(saved);
+          setEditing(false);
+          setFormVersion((version) => version + 1);
+          setNotice({
+            kind: "done",
+            text: action === "submit" ? "Your changes have been saved and your proposal submitted." : "Your changes have been saved.",
+          });
+        }}
+        onCancel={() => setEditing(false)}
+      />
+    );
+  }
+
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          {TITLES[program]}
-        </Text>
-        <Heading level={1}>{proposal.opportunity.title || "Untitled opportunity"}</Heading>
-      </Stack>
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label="Status">
-          <ProposalStatusBadge status={proposal.status} />
-        </Fact>
-        {proposal.submittedAt && proposal.status !== "DRAFT" ? (
-          <Fact label="Submitted" testId="proposal-submitted-at">
-            {momentLabel(proposal.submittedAt)}
-          </Fact>
-        ) : null}
-        <Fact label="Proposal ID" testId="proposal-identifier">
-          {proposal.id}
-        </Fact>
-        <Fact label="Opportunity ID" testId="opportunity-identifier">
-          {opportunity.id}
-        </Fact>
-        <Fact label="Proposal deadline">{deadlineLabel(proposal.opportunity.proposalDeadline)}</Fact>
-      </Stack>
-      <Stack direction="row" align="center" gap="medium">
+    <ProposalPage>
+      {head}
+      <Details
+        items={[
+          ...(proposal.submittedAt && proposal.status !== "DRAFT"
+            ? [{ term: "Submitted", value: momentLabel(proposal.submittedAt), testId: "proposal-submitted-at" }]
+            : []),
+          ...identifiers,
+          { term: "Proposal deadline", value: deadlineLabel(proposal.opportunity.proposalDeadline) },
+        ]}
+      />
+      <Actions>
         <Link href={`/opportunities/${program}/${opportunity.id}`}>View the opportunity</Link>
         <Link href={`${base}/export`} data-testid="proposal-export-link">
           Printable copy
         </Link>
-      </Stack>
-      {!editing ? (
-        <div data-testid="proposal-actions">
-          {offers.edit || offers.submit || offers.withdraw || offers.delete ? (
-            <ButtonGroup ariaLabel="Proposal actions">
-              {offers.edit ? (
-                <Button
-                  variant="secondary"
-                  onPress={() => {
-                    setNotice(null);
-                    setEditing(true);
-                    if (tab !== "proposal") goToTab("proposal");
-                  }}
-                  data-testid="proposal-edit-button"
-                >
-                  Edit
-                </Button>
-              ) : null}
-              {offers.submit ? (
-                <Button
-                  variant="primary"
-                  isDisabled={busy}
-                  onPress={() => {
-                    setNotice(null);
-                    setDialog("terms");
-                  }}
-                  data-testid="proposal-submit"
-                >
-                  Submit proposal
-                </Button>
-              ) : null}
-              {offers.withdraw ? (
-                <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("withdraw")} data-testid="proposal-withdraw-button">
-                  Withdraw
-                </Button>
-              ) : null}
-              {offers.delete ? (
-                <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("delete")} data-testid="proposal-delete-button">
-                  Delete
-                </Button>
-              ) : null}
-            </ButtonGroup>
-          ) : (
-            <Text elementType="p">There is nothing to do with this proposal now.</Text>
-          )}
-        </div>
-      ) : null}
-      <nav aria-label="Proposal sections">
-        <Stack as="ul" direction="row" gap="medium">
-          {tabs.map((name) => (
-            <li key={name}>
-              <Link href={`${base}/edit?tab=${name}`} aria-current={name === tab ? "page" : undefined} data-testid={`proposal-tab-${name}`}>
-                {TAB_NAMES[name]}
-              </Link>
-            </li>
-          ))}
-        </Stack>
-      </nav>
-      <NoticeArea notice={notice} noticeRef={noticeRef} />
-      <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-        <Heading level={2} id="tab-heading">
-          {TAB_NAMES[tab]}
-        </Heading>
-        {tab === "proposal" && editing ? (
+      </Actions>
+      <ProposalActions>
+        {offers.edit || offers.submit || offers.withdraw || offers.delete ? (
           <>
-            <Text elementType="p">A draft can be saved with any field blank. Every required field is needed to submit.</Text>
-            <TeamProposalForm
-              key={formVersion}
-              program={program}
-              purpose="edit"
-              opportunity={opportunity}
-              organizations={choices}
-              initial={teamValuesFrom(proposal, opportunity)}
-              initialAttachments={proposal.attachments}
-              initialNames={names}
-              organizationLocked={organizationIsLocked(proposal.status)}
-              headingLevel={3}
-              refusalTitle="Your changes were not saved"
-              onSend={async (action, content) => {
-                if (action === "save") return changeTeamProposal(program, proposal.id, "edit", content);
-                const accepted = await changeOwnAccount(account.id, "acceptTerms");
-                if (accepted.kind !== "saved") return { kind: "failed" };
-                const saved = await changeTeamProposal(program, proposal.id, "edit", content);
-                if (saved.kind !== "saved" || saved.proposal.status === "SUBMITTED") return saved;
-                return changeTeamProposal(program, proposal.id, "submit");
-              }}
-              onSaved={(saved, action) => {
-                setProposal(saved);
-                setEditing(false);
-                setFormVersion((version) => version + 1);
-                setNotice({
-                  kind: "done",
-                  text: action === "submit" ? "Your changes have been saved and your proposal submitted." : "Your changes have been saved.",
-                });
-              }}
-              onCancel={() => setEditing(false)}
-            />
+            {offers.edit ? (
+              <Button
+                variant="secondary"
+                onPress={() => {
+                  setNotice(null);
+                  setEditing(true);
+                  if (tab !== "proposal") goToTab("proposal");
+                }}
+                data-testid="proposal-edit-button"
+              >
+                Edit
+              </Button>
+            ) : null}
+            {offers.submit ? (
+              <Button
+                variant="primary"
+                isDisabled={busy}
+                onPress={() => {
+                  setNotice(null);
+                  setDialog("terms");
+                }}
+                data-testid="proposal-submit"
+              >
+                Submit proposal
+              </Button>
+            ) : null}
+            {offers.withdraw ? (
+              <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("withdraw")} data-testid="proposal-withdraw-button">
+                Withdraw
+              </Button>
+            ) : null}
+            {offers.delete ? (
+              <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("delete")} data-testid="proposal-delete-button">
+                Delete
+              </Button>
+            ) : null}
           </>
         ) : null}
-        {tab === "proposal" && !editing ? <TeamProposalDetails program={program} proposal={proposal} opportunity={opportunity} /> : null}
+      </ProposalActions>
+      <NoticeArea key={noticeVersion} notice={notice} />
+      {tabLinks}
+      <Region id="tab-heading" title={TAB_NAMES[tab]}>
+        {tab === "proposal" ? <TeamProposalDetails program={program} proposal={proposal} opportunity={opportunity} people={people} /> : null}
         {tab === "scoresheet" && proposal.scoresheet ? <ScoresheetDetails program={program} proposal={proposal} scoresheet={proposal.scoresheet} /> : null}
         {tab === "history" ? <ProposalHistory proposal={proposal} /> : null}
-      </Stack>
+      </Region>
       <TermsDialog
         isOpen={dialog === "terms"}
         isSending={busy}
@@ -353,11 +369,11 @@ function Manage({
             </>
           }
         >
-          <Text elementType="p">
+          <p className="op-text">
             {isAcceptingProposals({ status: opportunity.status, proposalDeadline: opportunity.proposalDeadline }, new Date())
               ? `It will no longer be considered. You can submit it again only while the opportunity is accepting proposals, until ${deadlineLabel(proposal.opportunity.proposalDeadline)}. You and the administrators will be sent a withdrawal notice.`
               : "It will no longer be considered, and the opportunity is no longer accepting proposals, so it cannot be submitted again. You and the administrators will be sent a withdrawal notice."}
-          </Text>
+          </p>
         </AlertDialog>
       </Modal>
       <Modal isOpen={dialog === "delete"} isDismissable onOpenChange={(open) => (!open && !busy ? setDialog(null) : undefined)}>
@@ -376,17 +392,17 @@ function Manage({
             </>
           }
         >
-          <Text elementType="p">The draft and everything in it will be removed, and it can no longer be opened. This cannot be undone.</Text>
+          <p className="op-text">The draft and everything in it will be removed, and it can no longer be opened. This cannot be undone.</p>
         </AlertDialog>
       </Modal>
-    </Stack>
+    </ProposalPage>
   );
 }
 
-function NoticeArea({ notice, noticeRef }: { notice: Notice | null; noticeRef: RefObject<HTMLDivElement> }) {
+function NoticeArea({ notice }: { notice: Notice | null }) {
   if (notice?.kind === "not-submitted" || notice?.kind === "refused") {
     return (
-      <div tabIndex={-1} ref={noticeRef} data-testid={notice.kind === "not-submitted" ? "proposal-submit-refused-message" : "proposal-refused-message"}>
+      <Focused testId={notice.kind === "not-submitted" ? "proposal-submit-refused-message" : "proposal-refused-message"}>
         <TitledAlert variant="danger" role="alert" title={notice.kind === "not-submitted" ? "Your proposal was not submitted" : notice.title}>
           {notice.reasons.map((reason) => (
             <Text elementType="p" key={reason}>
@@ -394,182 +410,160 @@ function NoticeArea({ notice, noticeRef }: { notice: Notice | null; noticeRef: R
             </Text>
           ))}
         </TitledAlert>
-      </div>
+      </Focused>
     );
   }
-  return <div role="status">{notice?.kind === "done" ? <Text elementType="p">{notice.text}</Text> : null}</div>;
+  return <div role="status">{notice?.kind === "done" ? <p className="op-text">{notice.text}</p> : null}</div>;
 }
 
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-
 const dollars = (amount: number) => `$${Math.round(amount).toLocaleString("en-CA")}`;
-const areaName = (key: string | null) => {
-  const name = SERVICE_AREAS.find((area) => area.key === key)?.name ?? key ?? "Unknown service area";
-  return name.charAt(0) + name.slice(1).toLowerCase();
-};
+const rate = (amount: number) => `$${amount.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const notEntered = (value: string) => (value.trim() === "" ? "Not entered yet" : value);
 
-/** The proposal as it stands, read-only (proposal-swu-edit and proposal-twu-edit, default). */
-export function TeamProposalDetails({ program, proposal, opportunity }: { program: TeamProgram; proposal: TeamProposal; opportunity: OtherProgramOpportunity }) {
+/**
+ * What a Team With Us team bids by the hour: each rate weighted by its resource's target allocation,
+ * added up (proposal-twu-edit, default: "Bid: $220.00 an hour").
+ */
+export function hourlyBid(team: readonly { readonly hourlyRate: number; readonly resource: { readonly targetAllocation: number | null } }[]): number {
+  return team.reduce((sum, member) => sum + member.hourlyRate * ((member.resource.targetAllocation ?? 100) / 100), 0);
+}
+
+/**
+ * The proposal as it stands, read-only, each part a region of the tab (proposal-swu-edit and
+ * proposal-twu-edit, default). Given the organization's people, a Sprint With Us team also shows
+ * each member's membership and capabilities.
+ */
+export function TeamProposalDetails({
+  program,
+  proposal,
+  opportunity,
+  people = null,
+}: {
+  program: TeamProgram;
+  proposal: TeamProposal;
+  opportunity: OtherProgramOpportunity;
+  people?: ReadonlyMap<string, TeamMember> | null;
+}) {
   const sprint = program === "sprint-with-us";
+  const contact = proposal.organization?.contact;
   return (
     <>
-      <Stack as="section" gap="medium" aria-labelledby="tab-organization">
-        <Heading level={3} id="tab-organization">
-          Organization
-        </Heading>
-        <Text elementType="p" data-testid="proposal-organization">
-          {proposal.organization?.legalName ?? "Not chosen yet"}
-        </Text>
-        {proposal.organization?.contact ? (
-          <Stack as="dl" direction="row" gap="medium">
-            <ContactFacts contact={proposal.organization.contact} />
-          </Stack>
-        ) : null}
-      </Stack>
-      <Stack as="section" gap="medium" aria-labelledby="tab-team">
-        <Heading level={3} id="tab-team">
-          Team
-        </Heading>
+      <Region id="tab-organization" title="Organization" level={3}>
+        <Details
+          items={[
+            { term: "Legal name", value: proposal.organization?.legalName ?? "Not chosen yet", testId: "proposal-organization" },
+            ...(contact
+              ? [
+                  { term: "Contact name", value: contact.name || "Not entered" },
+                  { term: "Contact email", value: contact.email || "Not entered" },
+                  ...(contact.phone ? [{ term: "Contact phone", value: contact.phone }] : []),
+                ]
+              : []),
+          ]}
+        />
+      </Region>
+      <Region id="tab-team" title="Team" level={3}>
         {sprint ? (
           <>
             {SWU_PHASES.filter((phase) => proposal.phases[phase]).map((phase) => {
               const team = proposal.phases[phase]!;
               const name = `${SWU_PHASE_NAMES[phase]} phase`;
               return (
-                <Stack key={phase} gap="medium">
-                  <div role="region" aria-labelledby={`team-caption-${phase}`} tabIndex={0} style={{ overflowX: "auto" }}>
-                    <table style={{ borderCollapse: "collapse", width: "100%" }}>
-                      <caption id={`team-caption-${phase}`} style={{ textAlign: "start" }}>
-                        <Text size="small" color="secondary">{`${name} team`}</Text>
-                      </caption>
-                      <thead>
-                        <tr>
-                          <th scope="col" style={cell}>
-                            Team member
-                          </th>
-                          <th scope="col" style={cell}>
-                            Scrum master
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {team.members.length === 0 ? (
-                          <tr>
-                            <td style={cell} colSpan={2}>
-                              Nobody named yet
-                            </td>
+                <div key={phase} className="op-region">
+                  {team.members.length === 0 ? (
+                    <p className="op-text">{`${name}: nobody named yet.`}</p>
+                  ) : (
+                    <DataTable
+                      captionId={`team-caption-${phase}`}
+                      caption={`${name} team`}
+                      columns={people ? ["Team member", "Scrum master", "Membership", "Capabilities"] : ["Team member", "Scrum master"]}
+                    >
+                      {team.members.map((member) => {
+                        const person = people?.get(member.member.id);
+                        return (
+                          <tr key={member.member.id}>
+                            <td>{member.member.name}</td>
+                            <td>{member.scrumMaster ? "Yes" : "No"}</td>
+                            {people ? (
+                              <>
+                                <td>
+                                  <ProposalStatus bare>{person?.membershipStatus === "ACTIVE" ? "Active" : person?.membershipStatus === "PENDING" ? "Membership pending" : "Not a member"}</ProposalStatus>
+                                </td>
+                                <td>{person && person.capabilities.length > 0 ? person.capabilities.join(", ") : "None recorded"}</td>
+                              </>
+                            ) : null}
                           </tr>
-                        ) : (
-                          team.members.map((member) => (
-                            <tr key={member.member.id}>
-                              <td style={cell}>{member.member.name}</td>
-                              <td style={cell}>{member.scrumMaster ? "Yes" : "No"}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <Text elementType="p">{`${name} proposed cost: ${dollars(team.proposedCost)}`}</Text>
-                </Stack>
+                        );
+                      })}
+                    </DataTable>
+                  )}
+                  <p className="op-text">{`${name} proposed cost: ${dollars(team.proposedCost)}`}</p>
+                </div>
               );
             })}
-            <Text elementType="p">{`Total proposed cost: ${dollars(proposal.totalProposedCost ?? 0)} of the ${dollars(proposal.opportunity.budget)} maximum budget.`}</Text>
+            <p className="op-text">{`Total proposed cost: ${dollars(proposal.totalProposedCost ?? 0)} of the ${dollars(proposal.opportunity.budget)} maximum budget.`}</p>
           </>
         ) : (
           <>
             {proposal.team.length === 0 ? (
-              <Text elementType="p">Nobody named yet.</Text>
+              <p className="op-text">Nobody named yet.</p>
             ) : (
-              <div role="region" aria-labelledby="team-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-                <table style={{ borderCollapse: "collapse", width: "100%" }}>
-                  <caption id="team-caption" style={{ textAlign: "start" }}>
-                    <Text size="small" color="secondary">
-                      The team, by resource
-                    </Text>
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col" style={cell}>
-                        Team member
-                      </th>
-                      <th scope="col" style={cell}>
-                        Resource
-                      </th>
-                      <th scope="col" style={cell}>
-                        Hourly rate
-                      </th>
+              <>
+                <DataTable captionId="team-caption" caption="Team members, by the resource each is named against" columns={["Resource", "Team member", "Hourly rate"]}>
+                  {proposal.team.map((member) => (
+                    <tr key={member.member.id}>
+                      <td>{`${areaName(member.resource.serviceArea)}${member.resource.targetAllocation !== null ? `, ${member.resource.targetAllocation}% of full time` : ""}`}</td>
+                      <td>{member.member.name}</td>
+                      <td>{rate(member.hourlyRate)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {proposal.team.map((member) => (
-                      <tr key={member.member.id}>
-                        <td style={cell}>{member.member.name}</td>
-                        <td style={cell}>{`${areaName(member.resource.serviceArea)}${member.resource.targetAllocation !== null ? `, ${member.resource.targetAllocation}% of full time` : ""}`}</td>
-                        <td style={cell}>{`$${member.hourlyRate.toLocaleString("en-CA")}`}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </DataTable>
+                <p className="op-text">{`Bid: ${rate(hourlyBid(proposal.team))} an hour, each rate weighted by its resource's target allocation.`}</p>
+              </>
             )}
             {proposal.totalProposedCost !== null ? (
-              <Text elementType="p">{`Estimated cost over the contract: ${dollars(proposal.totalProposedCost)} of the ${dollars(proposal.opportunity.budget)} maximum budget.`}</Text>
+              <p className="op-text">{`Estimated cost over the contract: ${dollars(proposal.totalProposedCost)} of the ${dollars(proposal.opportunity.budget)} maximum budget.`}</p>
             ) : null}
           </>
         )}
-      </Stack>
-      <Stack as="section" gap="medium" aria-labelledby="tab-questions">
-        <Heading level={3} id="tab-questions">
-          {sprint ? "Team questions" : "Resource questions"}
-        </Heading>
+      </Region>
+      <Region id="tab-questions" title={sprint ? "Team questions" : "Resource questions"} level={3}>
         {opportunity.questions.length === 0 ? (
-          <Text elementType="p">This opportunity asks no questions.</Text>
+          <p className="op-text">This opportunity asks no questions.</p>
         ) : (
-          <Stack as="ol" gap="medium">
+          <ol className="op-list">
             {opportunity.questions.map((question, order) => {
               const response = proposal.responses.find((entry) => entry.order === order)?.response ?? "";
               return (
                 <li key={order}>
-                  <Stack gap="small">
-                    <Text elementType="p">{question.question}</Text>
-                    <Text elementType="p">{`Response: ${response.trim() === "" ? "Not entered yet" : response}`}</Text>
-                  </Stack>
+                  <div className="op-region">
+                    <p className="op-text">{question.question}</p>
+                    <p className="op-text">{`Response: ${notEntered(response)}`}</p>
+                  </div>
                 </li>
               );
             })}
-          </Stack>
+          </ol>
         )}
-      </Stack>
+      </Region>
       {sprint ? (
-        <Stack as="section" gap="medium" aria-labelledby="tab-references">
-          <Heading level={3} id="tab-references">
-            References
-          </Heading>
+        <Region id="tab-references" title="References" level={3}>
           {proposal.references.length === 0 ? (
-            <Text elementType="p">No references have been added.</Text>
+            <p className="op-text">No references have been added.</p>
           ) : (
-            <ul>
-              {proposal.references.map((reference, index) => (
-                <li key={index}>{[reference.name, reference.email, reference.phone].filter((part) => part.trim() !== "").join(", ")}</li>
-              ))}
-            </ul>
+            proposal.references.map((reference, index) => (
+              <p key={index} className="op-text">
+                {[reference.name, reference.company, reference.email, reference.phone].filter((part) => part.trim() !== "").join(", ")}
+              </p>
+            ))
           )}
-        </Stack>
+        </Region>
       ) : null}
-      <Stack as="section" gap="medium" aria-labelledby="tab-attachments">
-        <Heading level={3} id="tab-attachments">
-          Attachments
-        </Heading>
+      <Region id="tab-attachments" title="Attachments" level={3}>
         {proposal.attachments.length === 0 ? (
-          <Text elementType="p">No attachments have been added.</Text>
+          <p className="op-text">No attachments have been added.</p>
         ) : (
-          <ul data-testid="attachment-list">
+          <ul className="op-list" data-testid="attachment-list">
             {proposal.attachments.map((attachment) => (
               <li key={attachment.id} data-testid="attachment-existing-row">
                 <Link
@@ -586,7 +580,7 @@ export function TeamProposalDetails({ program, proposal, opportunity }: { progra
             ))}
           </ul>
         )}
-      </Stack>
+      </Region>
     </>
   );
 }
@@ -602,27 +596,24 @@ function ScoresheetDetails({ program, proposal, scoresheet }: { program: TeamPro
   return (
     <>
       {proposal.anonymousProponentName ? (
-        <Text elementType="p">
+        <p className="op-text">
           During evaluation, evaluators saw this proposal as <span data-testid="proposal-anonymous-name">{proposal.anonymousProponentName}</span>.
-        </Text>
+        </p>
       ) : null}
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label={sprint ? "Team questions" : "Resource questions"}>{percent(scoresheet.questions)}</Fact>
-        <Fact label={sprint ? "Code challenge" : "Challenge"}>{percent(scoresheet.challenge)}</Fact>
-        {sprint ? <Fact label="Team scenario">{percent(scoresheet.scenario)}</Fact> : null}
-        <Fact label="Price">{percent(scoresheet.price)}</Fact>
-        <Fact label="Total" testId="proposal-total-score">
-          {percent(scoresheet.total)}
-        </Fact>
-        {scoresheet.rank ? (
-          <Fact label="Rank" testId="proposal-rank">
-            {rankLabel(scoresheet.rank)}
-          </Fact>
-        ) : null}
-      </Stack>
-      <Text elementType="p" size="small" color="secondary">
-        The total combines each stage's score in the proportions the opportunity states.
-      </Text>
+      <Details
+        items={[
+          { term: sprint ? "Team questions" : "Resource questions", value: percent(scoresheet.questions) },
+          { term: sprint ? "Code challenge" : "Challenge", value: percent(scoresheet.challenge) },
+          ...(sprint ? [{ term: "Team scenario", value: percent(scoresheet.scenario) }] : []),
+          { term: "Price", value: percent(scoresheet.price) },
+          { term: "Total", value: percent(scoresheet.total), testId: "proposal-total-score" },
+          ...(scoresheet.rank ? [{ term: "Rank", value: rankLabel(scoresheet.rank), testId: "proposal-rank" }] : []),
+        ]}
+      />
+      <p className="op-note">
+        The total combines each stage's score in the proportions the opportunity states. The price score is this proposal's share of the
+        lowest bid still in contention.
+      </p>
     </>
   );
 }

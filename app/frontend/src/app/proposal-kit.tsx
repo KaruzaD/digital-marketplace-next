@@ -66,6 +66,33 @@ const css = `
 }
 .pp-dialog { display: flex; flex-direction: column; gap: var(--layout-margin-medium); padding: var(--layout-padding-large); }
 .pp-dialog > * { margin: var(--layout-margin-none); }
+.pp-dialog .bcds-react-aria-TextArea, .pp-dialog .bcds-react-aria-NumberField { width: 100%; }
+.pp-rows {
+  list-style: none;
+  margin: var(--layout-margin-none);
+  padding: var(--layout-padding-none);
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-margin-small);
+}
+.pp-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--layout-margin-small);
+  padding: var(--layout-padding-small) var(--layout-padding-medium);
+  border: var(--layout-border-width-small) solid var(--surface-color-border-default);
+  border-radius: var(--layout-border-radius-medium);
+  font: var(--typography-regular-small-body);
+  color: var(--typography-color-primary);
+}
+.pp-row > * { margin: var(--layout-margin-none); }
+.pp-row-name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--layout-margin-small); font: var(--typography-bold-small-body); }
+.pp-row-error { flex-basis: 100%; }
+.pp-cluster { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--layout-margin-small); }
+.pp-cluster > * { margin: var(--layout-margin-none); }
+.op-regions .pp-cluster > .bcds-react-aria-Select { flex: 1 1 240px; width: auto; }
 
 .pf-columns {
   display: grid;
@@ -109,7 +136,7 @@ const css = `
 @media (max-width: 767.98px) {
   .pf-opportunity { font: var(--typography-regular-body); }
   .pf-text { font: var(--typography-regular-small-body); }
-  .pf-attach > button { width: 100%; justify-content: center; }
+  .pp-cluster > button, .pf-attach > button { width: 100%; justify-content: center; }
 }
 @media (min-width: 768px) {
   .pf-columns { grid-template-columns: minmax(0, 1fr) 320px; }
@@ -185,13 +212,13 @@ export function ProposalTabs({ base, current, tabs }: { base: string; current: s
 }
 
 /** A message that takes keyboard focus when it appears, so it is read out and a keyboard user starts from it. */
-export function Focused({ testId, children }: { testId?: string; children: ReactNode }) {
+export function Focused({ testId, id, children }: { testId?: string; id?: string; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     box.current?.focus();
   }, []);
   return (
-    <div ref={box} tabIndex={-1} className="pp-focus" data-testid={testId}>
+    <div ref={box} id={id} tabIndex={-1} className="pp-focus" data-testid={testId}>
       {children}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Heading, Text } from "@bcgov/design-system-react-components";
+import { Link } from "@bcgov/design-system-react-components";
 import { useNavigate } from "@tanstack/react-router";
 import { mayStartProposal } from "@rules/proposals";
 import type { TeamProgram } from "@rules/team-proposals";
@@ -8,12 +8,12 @@ import { OtherProgramOpportunity, fetchOtherProgramOpportunity } from "../api/ot
 import { ActingFor, fetchOrganizationsActingFor } from "../api/proposals";
 import { createTeamProposal, listTeamProposals } from "../api/team-proposals";
 import { useGoTo } from "../app/go-to";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { PageTitle, Waiting } from "../app/opportunity-kit";
+import { CreateHead, ProposalPage } from "../app/proposal-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { useSession } from "../auth/session";
-import { TeamOpportunitySummary, TeamProposalForm, blankTeamValues } from "./proposal-team-form";
+import { TeamProposalForm, blankTeamValues, teamSummary } from "./proposal-team-form";
 
 const TITLES: Readonly<Record<TeamProgram, string>> = {
   "sprint-with-us": "Create a Sprint With Us proposal",
@@ -23,7 +23,8 @@ const TITLES: Readonly<Record<TeamProgram, string>> = {
 /**
  * Start a Sprint With Us or Team With Us proposal, at
  * `/opportunities/<program>/:opportunityId/proposals/create` (proposal-swu-create,
- * proposal-twu-create; decision record 0058).
+ * proposal-twu-create; decision records 0058 and 0078), drawn as the catalogue's long proposal form
+ * beside a summary of the opportunity that holds the actions.
  *
  * Only a vendor who has accepted the service's terms at some point may start one; anyone else is
  * shown the missing page (R-2.1), and so is an opportunity that is not published. A vendor who
@@ -34,16 +35,18 @@ const TITLES: Readonly<Record<TeamProgram, string>> = {
 export function ProposalTeamCreateScreen({ program, opportunityId }: { program: TeamProgram; opportunityId: string }) {
   useScreenTitle(TITLES[program]);
   const session = useSession();
-  if (session.status === "starting") {
-    return (
-      <Stack gap="large">
-        <Heading level={1}>{TITLES[program]}</Heading>
-        <Loading label="Loading opportunity…" />
-      </Stack>
-    );
-  }
+  if (session.status === "starting") return <CreateWaiting program={program} />;
   if (session.status !== "signed-in" || !mayStartProposal(session.account)) return <NotFound />;
   return <CreateLoader program={program} account={session.account} opportunityId={opportunityId} />;
+}
+
+function CreateWaiting({ program }: { program: TeamProgram }) {
+  return (
+    <ProposalPage>
+      <PageTitle>{TITLES[program]}</PageTitle>
+      <Waiting label="Loading opportunity" />
+    </ProposalPage>
+  );
 }
 
 type Loaded =
@@ -81,14 +84,7 @@ function CreateLoader({ program, account, opportunityId }: { program: TeamProgra
   }, [program, account.id, opportunityId, goTo]);
 
   if (loaded.kind === "missing") return <NotFound />;
-  if (loaded.kind === "loading") {
-    return (
-      <Stack gap="large">
-        <Heading level={1}>{TITLES[program]}</Heading>
-        <Loading label="Loading opportunity…" />
-      </Stack>
-    );
-  }
+  if (loaded.kind === "loading") return <CreateWaiting program={program} />;
   return <Create program={program} account={account} opportunity={loaded.opportunity} organizations={loaded.organizations} />;
 }
 
@@ -106,39 +102,43 @@ function Create({
   const navigate = useNavigate();
   const initial = blankTeamValues(opportunity);
   return (
-    <Stack gap="large">
-      <Heading level={1}>{TITLES[program]}</Heading>
-      <TeamOpportunitySummary program={program} opportunity={opportunity} />
-      <Text elementType="p">A draft can be saved with any field blank. Every required field is needed to submit.</Text>
-      <TeamProposalForm
-        program={program}
-        purpose="create"
-        opportunity={opportunity}
-        organizations={organizations}
-        initial={organizations.length === 1 && organizations[0] ? { ...initial, organization: organizations[0].id } : initial}
-        headingLevel={2}
-        refusalTitle="Your proposal was not created"
-        onSend={async (action, content) => {
-          if (action === "submit") {
-            // Submitting records the acceptance of the service's terms (R-2.3).
-            const accepted = await changeOwnAccount(account.id, "acceptTerms");
-            if (accepted.kind !== "saved") return { kind: "failed" };
-          }
-          return createTeamProposal(program, opportunity.id, content, action === "submit" ? "SUBMITTED" : "DRAFT");
-        }}
-        onSaved={(proposal) => {
-          const params = { opportunityId: opportunity.id, proposalId: proposal.id };
-          void (program === "sprint-with-us"
-            ? navigate({ to: "/opportunities/sprint-with-us/$opportunityId/proposals/$proposalId/edit", params })
-            : navigate({ to: "/opportunities/team-with-us/$opportunityId/proposals/$proposalId/edit", params }));
-        }}
-        onCancel={() => {
-          const params = { opportunityId: opportunity.id };
-          void (program === "sprint-with-us"
-            ? navigate({ to: "/opportunities/sprint-with-us/$opportunityId", params })
-            : navigate({ to: "/opportunities/team-with-us/$opportunityId", params }));
-        }}
-      />
-    </Stack>
+    <TeamProposalForm
+      program={program}
+      purpose="create"
+      opportunity={opportunity}
+      organizations={organizations}
+      initial={organizations.length === 1 && organizations[0] ? { ...initial, organization: organizations[0].id } : initial}
+      head={<CreateHead title={TITLES[program]} opportunity={opportunity.title || "Untitled opportunity"} />}
+      intro={
+        <>
+          <p className="op-text">A draft can be saved with any field blank. Every required field is needed to submit.</p>
+          <p className="op-text">
+            <Link href={`/opportunities/${program}/${opportunity.id}`}>View the opportunity</Link>
+          </p>
+        </>
+      }
+      summary={teamSummary(program, opportunity)}
+      refusalTitle="Your proposal was not created"
+      onSend={async (action, content) => {
+        if (action === "submit") {
+          // Submitting records the acceptance of the service's terms (R-2.3).
+          const accepted = await changeOwnAccount(account.id, "acceptTerms");
+          if (accepted.kind !== "saved") return { kind: "failed" };
+        }
+        return createTeamProposal(program, opportunity.id, content, action === "submit" ? "SUBMITTED" : "DRAFT");
+      }}
+      onSaved={(proposal) => {
+        const params = { opportunityId: opportunity.id, proposalId: proposal.id };
+        void (program === "sprint-with-us"
+          ? navigate({ to: "/opportunities/sprint-with-us/$opportunityId/proposals/$proposalId/edit", params })
+          : navigate({ to: "/opportunities/team-with-us/$opportunityId/proposals/$proposalId/edit", params }));
+      }}
+      onCancel={() => {
+        const params = { opportunityId: opportunity.id };
+        void (program === "sprint-with-us"
+          ? navigate({ to: "/opportunities/sprint-with-us/$opportunityId", params })
+          : navigate({ to: "/opportunities/team-with-us/$opportunityId", params }));
+      }}
+    />
   );
 }
