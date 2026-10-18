@@ -288,6 +288,11 @@
 - 10:37:43 propose bind-adapter-new-108 at G3
 - 10:38:05 drive: step 1: `sdlc rule bind-adapter-new-108 --by agent:reviewer` — bind-adapter-new-108 is open at G3, held by agent:reviewer
 - 10:38:12 rule bind-adapter-new-108 approve at G3 by runner:checks (agent)
+- 10:38:16 drive: stopped after 1 step — nothing left to run
+- 10:38:18 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 11 --revise`; reason: Takes up the return of build-slice-11-7, whose revision was interrupted before it ran. Its one condition, R-3.28 (slice 13), was the adapter's and not the application's: organizationEdit.serviceAreaCheckbox read "" on the restyled Team With Us qualification tab while the page showed the approved service areas ticked, and the binding approved just before this run fixed that read. Nothing the application does needs to change for it: keep the restyle as it is and make no change for R-3.28.
+- 10:42:11 drive: step 1: `sdlc run verify --slice 11` — build-slice-11-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 11:15:43 verify slice 11: returned — R-4.14 (slice 4) fail. Next: sdlc run build --slice 11 --revise
+- 11:15:45 run verify: regenerated 3 files in .sdlc, site
 
 # Run record 2026-10-17
 
