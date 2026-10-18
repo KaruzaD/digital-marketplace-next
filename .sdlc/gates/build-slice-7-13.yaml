@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: does slice 7 (staff draft, submit and publish a Code With Us opportunity) do what its criteria say? Ruling: approve. Verify is pass-unasserted and current for build-slice-7-13 against tree 7e29391: 15 of 16 claimed criteria pass, none fail, including R-1.14 and R-1.22 which the previous ruling's bind-adapter condition concerned (status and proposal deadline now read through their own test IDs). The one unasserted criterion, R-1.51, is not-testable for a real reason: mapping historical records onto defined states is a property of the data migration and no action or observation of the running service could show it, so neither a rebuild nor a new test could assert it; the slice is accepted on what was asserted. The diff is a restyle onto the opportunity kit (decision record 0071) that keeps behaviour: permission checks still come from the same rules functions, the action set is unchanged, created-by and last-changed-by names appear only when the service sends them (R-1.29), the size limit is stated before a file is chosen (R-8.17), the service level agreement link is kept (R-7.18), and History has no note control (R-1.33). The status vendors and visitors see changes from 'Published' to 'Open'; that is documented, the unit test was updated, and R-1.22 still passes. New unit tests cover the new layout seams. No protected path, secret, personal data or other slice's work is touched. The style sheet appears twice (root layout and page component), which is redundant but harmless and recorded in 0071. This ruling would change if the verify result went stale or failed, or if R-1.51 turned out to be observable through the running service.
+conditions: []
+cost: 0.5277514
+turns: 1
+session: "b1dff0da-b57d-4454-8493-c69c1f5adbf7"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T02:34:55.347Z

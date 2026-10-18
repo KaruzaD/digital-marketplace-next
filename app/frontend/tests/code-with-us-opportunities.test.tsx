@@ -225,6 +225,20 @@ describe("choosing a program (R-1.7, R-1.8)", () => {
     expect(screen.getByText(/cannot be changed once the opportunity is created/)).toBeTruthy();
   });
 
+  it("draws the programs as three equal panels, each a section named by its program", async () => {
+    serve(() => json(200, []));
+    resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
+    renderAt("/opportunities/create");
+    const cards = await screen.findAllByTestId("program-card");
+    expect(cards.map((card) => card.tagName)).toEqual(["SECTION", "SECTION", "SECTION"]);
+    expect(cards.map((card) => within(card).getByRole("heading", { level: 2 }).textContent)).toEqual([
+      "Code With Us",
+      "Sprint With Us",
+      "Team With Us",
+    ]);
+    for (const card of cards) expect(card.className).toContain("op-panel");
+  });
+
   it("links every program card and every create form to the service level agreement (R-7.18)", async () => {
     serve(() => json(200, []));
     const expected: [string, number][] = [
@@ -630,6 +644,44 @@ describe("managing a Code With Us opportunity", () => {
     expect(entries).toEqual(["Submitted for review", "Edited", "Draft"]);
   });
 
+  it("is laid out as the catalogue draws it: head, identifier, action bar, tabs, then the tab's region", async () => {
+    serve(() => json(200, opportunity({ status: "PUBLISHED", history: [] })));
+    resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
+    renderAt(`/opportunities/code-with-us/${ID}/edit?tab=history`);
+    const region = await screen.findByTestId("opportunity-history-section");
+    expect(region.tagName).toBe("SECTION");
+    expect(within(region).getByRole("heading", { level: 2 }).textContent).toBe("History");
+    // No control for adding a note anywhere in the History section (R-1.33).
+    expect(within(region).queryByRole("textbox")).toBeNull();
+    expect(within(region).queryByRole("button")).toBeNull();
+
+    const head = screen.getByRole("heading", { level: 1 }).closest(".op-head") as HTMLElement;
+    expect(head.textContent).toContain("Manage a Code With Us opportunity");
+    expect(within(head).getByTestId("opportunity-status").textContent).toBe("Published");
+    expect(screen.getByTestId("opportunity-identifier").closest("dl")).not.toBeNull();
+
+    // Once it is published its author is offered nothing, and the bar is still there, empty (R-1.56).
+    expect(screen.getByTestId("opportunity-actions").children).toHaveLength(0);
+    const tabs = screen.getByRole("navigation", { name: "Opportunity sections" });
+    expect(within(tabs).getByTestId("opportunity-tab-history").getAttribute("aria-current")).toBe("page");
+    expect(within(tabs).getByTestId("opportunity-tab-summary").getAttribute("aria-current")).toBeNull();
+
+    // The page's regions come in that order.
+    const order = [head, screen.getByTestId("opportunity-actions"), tabs, region];
+    for (let i = 1; i < order.length; i += 1) {
+      expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it("puts each part of the form in its own panel under the Opportunity tab's heading", async () => {
+    serve(() => json(200, opportunity()));
+    resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
+    renderAt(`/opportunities/code-with-us/${ID}/edit?tab=opportunity`);
+    await screen.findByTestId("opportunity-title-field");
+    const panels = Array.from(document.querySelectorAll("form .op-panel")).map((panel) => panel.querySelector("h3")?.textContent);
+    expect(panels).toEqual(["Overview", "Reward and skills", "Description", "Key dates", "Attachments"]);
+  });
+
   it("is the missing page to a vendor", async () => {
     serve(() => json(200, opportunity({ status: "PUBLISHED", createdBy: undefined, updatedBy: undefined, history: undefined })));
     resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
@@ -898,7 +950,8 @@ describe("reading a Code With Us opportunity", () => {
     resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
     renderAt(`/opportunities/code-with-us/${ID}`);
     expect((await screen.findByTestId("opportunity-identifier")).textContent).toBe(ID);
-    expect(screen.getByTestId("opportunity-status").textContent).toBe("Published");
+    // A vendor reads whether it is open, as the opportunity list says it (DESIGN.md, the opportunity view).
+    expect(screen.getByTestId("opportunity-status").textContent).toBe("Open");
     expect(screen.getByTestId("opportunity-published-date").textContent).toBe("January 5, 2026");
     expect(screen.getByTestId("opportunity-reward").textContent).toBe("$45,000");
     expect(screen.getByTestId("opportunity-proposal-deadline").textContent).toBe("June 1, 2030 at 4:00 p.m. Pacific time");
@@ -912,6 +965,26 @@ describe("reading a Code With Us opportunity", () => {
     renderAt(`/opportunities/code-with-us/${ID}`);
     expect((await screen.findByTestId("opportunity-created-by")).textContent).toBe("Casey Placeholder");
     expect(screen.getByRole("link", { name: "Manage this opportunity" }).getAttribute("href")).toBe(`/opportunities/code-with-us/${ID}/edit`);
+    // Staff read its stage, and its author is not offered Watch on their own opportunity (R-1.5).
+    expect(screen.getByTestId("opportunity-status").textContent).toBe("Published");
+    expect(screen.queryByTestId("opportunity-watch-toggle")).toBeNull();
+  });
+
+  it("puts the facts in the direction's fixed order in its head, and its key dates in their own details (R-1.14)", async () => {
+    serve(() => json(200, opportunity({ status: "PUBLISHED" })));
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(`/opportunities/code-with-us/${ID}`);
+    await screen.findByTestId("opportunity-identifier");
+    const head = screen.getByRole("heading", { level: 1 }).closest(".op-head") as HTMLElement;
+    const labels = Array.from(head.querySelectorAll(".dm-label")).map((label) => label.textContent);
+    expect(labels).toEqual(["Code With Us", "Open"]);
+    const facts = within(head).getByRole("list").textContent ?? "";
+    expect(facts.indexOf("Closes")).toBeLessThan(facts.indexOf("Reward"));
+    expect(screen.getByTestId("opportunity-assignment-date").closest("dl")).not.toBeNull();
+    expect(screen.getByTestId("opportunity-start-date").closest("dl")).not.toBeNull();
+    // A vendor's one region: Watch and Start a proposal together.
+    const watch = screen.getByTestId("opportunity-watch-toggle");
+    expect(watch.closest(".op-region")?.contains(screen.getByTestId("opportunity-start-proposal"))).toBe(true);
   });
 
   it("lists its attachments as links to their own addresses", async () => {

@@ -4,7 +4,6 @@ import {
   Button,
   ButtonGroup,
   Form,
-  Heading,
   Link,
   Modal,
   NumberField,
@@ -33,7 +32,7 @@ import {
 import type { Account } from "../api/accounts";
 import { CwuOpportunity, CwuSubmission, SaveAnswer } from "../api/opportunities";
 import { AttachmentControl, AttachmentList, SIZE_RULE, useAttachments } from "../app/attachments";
-import { card } from "../app/layout";
+import { Panel } from "../app/opportunity-kit";
 import { Stack } from "../app/page-layout";
 import { TitledAlert } from "../app/titled-alert";
 
@@ -330,11 +329,7 @@ export function CwuOpportunityForm({
         }}
       >
         <Stack gap="medium">
-          <section aria-labelledby="form-overview" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-overview">
-                Overview
-              </Heading>
+          <Panel id="form-overview" title="Overview" level={H}>
               <TextField
                 id={FIELD_IDS.title}
                 label="Title"
@@ -397,13 +392,8 @@ export function CwuOpportunityForm({
                 errorMessage={problemFor("remoteDesc")}
                 data-testid="opportunity-remote-description-field"
               />
-            </Stack>
-          </section>
-          <section aria-labelledby="form-reward" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-reward">
-                Reward and skills
-              </Heading>
+          </Panel>
+          <Panel id="form-reward" title="Reward and skills" level={H}>
               <NumberField
                 id={FIELD_IDS.reward}
                 label="Reward"
@@ -419,13 +409,13 @@ export function CwuOpportunityForm({
               />
               {/* The service level agreement, beside what the opportunity pays, as on the program's
                   learn-more screen (R-7.18; design/DESIGN.md, "Service level agreement link"). */}
-              <Text elementType="p">
+              <p className="op-note">
                 What the service commits to, and what it asks of you, is set out in the{" "}
                 <Link href="/content/service-level-agreement" data-testid="service-level-agreement-link">
                   service level agreement
                 </Link>
                 .
-              </Text>
+              </p>
               <Select
                 id={FIELD_IDS.skills}
                 label="Skills"
@@ -440,13 +430,8 @@ export function CwuOpportunityForm({
                 errorMessage={problemFor("skills")}
                 data-testid="opportunity-skills-field"
               />
-            </Stack>
-          </section>
-          <section aria-labelledby="form-description" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-description">
-                Description
-              </Heading>
+          </Panel>
+          <Panel id="form-description" title="Description" level={H}>
               <TextArea
                 id={FIELD_IDS.description}
                 label="Description"
@@ -459,14 +444,9 @@ export function CwuOpportunityForm({
                 errorMessage={problemFor("description")}
                 data-testid="opportunity-description-field"
               />
-            </Stack>
-          </section>
-          <section aria-labelledby="form-dates" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-dates">
-                Key dates
-              </Heading>
-              <Text elementType="p">Each date must fall on or after the one before it.</Text>
+          </Panel>
+          <Panel id="form-dates" title="Key dates" level={H}>
+              <p className="op-text">Each date must fall on or after the one before it.</p>
               <DayField
                 field="proposalDeadline"
                 label="Proposal deadline"
@@ -514,28 +494,20 @@ export function CwuOpportunityForm({
                 testId="opportunity-completion-date-field"
                 readOnly={readOnly}
               />
-            </Stack>
-          </section>
+          </Panel>
           {readOnly ? (
-            <section aria-labelledby="form-attachments" style={card}>
-              <Stack gap="medium">
-                <Heading level={H} id="form-attachments">
-                  Attachments
-                </Heading>
-                {initialAttachments.length > 0 ? (
-                  <AttachmentList attachments={initialAttachments} heading={false} />
-                ) : (
-                  <Text elementType="p">No attachments have been added.</Text>
-                )}
-                {/* The limit is said wherever attachments are, though only an administrator may add
-                    one here (R-8.17, R-1.56). */}
-                <div id="attachment-size-limit" data-testid="attachment-size-limit">
-                  <Text elementType="p" size="small" color="secondary">
-                    {`${SIZE_RULE} At this stage only an administrator can add one.`}
-                  </Text>
-                </div>
-              </Stack>
-            </section>
+            <Panel id="form-attachments" title="Attachments" level={H}>
+              {initialAttachments.length > 0 ? (
+                <AttachmentList attachments={initialAttachments} heading={false} />
+              ) : (
+                <p className="op-text">No attachments have been added.</p>
+              )}
+              {/* The limit is said wherever attachments are, though only an administrator may add
+                  one here (R-8.17, R-1.56). */}
+              <p id="attachment-size-limit" className="op-note" data-testid="attachment-size-limit">
+                {`${SIZE_RULE} At this stage only an administrator can add one.`}
+              </p>
+            </Panel>
           ) : (
             <AttachmentControl state={attachments} headingLevel={H} />
           )}
