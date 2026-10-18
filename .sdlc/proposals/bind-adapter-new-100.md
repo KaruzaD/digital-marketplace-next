@@ -30,3 +30,22 @@ I've fixed the one gap from the last run, R-8.31 (`proposal-cwu-edit.save_change
 - I changed nothing outside `tests/adapters/new/`.
 
 **Leftover data on the target:** my test left a submitted Code With Us proposal ("Binding Probe", id 1a58ddd1-6042-4e5e-8395-fe9e035915c1) by the first vendor persona on the seeded published opportunity. I cancelled out of editing it but didn't withdraw or remove it. A submitted proposal can only be withdrawn, and withdrawing still leaves the record. If the target isn't reseeded before the next run, any test that expects this vendor to have no proposal on that opportunity will see this one.
+
+## Ruling
+
+**Verdict:** approve
+**By:** runner:checks
+
+Approved by the runner's checks, which policy.gates.G3.auto_approve lets settle bind-adapter proposals: the acceptance typecheck of e644f0e5a9 is clean; no condition is open against it; no escalation stands on it; nothing outside tests/adapters changed.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `e644f0e5a98a9e54ffaaef93a9d6db15904df193`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
