@@ -110,8 +110,12 @@ author.
 Anybody browses at `/opportunities` ("Browse opportunities" on the home page). The list reads all
 three programs and shows what the service lets the person read — published opportunities, and to
 staff their own unpublished ones and to administrators every one — grouped into unpublished, open
-and closed, narrowed by program, state, remote work and words in the title or location. The rules
-for that are `backend/src/rules/opportunity-list.ts`, shared by the screen and the service.
+and closed, narrowed by program, state (staff only), remote work and words in the title or
+location. Closed and Unpublished start closed and open from the button in their heading; staff see
+each opportunity's stage, everyone else whether it is open (decision record 0070). The rules
+for that are `backend/src/rules/opportunity-list.ts`, shared by the screen and the service. The
+opportunity screens' shared pieces are `frontend/src/app/opportunity-kit.tsx`, the catalogue's
+kit, drawn once.
 
 A signed-in person watches an opportunity they did not create from its card or its page
 (`/api/subscribers/<program>`), and turns the new-opportunity emails on or off from the control at

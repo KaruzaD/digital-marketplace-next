@@ -5,8 +5,11 @@ import {
   NO_FILTERS,
   counterName,
   groupedForList,
+  isNarrowed,
   listGroupOf,
+  listStatusWords,
   matchesFilters,
+  matchesSearch,
   mayWatch,
   readCounterName,
   statusFiltersFor,
@@ -64,6 +67,26 @@ describe("the three groups (R-1.38)", () => {
   });
 });
 
+describe("the status the list shows", () => {
+  it("tells anyone but staff whether an opportunity is open, in evaluation, cancelled or completed", () => {
+    expect(listStatusWords(listed(), NOW, false)).toBe("Open");
+    expect(listStatusWords(listed({ proposalDeadline: "2026-09-30" }), NOW, false)).toBe("Evaluation");
+    expect(listStatusWords(listed({ status: "EVALUATION" }), NOW, false)).toBe("Evaluation");
+    expect(listStatusWords(listed({ status: "PROCESSING" }), NOW, false)).toBe("Evaluation");
+    expect(listStatusWords(listed({ program: "team-with-us", status: "EVAL_C" }), NOW, false)).toBe("Evaluation");
+    expect(listStatusWords(listed({ status: "AWARDED" }), NOW, false)).toBe("Completed");
+    expect(listStatusWords(listed({ status: "CANCELED" }), NOW, false)).toBe("Canceled");
+  });
+
+  it("tells staff the stage, as its program names it", () => {
+    expect(listStatusWords(listed(), NOW, true)).toBe("Published");
+    expect(listStatusWords(listed({ status: "DRAFT" }), NOW, true)).toBe("Draft");
+    expect(listStatusWords(listed({ program: "sprint-with-us", status: "EVAL_QUESTIONS_INDIVIDUAL" }), NOW, true)).toBe(
+      "Team questions: individual evaluation",
+    );
+  });
+});
+
 describe("narrowing the list (R-1.39)", () => {
   const swu = listed({ program: "sprint-with-us", status: "EVAL_CC", title: "Licence renewal", location: "Kamloops", remoteOk: true });
 
@@ -78,6 +101,27 @@ describe("narrowing the list (R-1.39)", () => {
     expect(matchesFilters(swu, { ...NO_FILTERS, search: "renewal" })).toBe(true);
     expect(matchesFilters(swu, { ...NO_FILTERS, search: "permit" })).toBe(false);
     expect(matchesFilters(swu, { program: "sprint-with-us", status: "evaluation", remoteOnly: true, search: "victoria" })).toBe(false);
+  });
+
+  it("finds the words typed in the order typed, in the title or the location, ignoring case", () => {
+    expect(matchesSearch("", "anything")).toBe(true);
+    expect(matchesSearch("   ", "anything")).toBe(true);
+    expect(matchesSearch("build tracker", "Build an accessible permit tracker")).toBe(true);
+    expect(matchesSearch("tracker build", "Build an accessible permit tracker")).toBe(false);
+    expect(matchesSearch("VICTORIA", "A title", "Victoria")).toBe(true);
+    // What is typed is matched as words, never as a pattern.
+    expect(matchesSearch("(.*)", "Build an accessible permit tracker")).toBe(false);
+    expect(matchesSearch("c++", "Port the c++ service")).toBe(true);
+    expect(matchesFilters(listed(), { ...NO_FILTERS, search: "accessible tracker" })).toBe(true);
+  });
+
+  it("knows whether anything at all is chosen", () => {
+    expect(isNarrowed(NO_FILTERS)).toBe(false);
+    expect(isNarrowed({ ...NO_FILTERS, search: "  " })).toBe(false);
+    expect(isNarrowed({ ...NO_FILTERS, search: "x" })).toBe(true);
+    expect(isNarrowed({ ...NO_FILTERS, remoteOnly: true })).toBe(true);
+    expect(isNarrowed({ ...NO_FILTERS, program: "team-with-us" })).toBe(true);
+    expect(isNarrowed({ ...NO_FILTERS, status: "awarded" })).toBe(true);
   });
 
   it("offers no processing or cancelled state, and the unpublished ones only to staff", () => {

@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: does slice 8 do what its criteria say? Ruling: approve. The verify result is a pass, current for this proposal against application tree 0b89688: all nine claimed criteria (R-6.20, R-6.21, R-6.27, R-1.2, R-1.3, R-1.5, R-1.6, R-1.38, R-4.22) were exercised and met, so the two group-heading conditions sent to bind-adapter last round are settled. The code matches the criteria. Closed and Unpublished groups start collapsed but keep their rows in the document, so each opportunity still sits in exactly one group in the order R-1.38 sets. Who sees what is unchanged (R-1.2, R-1.3). Watch is still offered only to a signed-in person who did not create the opportunity (R-1.5, mayWatch). The new-opportunity control saves at once and reports into an always-present status region at every width (R-6.21, R-6.27). The one change outside the slice's own criteria is that the status filter is now offered to staff only and the search matches its words in order. Both are consistent with R-1.39 and the original list.tsx it cites, are recorded in decision record 0070, and are covered by unit tests (matchesSearch, isNarrowed, listStatusWords, emptyGroupWords). R-1.39's acceptance test filters by state as an administrator, so it is not contradicted. No protected path, secret or personal data is touched. opportunity-kit.tsx adds catalogue pieces this slice does not yet use (OpportunityHead, ManageTabs, ActionBar, Fieldset); they are unit-tested and come from the approved design kit, so this is noted rather than returned. The ruling would change to a return if a later run showed R-1.39 failing for a visitor or vendor persona, or if the hidden closed-group rows were found missing from the accessibility tree where a criterion needs them.
+conditions: []
+cost: 0.7256584
+turns: 6
+session: "42dc8e79-76f7-484b-a1a3-2911fdee7814"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T01:19:43.844Z

@@ -57,18 +57,33 @@ export interface RowOpportunity {
  * sit in aligned columns beside the title; where it is not, each is a stacked card. The switch
  * follows the width of the list itself, not of the window.
  */
-export function OpportunityRows({ opportunities, titleLevel }: { opportunities: readonly RowOpportunity[]; titleLevel: 3 | 4 }) {
+export function OpportunityRows({
+  opportunities,
+  titleLevel,
+  withTestIds = false,
+  watch,
+}: {
+  opportunities: readonly RowOpportunity[];
+  titleLevel: 3 | 4;
+  /** The opportunity list's own test IDs for each row's status and proposal deadline. The home page's rows carry none. */
+  withTestIds?: boolean;
+  /** What a row offers after its summary: the opportunity list's Watch, where the person may watch it. */
+  watch?: (opportunity: RowOpportunity) => ReactNode;
+}) {
   return (
     <ul className="dm-rows">
       {opportunities.map((opportunity) => {
-        const titleId = `opportunity-${opportunity.id}`;
+        const titleId = `opportunity-${opportunity.program}-${opportunity.id}`;
+        const offered = watch?.(opportunity) ?? null;
         return (
-          <li key={opportunity.id} className="dm-row">
+          <li key={`${opportunity.program}-${opportunity.id}`} className="dm-row">
             <article aria-labelledby={titleId} className="dm-row-grid">
               <div className="dm-row-head">
                 <div className="dm-row-labels">
                   <Label>{PROGRAM_NAMES[opportunity.program]}</Label>
-                  <Label colour={opportunity.status.colour}>{opportunity.status.label}</Label>
+                  <Label colour={opportunity.status.colour} testId={withTestIds ? "opportunity-status" : undefined}>
+                    {opportunity.status.label}
+                  </Label>
                 </div>
                 <Heading level={titleLevel} id={titleId} style={look.title}>
                   <Link href={`/opportunities/${opportunity.program}/${opportunity.id}`}>{opportunity.title}</Link>
@@ -76,13 +91,15 @@ export function OpportunityRows({ opportunities, titleLevel }: { opportunities: 
               </div>
               <ul className="dm-facts">
                 <li>
-                  {opportunity.closed ? "Closed" : "Closes"} <span>{opportunity.deadline}</span>
+                  {opportunity.closed ? "Closed" : "Closes"}{" "}
+                  <span data-testid={withTestIds ? "opportunity-proposal-deadline" : undefined}>{opportunity.deadline}</span>
                 </li>
                 <li>{opportunity.value}</li>
-                <li>{opportunity.location}</li>
+                {opportunity.location ? <li>{opportunity.location}</li> : null}
                 {opportunity.remoteOk ? <li>Remote OK</li> : null}
               </ul>
               {opportunity.summary ? <p className="dm-row-summary">{opportunity.summary}</p> : null}
+              {offered ? <div className="dm-row-watch">{offered}</div> : null}
             </article>
           </li>
         );
