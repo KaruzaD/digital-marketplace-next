@@ -2317,6 +2317,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T16:04:39.921Z
+    taken: 2026-10-18T16:06:49.437Z
+    taken_by: bind-adapter-new-106
   - stage: bind-adapter
     target: new
     why: "R-2.19: in the missing-capability case phaseRequirementLines read both
@@ -2331,6 +2333,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T16:04:39.921Z
+    taken: 2026-10-18T16:06:49.437Z
+    taken_by: bind-adapter-new-106
   - stage: bind-adapter
     target: new
     why: "R-2.19: proposalSwuCreate.costErrors (costErrorLines,
@@ -2345,3 +2349,5 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T16:04:39.921Z
+    taken: 2026-10-18T16:06:49.437Z
+    taken_by: bind-adapter-new-106
