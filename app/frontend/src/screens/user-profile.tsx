@@ -6,11 +6,9 @@ import {
   ButtonGroup,
   Checkbox,
   Form,
-  Heading,
   InlineAlert,
   Link,
   Modal,
-  Text,
   TextField,
 } from "@bcgov/design-system-react-components";
 import {
@@ -43,10 +41,16 @@ import {
 } from "../api/organizations";
 import { ownsOrAdministers } from "@rules/organizations";
 import { ImagePicker, PictureRejection, checkChosenPicture } from "../app/image-picker";
-import { Stack } from "../app/page-layout";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
 import { Actions, PageTitle, Region, Waiting } from "../app/opportunity-kit";
+import {
+  Commands,
+  MembershipWords,
+  OrganizationStyles,
+  SaveStatus as MembershipStatus,
+} from "../app/organization-kit";
+import { AffiliatedRows, OrganizationLink, OwnedRows } from "../app/organization-memberships";
+import { TitledAlert } from "../app/titled-alert";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
 import {
@@ -106,15 +110,6 @@ const STATUS_LABELS: Record<Account["status"], string> = {
   INACTIVE_USER: "Inactive",
   INACTIVE_ADMIN: "Inactive",
 };
-
-// The organizations section's membership labels. That section's own restyle is the organizations
-// domain's; until then it keeps the outlined badge it was drawn with.
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
 
 /** `/users/me`, and `/users/:userId`. */
 export function UserProfileScreen({ userId }: { userId: string }) {
@@ -892,18 +887,11 @@ function CapabilitiesSection({ account }: { account: Account }) {
 
 // ------------------------------------------------------------------------ organizations
 
-const MEMBERSHIP_LABELS: Record<OwnMembership["membershipType"], string> = {
+const MEMBERSHIP_LABELS: Record<OwnMembership["membershipType"], MembershipWords> = {
   OWNER: "Owner",
   ADMIN: "Administrator",
   MEMBER: "Member",
 };
-
-const memberCell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
 
 /** An answer to an invitation, or leaving, waiting to be confirmed. */
 type MembershipAnswer = "accept" | "decline" | "leave";
@@ -1003,10 +991,12 @@ function OrganizationsSection({ arrival }: { arrival: InvitationArrival | null }
     if (found.kind === "listed") setAnswer(found.memberships);
   }
 
-  if (answer === "loading") return <Loading label="Loading your organizations…" />;
+  if (answer === "loading") return <Waiting label="Loading organizations" />;
   if (answer === "failed") {
     return (
-      <InlineAlert variant="danger" role="alert" title="Your organizations could not be loaded" description="Try again in a moment." />
+      <TitledAlert variant="danger" role="alert" title="Your organizations could not be loaded">
+        <p className="op-text">Try again in a moment.</p>
+      </TitledAlert>
     );
   }
 
@@ -1014,9 +1004,7 @@ function OrganizationsSection({ arrival }: { arrival: InvitationArrival | null }
   const affiliated = answer.filter((membership) => !owned.includes(membership));
   const name = (membership: OwnMembership) =>
     ownsOrAdministers(membership) ? (
-      <Link href={`/organizations/${membership.organization.id}/edit`} data-testid="membership-organization-link">
-        {membership.organization.legalName}
-      </Link>
+      <OrganizationLink id={membership.organization.id}>{membership.organization.legalName}</OrganizationLink>
     ) : (
       membership.organization.legalName
     );
@@ -1026,157 +1014,108 @@ function OrganizationsSection({ arrival }: { arrival: InvitationArrival | null }
     setAsking({ membership, answer: chosen });
   };
 
+  const commands = (membership: OwnMembership) => {
+    const organization = membership.organization.legalName;
+    return membership.membershipStatus === "PENDING" ? (
+      <Commands>
+        <Button
+          variant="tertiary"
+          size="small"
+          aria-label={`Accept the invitation from ${organization}`}
+          onPress={() => ask(membership, "accept")}
+          data-testid="membership-approve-button"
+        >
+          Accept
+        </Button>
+        <Button
+          variant="tertiary"
+          size="small"
+          danger
+          aria-label={`Decline the invitation from ${organization}`}
+          onPress={() => ask(membership, "decline")}
+          data-testid="membership-reject-button"
+        >
+          Decline
+        </Button>
+      </Commands>
+    ) : (
+      <Commands>
+        <Button
+          variant="tertiary"
+          size="small"
+          danger
+          aria-label={`Leave ${organization}`}
+          onPress={() => ask(membership, "leave")}
+          data-testid="membership-leave-button"
+        >
+          Leave
+        </Button>
+      </Commands>
+    );
+  };
+  const createLink = (
+    <Actions>
+      <Link href="/organizations/create" isButton buttonVariant="primary" data-testid="organization-create-link">
+        Create organization
+      </Link>
+    </Actions>
+  );
+
   return (
     <>
-      <div role="status">{status ? <Text elementType="p">{status}</Text> : null}</div>
-      {failure ? <InlineAlert variant="danger" role="alert" title="That could not be done" description={failure} /> : null}
-      {arrivalMissing ? (
-        <InlineAlert
-          variant="warning"
-          role="alert"
-          title="That invitation is no longer waiting for your answer"
-          description="It may have been answered already or withdrawn. Your organizations are listed below."
-        />
+      <OrganizationStyles />
+      <MembershipStatus>{status ?? ""}</MembershipStatus>
+      {failure ? (
+        <TitledAlert variant="danger" role="alert" title="That could not be done">
+          <p className="op-text">{failure}</p>
+        </TitledAlert>
       ) : null}
-      <Stack as="section" aria-labelledby="owned-heading" gap="medium">
-        <Heading level={2} id="owned-heading">
-          Organizations you own
-        </Heading>
-        <div>
-          <Link href="/organizations/create" isButton buttonVariant="primary" data-testid="organization-create-link">
-            Create organization
-          </Link>
-        </div>
+      {arrivalMissing ? (
+        <TitledAlert variant="warning" role="alert" title="That invitation is no longer waiting for your answer">
+          <p className="op-text">It may have been answered already or withdrawn. Your organizations are listed below.</p>
+        </TitledAlert>
+      ) : null}
+      <Region id="owned-heading" title="Organizations you own">
         {owned.length === 0 ? (
-          <Text elementType="p" data-testid="membership-empty-owned">
-            You do not own any organizations. Create one to propose on Sprint With Us and Team With Us opportunities.
-          </Text>
-        ) : (
-          <div role="region" aria-labelledby="owned-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="membership-owned-table">
-              <caption id="owned-caption" style={{ textAlign: "start" }}>
-                <Text size="small" color="secondary">
-                  Owned organizations, with team size and Sprint With Us qualification
-                </Text>
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" style={memberCell}>
-                    Organization
-                  </th>
-                  <th scope="col" style={memberCell}>
-                    Team members
-                  </th>
-                  <th scope="col" style={memberCell}>
-                    Sprint With Us qualified
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {owned.map((membership) => (
-                  <tr key={membership.id}>
-                    <td style={memberCell}>{name(membership)}</td>
-                    <td style={memberCell}>
-                      <span data-testid="membership-team-member-count">{membership.organization.numTeamMembers}</span>
-                    </td>
-                    <td style={memberCell}>
-                      <span data-testid="organization-swu-qualified-mark">{membership.organization.swuQualified ? "Yes" : "No"}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Stack>
-      <Stack as="section" aria-labelledby="affiliated-heading" gap="medium">
-        <Heading level={2} id="affiliated-heading">
-          Organizations you belong to
-        </Heading>
-        {affiliated.length === 0 ? (
-          <Text elementType="p" data-testid="membership-empty-affiliated">
-            You do not belong to any other organizations. An organization’s owner or administrators can invite you by email.
-          </Text>
+          <>
+            <p className="op-text" data-testid="membership-empty-owned">
+              You do not own any organizations. Create one to propose on Sprint With Us and Team With Us opportunities.
+            </p>
+            {createLink}
+          </>
         ) : (
           <>
-            <Text elementType="p">Leaving an organization takes you off its team. You would need to be invited again to rejoin.</Text>
-            <div role="region" aria-labelledby="affiliated-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-              <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="membership-affiliated-table">
-                <caption id="affiliated-caption" style={{ textAlign: "start" }}>
-                  <Text size="small" color="secondary">
-                    Organizations you are a member of or have been invited to
-                  </Text>
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col" style={memberCell}>
-                      Organization
-                    </th>
-                    <th scope="col" style={memberCell}>
-                      Membership
-                    </th>
-                    <th scope="col" style={memberCell}>
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {affiliated.map((membership) => (
-                    <tr key={membership.id}>
-                      <td style={memberCell}>{name(membership)}</td>
-                      <td style={memberCell}>
-                        {membership.membershipStatus === "PENDING" ? (
-                          <span style={badge} data-testid="organization-pending-badge">
-                            Pending
-                          </span>
-                        ) : (
-                          <span style={badge}>{MEMBERSHIP_LABELS[membership.membershipType]}</span>
-                        )}
-                      </td>
-                      <td style={memberCell}>
-                        {membership.membershipStatus === "PENDING" ? (
-                          <Stack direction="row" gap="small">
-                            <Button
-                              variant="tertiary"
-                              size="small"
-                              aria-label={`Accept the invitation from ${membership.organization.legalName}`}
-                              onPress={() => ask(membership, "accept")}
-                              data-testid="membership-approve-button"
-                            >
-                              Accept
-                            </Button>
-                            <Button
-                              variant="tertiary"
-                              size="small"
-                              danger
-                              aria-label={`Decline the invitation from ${membership.organization.legalName}`}
-                              onPress={() => ask(membership, "decline")}
-                              data-testid="membership-reject-button"
-                            >
-                              Decline
-                            </Button>
-                          </Stack>
-                        ) : (
-                          <Button
-                            variant="tertiary"
-                            size="small"
-                            danger
-                            aria-label={`Leave ${membership.organization.legalName}`}
-                            onPress={() => ask(membership, "leave")}
-                            data-testid="membership-leave-button"
-                          >
-                            Leave
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {createLink}
+            <OwnedRows
+              rows={owned.map((membership) => ({
+                key: membership.id,
+                name: name(membership),
+                members: membership.organization.numTeamMembers,
+                swu: membership.organization.swuQualified,
+              }))}
+            />
           </>
         )}
-      </Stack>
+      </Region>
+      <Region id="affiliated-heading" title="Organizations you belong to">
+        {affiliated.length === 0 ? (
+          <p className="op-text" data-testid="membership-empty-affiliated">
+            You do not belong to any other organizations. An organization’s owner or administrators can invite you by email.
+          </p>
+        ) : (
+          <>
+            <p className="op-text">Leaving an organization takes you off its team. You would need to be invited again to rejoin.</p>
+            <AffiliatedRows
+              rows={affiliated.map((membership) => ({
+                key: membership.id,
+                name: name(membership),
+                membership: membership.membershipStatus === "PENDING" ? "Pending" : MEMBERSHIP_LABELS[membership.membershipType],
+                commands: commands(membership),
+              }))}
+            />
+          </>
+        )}
+      </Region>
       {/* Drawn only while something is being asked, so a closed confirmation leaves no empty dialog behind. */}
       {asking ? (
         <MembershipDialog asking={asking} working={working} onCancel={() => setAsking(null)} onConfirm={() => void confirm()} />
@@ -1245,7 +1184,7 @@ function MembershipDialog({
           </>
         }
       >
-        <Text elementType="p">{shape.text}</Text>
+        <p className="op-text">{shape.text}</p>
       </AlertDialog>
     </Modal>
   );
