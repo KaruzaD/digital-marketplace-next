@@ -3462,3 +3462,40 @@ conditions:
         its rows, and checks that the button hides and shows them again.
       by: agent:reviewer
       at: 2026-10-18T00:43:27.438Z
+  - ref: bind-adapter-new-94#1
+    text: "opportunityCwuView.reward() in tests/adapters/new/index.ts returns '' on
+      the restyled Code With Us view. Its head draws the reward as one list
+      item: the word 'Reward', a space, then the figure (the page verify
+      captured for R-1.21 on build-slice-7-11 shows the line 'Reward $5,000'),
+      with no colon and no definition term. Neither definitionOf(/^reward$/i)
+      nor labelledValue(['Reward']) matches that line. After the existing term
+      lookup, add a fallback that takes the figure from a head line matching
+      /^reward\\s+(.+)$/i, so the build at localhost:4300 still reads the same
+      way. No test ID is needed."
+    from: bind-adapter-new-94
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:tech-lead
+    at: 2026-10-18T01:45:57.633Z
+  - ref: bind-adapter-new-94#2
+    text: "opportunityCwuView.status() in tests/adapters/new/index.ts can return a
+      term label as the status. On the restyled view verify captured for R-1.21,
+      the program and status labels read together as the one line 'Code With Us
+      Draft', which the anchored CWU_STATUS_SHOWN pattern does not match.
+      Opportunity ID is drawn as a term ('Opportunity ID') with the id below it,
+      not as 'Opportunity ID: <id>', so cwuHeadLines() runs on to the
+      Description heading and takes in the 'Published' term label, which
+      CWU_STATUS_SHOWN accepts. On a draft, status() can then answer
+      'Published'. Bound the head at the title heading (the lines above the
+      level-1 heading), or at the first line that is a definition term, rather
+      than at 'Opportunity ID:'. Take the status as a trailing status word on a
+      line that begins with the program name ('Code With Us Draft' gives
+      'Draft') as well as a line that is just a status word. Never take a dt's
+      text as the status."
+    from: bind-adapter-new-94
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:tech-lead
+    at: 2026-10-18T01:45:57.633Z
