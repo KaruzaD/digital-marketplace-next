@@ -1,0 +1,6 @@
+gate: G3
+verdict: approve
+by: tech-lead
+held_by: human
+note: "Ruled by the operator agent under Alex's standing delegation (2026-09-30) to rule application questions on his behalf. Every criterion slice 10 claims that this environment can test passes on build-slice-10-9 (19 of 19), the rewritten R-3.28 now passes with an organization of its own, and the 223 criteria earlier slices passed still pass. R-7.29 is written for the evaluation_instructions_absent_twu configuration, which verify cannot start the new target in (docs/decisions/0071); it stays unverified on new, as at build-slice-10-5. What it covers, an embedded page that is missing leaving that part of the screen empty, is drawn by app/frontend/src/screens/evaluation-tabs.tsx through api/content and the formatted-text renderer, none of which this build changes."
+at: 2026-10-18T10:10:53.287Z
