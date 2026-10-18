@@ -1,23 +1,24 @@
 import { useEffect, useState } from "react";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
+import { Link } from "@bcgov/design-system-react-components";
 import { useSearch } from "@tanstack/react-router";
 import type { Account } from "../api/accounts";
 import { offeredEvaluationActions, rankLabel } from "@rules/proposal-evaluation";
+import { proposalStatusLabel } from "@rules/proposals";
 import { CwuProposal, changeCwuProposal, fetchCwuProposal } from "../api/proposals";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Actions, Details, PageTitle, Region, Waiting, type Detail } from "../app/opportunity-kit";
+import { ProposalHead, ProposalPage, ProposalTabs } from "../app/proposal-kit";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
-import { Fact, momentLabel } from "./opportunity-parts";
+import { momentLabel } from "./opportunity-parts";
 import { ProposalDetails, ProposalHistory } from "./proposal-cwu-edit";
-import { ProposalStatusBadge } from "./proposal-cwu-form";
 import { EvaluationActions } from "./proposal-evaluation-actions";
 
 /**
  * A Code With Us proposal, read-only, at
- * `/opportunities/code-with-us/:opportunityId/proposals/:proposalId` (proposal-cwu-view): who
- * proposed, its state, its score once there is one, and its Proposal and History tabs (`?tab=…`).
+ * `/opportunities/code-with-us/:opportunityId/proposals/:proposalId` (proposal-cwu-view), drawn as
+ * its stories draw it: the head with the proponent as the H1 and the status label, the details,
+ * the score, the printable-copy link, the action bar, the tabs (`?tab=…`), then the tab's region.
  *
  * Whoever may read the proposal sees it, and the service decides who that is: the vendor who wrote
  * it and a vendor who owns or administers its organization, never another vendor (R-2.24); the
@@ -30,6 +31,7 @@ import { EvaluationActions } from "./proposal-evaluation-actions";
 type Tab = "proposal" | "history";
 const TABS: readonly Tab[] = ["proposal", "history"];
 const TAB_NAMES: Readonly<Record<Tab, string>> = { proposal: "Proposal", history: "History" };
+const TAB_LIST = TABS.map((key) => ({ key, label: TAB_NAMES[key] }));
 
 type Loaded = { readonly kind: "loading" } | { readonly kind: "missing" } | { readonly kind: "found"; readonly proposal: CwuProposal };
 
@@ -57,10 +59,10 @@ function ViewLoader({ account, opportunityId, proposalId }: { account: Account; 
   if (loaded.kind === "missing") return <NotFound />;
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>Code With Us proposal</Heading>
-        <Loading label="Loading proposal…" />
-      </Stack>
+      <ProposalPage>
+        <PageTitle>Code With Us proposal</PageTitle>
+        <Waiting label="Loading proposal" />
+      </ProposalPage>
     );
   }
   if (loaded.proposal.opportunity.id !== opportunityId.toLowerCase()) return <NotFound />;
@@ -84,56 +86,40 @@ function View({ account, proposal: initial }: { account: Account; proposal: CwuP
   // Staff manage the opportunity; a vendor reads it, and manages their proposal on its own page.
   const opportunityAddress = vendor ? `/opportunities/code-with-us/${opportunityId}` : `/opportunities/code-with-us/${opportunityId}/edit`;
 
+  const details: Detail[] = [
+    { term: "Opportunity", value: <Link href={opportunityAddress}>{proposal.opportunity.title || "Untitled opportunity"}</Link> },
+    ...(proposal.submittedAt && proposal.status !== "DRAFT"
+      ? [{ term: "Submitted", value: momentLabel(proposal.submittedAt), testId: "proposal-submitted-at" }]
+      : []),
+    { term: "Proposal ID", value: proposal.id, testId: "proposal-identifier" },
+  ];
+
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          Code With Us proposal
-        </Text>
-        <Heading level={1}>
-          <span data-testid="proposal-proponent-name">{proponentName(proposal)}</span>
-        </Heading>
-      </Stack>
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label="Opportunity">
-          <Link href={opportunityAddress}>{proposal.opportunity.title || "Untitled opportunity"}</Link>
-        </Fact>
-        <Fact label="Status">
-          <ProposalStatusBadge status={proposal.status} />
-        </Fact>
-        {proposal.submittedAt && proposal.status !== "DRAFT" ? (
-          <Fact label="Submitted" testId="proposal-submitted-at">
-            {momentLabel(proposal.submittedAt)}
-          </Fact>
-        ) : null}
-        <Fact label="Proposal ID" testId="proposal-identifier">
-          {proposal.id}
-        </Fact>
-      </Stack>
+    <ProposalPage>
+      <ProposalHead
+        eyebrow="Code With Us proposal"
+        program="code-with-us"
+        status={proposalStatusLabel(proposal.status)}
+        title={<span data-testid="proposal-proponent-name">{proponentName(proposal)}</span>}
+      />
+      <Details items={details} />
       {/* The score is shown to whoever the service gives it to: staff, and the vendor once decided (R-2.32). */}
       {"score" in proposal ? (
-        <Stack as="section" gap="medium" aria-labelledby="scores-heading">
-          <Heading level={2} id="scores-heading">
-            Score
-          </Heading>
-          <Stack as="dl" direction="row" gap="medium">
-            <Fact label="Score" testId="proposal-score">
-              {typeof proposal.score === "number" ? `${proposal.score}%` : "Not yet scored"}
-            </Fact>
-            {proposal.rank ? (
-              <Fact label="Rank" testId="proposal-rank">
-                {rankLabel(proposal.rank)}
-              </Fact>
-            ) : null}
-          </Stack>
-        </Stack>
+        <Region id="scores-heading" title="Score">
+          <Details
+            items={[
+              { term: "Score", value: typeof proposal.score === "number" ? `${proposal.score}%` : "Not yet scored", testId: "proposal-score" },
+              ...(proposal.rank ? [{ term: "Rank", value: rankLabel(proposal.rank), testId: "proposal-rank" }] : []),
+            ]}
+          />
+        </Region>
       ) : null}
-      <Stack direction="row" align="center" gap="medium">
+      <Actions>
         {vendor ? <Link href={`${base}/edit`}>Manage this proposal</Link> : null}
         <Link href={`${base}/export`} data-testid="proposal-export-link">
           Printable copy
         </Link>
-      </Stack>
+      </Actions>
       {/* Staff read a proposal only as the opportunity's author or an administrator, once it has closed. */}
       {!vendor ? (
         <EvaluationActions
@@ -145,25 +131,12 @@ function View({ account, proposal: initial }: { account: Account; proposal: CwuP
           }}
         />
       ) : null}
-      <div role="status">{done ? <Text elementType="p">{done}</Text> : null}</div>
-      <nav aria-label="Proposal sections">
-        <Stack as="ul" direction="row" gap="medium">
-          {TABS.map((name) => (
-            <li key={name}>
-              <Link href={`${base}?tab=${name}`} aria-current={name === tab ? "page" : undefined} data-testid={`proposal-tab-${name}`}>
-                {TAB_NAMES[name]}
-              </Link>
-            </li>
-          ))}
-        </Stack>
-      </nav>
-      <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-        <Heading level={2} id="tab-heading">
-          {TAB_NAMES[tab]}
-        </Heading>
+      <div role="status">{done ? <p className="op-text">{done}</p> : null}</div>
+      <ProposalTabs base={base} current={tab} tabs={TAB_LIST} />
+      <Region id="tab-heading" title={TAB_NAMES[tab]}>
         {tab === "proposal" ? <ProposalDetails proposal={proposal} showResult={false} /> : null}
         {tab === "history" ? <ProposalHistory proposal={proposal} /> : null}
-      </Stack>
-    </Stack>
+      </Region>
+    </ProposalPage>
   );
 }

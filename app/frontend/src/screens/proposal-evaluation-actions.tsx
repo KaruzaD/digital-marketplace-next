@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, RefObject, useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
   Button,
@@ -12,7 +12,7 @@ import {
   TextArea,
 } from "@bcgov/design-system-react-components";
 import { DISQUALIFY_REASON_MAX, SCORE_MESSAGE, disqualificationReasonProblem, readScore } from "@rules/proposal-evaluation";
-import { Stack } from "../app/page-layout";
+import { Focused, ProposalActions, ProposalStyles } from "../app/proposal-kit";
 import { TitledAlert } from "../app/titled-alert";
 
 /**
@@ -21,6 +21,10 @@ import { TitledAlert } from "../app/titled-alert";
  * disqualify a proposal with a reason (R-2.34), and award it once it is evaluated (R-2.33, R-1.26).
  * The page offers what the proposal's state allows, by the same rules the service applies
  * (`offeredEvaluationActions`, `offeredTeamEvaluationActions`); the service still decides.
+ *
+ * Drawn as the proposal-cwu-view stories draw it: the proposal kit's action bar, always present and
+ * empty when nothing is offered, with Enter score or Award as its one primary button; a refusal that
+ * takes focus as it appears; dialogs whose bodies are the kit's `pp-dialog`, `op-region` and `op-text`.
  */
 
 /** What a change came back with, in any program. */
@@ -49,6 +53,8 @@ export function EvaluationActions<P>({
   const [dialog, setDialog] = useState<Dialogs>(null);
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<{ title: string; reasons: readonly string[] } | null>(null);
+  // Each refusal is a new message, focused as it appears.
+  const [refusals, setRefusals] = useState(0);
 
   /** Sends one change; a refusal is said on the page, or in the dialog when it is about the field. */
   async function send(
@@ -66,6 +72,7 @@ export function EvaluationActions<P>({
       onChanged(answer.proposal, done);
     } else if (!(answer.kind === "refused" && answer.reasons.some((reason) => /^(score|disqualificationReason): /.test(reason)))) {
       setDialog(null);
+      setRefusals((count) => count + 1);
       setRefusal({
         title: refusedTitle,
         reasons: answer.kind === "refused" ? answer.reasons : ["The service could not do that. Try again."],
@@ -74,11 +81,12 @@ export function EvaluationActions<P>({
     return answer;
   }
 
+  const offered = offers.score || offers.award || offers.disqualify;
   return (
     <>
-      <div data-testid="proposal-actions">
-        {offers.score || offers.award || offers.disqualify ? (
-          <ButtonGroup ariaLabel="Proposal actions">
+      <ProposalActions>
+        {offered ? (
+          <>
             {offers.score ? (
               <Button variant="primary" isDisabled={busy} onPress={() => setDialog("score")} data-testid="proposal-enter-score">
                 Enter score
@@ -100,13 +108,11 @@ export function EvaluationActions<P>({
                 Disqualify
               </Button>
             ) : null}
-          </ButtonGroup>
-        ) : (
-          <Text elementType="p">There is nothing to do with this proposal now.</Text>
-        )}
-      </div>
+          </>
+        ) : null}
+      </ProposalActions>
       {refusal ? (
-        <div data-testid="proposal-refused-message">
+        <Focused key={refusals} testId="proposal-refused-message">
           <TitledAlert variant="danger" role="alert" title={refusal.title}>
             {refusal.reasons.map((reason) => (
               <Text elementType="p" key={reason}>
@@ -114,7 +120,7 @@ export function EvaluationActions<P>({
               </Text>
             ))}
           </TitledAlert>
-        </div>
+        </Focused>
       ) : null}
       <ScoreDialog
         isOpen={dialog === "score"}
@@ -149,11 +155,11 @@ export function EvaluationActions<P>({
             </>
           }
         >
-          <Text elementType="p">
+          <p className="op-text">
             The opportunity will be awarded to this proponent. Every other proposal still in contention will be marked not
             awarded. The winner will be sent an award notice and every other proponent a decision notice. Disqualified and
             withdrawn proposals keep their state.
-          </Text>
+          </p>
         </AlertDialog>
       </Modal>
     </>
@@ -167,6 +173,16 @@ export function EvaluationActions<P>({
 export function scoreFromField(typed: string): number | null {
   const cleaned = typed.replace(/[,%\s]/g, "");
   return cleaned === "" ? null : readScore(cleaned);
+}
+
+/**
+ * A dialog's field that is refused takes focus, keeping what was typed in it (proposal-cwu-view ·
+ * score-invalid, disqualify-invalid).
+ */
+function useFocusOnProblem(wrapper: RefObject<HTMLDivElement | null>, control: "input" | "textarea", problem: string | null) {
+  useEffect(() => {
+    if (problem) wrapper.current?.querySelector<HTMLElement>(control)?.focus();
+  }, [wrapper, control, problem]);
 }
 
 /**
@@ -200,6 +216,7 @@ export function ScoreDialog({
       setProblem(null);
     }
   }, [isOpen]);
+  useFocusOnProblem(fieldRef, "input", problem);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -220,39 +237,37 @@ export function ScoreDialog({
   return (
     <Modal isOpen={isOpen} isDismissable onOpenChange={(open) => (!open && !isSending ? onCancel() : undefined)}>
       <Dialog isCloseable data-testid="proposal-score-dialog">
-        <div style={{ padding: "var(--layout-padding-large)" }}>
-          <Form validationBehavior="aria" onSubmit={(event) => void submit(event)}>
-            <Stack gap="medium">
-              <Heading level={2} slot="title">
-                {title}
-              </Heading>
-              <Text elementType="p">{explanation}</Text>
-              <div ref={fieldRef}>
-                <NumberField
-                  label={label}
-                  isRequired
-                  description="Between 0 and 100, with up to two decimal places."
-                  value={value}
-                  onChange={(next) => {
-                    setValue(next);
-                    if (problem) setProblem(null);
-                  }}
-                  isInvalid={problem !== null}
-                  errorMessage={problem ?? undefined}
-                  data-testid="proposal-score-field"
-                />
-              </div>
-              <ButtonGroup ariaLabel="Score choices">
-                <Button variant="secondary" isDisabled={isSending} onPress={onCancel} data-testid="proposal-dialog-cancel">
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" isDisabled={isSending} data-testid="proposal-score-confirm">
-                  Enter score
-                </Button>
-              </ButtonGroup>
-            </Stack>
-          </Form>
-        </div>
+        {/* The other programs' proposal pages, which share this dialog, are not yet drawn on the kit's frame. */}
+        <ProposalStyles />
+        <Form validationBehavior="aria" className="pp-dialog" onSubmit={(event) => void submit(event)}>
+          <Heading level={2} slot="title" className="pf-part-title">
+            {title}
+          </Heading>
+          <p className="op-text">{explanation}</p>
+          <div ref={fieldRef}>
+            <NumberField
+              label={label}
+              isRequired
+              description="Between 0 and 100, with up to two decimal places."
+              value={value}
+              onChange={(next) => {
+                setValue(next);
+                if (problem) setProblem(null);
+              }}
+              isInvalid={problem !== null}
+              errorMessage={problem ?? undefined}
+              data-testid="proposal-score-field"
+            />
+          </div>
+          <ButtonGroup ariaLabel="Score choices">
+            <Button variant="secondary" isDisabled={isSending} onPress={onCancel} data-testid="proposal-dialog-cancel">
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" isDisabled={isSending} data-testid="proposal-score-confirm">
+              Enter score
+            </Button>
+          </ButtonGroup>
+        </Form>
       </Dialog>
     </Modal>
   );
@@ -271,6 +286,7 @@ function DisqualifyDialog({
 }) {
   const [reason, setReason] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
+  const fieldRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -278,6 +294,7 @@ function DisqualifyDialog({
       setProblem(null);
     }
   }, [isOpen]);
+  useFocusOnProblem(fieldRef, "textarea", problem);
 
   async function confirm() {
     if (isSending) return;
@@ -310,8 +327,8 @@ function DisqualifyDialog({
           </>
         }
       >
-        <Stack gap="medium">
-          <Text elementType="p">The proposal will no longer be evaluated. The reason is kept in its history.</Text>
+        <div className="op-region" ref={fieldRef}>
+          <p className="op-text">The proposal will no longer be evaluated. The reason is kept in its history.</p>
           <TextArea
             label="Reason"
             isRequired
@@ -326,7 +343,7 @@ function DisqualifyDialog({
             errorMessage={problem ?? undefined}
             data-testid="proposal-disqualify-reason-field"
           />
-        </Stack>
+        </div>
       </AlertDialog>
     </Modal>
   );
