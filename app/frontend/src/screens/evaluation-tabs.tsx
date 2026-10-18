@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Button, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
+import { useEffect, useState } from "react";
+import { Button, Link, Text } from "@bcgov/design-system-react-components";
 import {
   INCOMPLETE_EVALUATION,
   QUESTIONS_SEGMENT,
@@ -14,8 +14,8 @@ import type { Account } from "../api/accounts";
 import { Page, fetchPage } from "../api/content";
 import { Evaluation, fetchOwnEvaluations, submitEvaluations } from "../api/evaluations";
 import { OtherProgramOpportunity } from "../api/other-programs";
-import { Loading } from "../app/loading";
-import { Stack } from "../app/page-layout";
+import { EvaluationStatus, EvaluationStyles, Refusal, Rows, type Row } from "../app/evaluation-kit";
+import { Actions, Waiting } from "../app/opportunity-kit";
 import { TitledAlert } from "../app/titled-alert";
 import { FormattedText } from "../lib/formatted-text/formatted-text";
 
@@ -23,22 +23,9 @@ import { FormattedText } from "../lib/formatted-text/formatted-text";
  * The evaluator's two tabs on the manage page (R-5.34): the program's evaluation instructions,
  * which are a page of the service's own prose (evaluation-instructions-swu, -twu), and their own
  * list of proponents with the one submit action (evaluation-individual-list-swu, -twu; R-5.25,
- * R-5.35). The Consensus tab is `evaluation-consensus-tab.tsx`.
+ * R-5.35). The Consensus tab is `evaluation-consensus-tab.tsx`. Both are drawn inside the manage
+ * page's frame, as the evaluation kit's `InstructionsTab` and `IndividualListTab` stories draw them.
  */
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
 
 /** The evaluation instructions page of each program, which an administrator maintains. */
 export const INSTRUCTIONS_PAGE: Readonly<Record<OtherProgram, string>> = {
@@ -58,7 +45,14 @@ export function InstructionsTab({ program }: { program: OtherProgram }) {
       current = false;
     };
   }, [program]);
-  return <div data-testid="evaluation-instructions-body">{page ? <FormattedText markup={page.body} /> : null}</div>;
+  return (
+    <>
+      <EvaluationStyles />
+      <div className="ev-body" data-testid="evaluation-instructions-body">
+        {page ? <FormattedText markup={page.body} /> : null}
+      </div>
+    </>
+  );
 }
 
 /** Where one proponent's evaluation is: the person's own, or a new one. */
@@ -96,7 +90,6 @@ export function EvaluationListTab({
   const [refusal, setRefusal] = useState<readonly string[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [round, setRound] = useState(0);
-  const refusalRef = useRef<HTMLDivElement>(null);
   const closed = hasClosedForEvaluation(opportunity.status);
 
   useEffect(() => {
@@ -110,18 +103,14 @@ export function EvaluationListTab({
     };
   }, [program, opportunity.id, closed, round]);
 
-  useEffect(() => {
-    if (refusal) refusalRef.current?.focus();
-  }, [refusal]);
-
   if (!closed) {
     return (
-      <Text elementType="p">
+      <p className="op-text">
         Evaluation begins once the opportunity's proposal deadline has passed. The proponents are listed here then, by their anonymous names.
-      </Text>
+      </p>
     );
   }
-  if (loaded.kind === "loading") return <Loading label="Loading your evaluations…" />;
+  if (loaded.kind === "loading") return <Waiting label="Loading your evaluations" />;
   if (loaded.kind === "failed") {
     return (
       <TitledAlert variant="danger" role="alert" title="Your evaluations could not be loaded">
@@ -156,74 +145,66 @@ export function EvaluationListTab({
     setRound((value) => value + 1);
   }
 
+  const rows = proponents.map((proponent): Row => {
+    const evaluation = own(proponent.id);
+    const editable = individual && evaluation?.status === "DRAFT";
+    const action = !evaluation ? (individual ? "Start evaluation" : null) : editable ? "Continue evaluation" : "View evaluation";
+    return {
+      key: proponent.id,
+      testId: "evaluation-proponent-row",
+      cells: [
+        { content: proponent.anonymousProponentName, testId: "proposal-proponent-name" },
+        { content: <EvaluationStatus testId="evaluation-status">{evaluationStatusLabel(evaluation, questions)}</EvaluationStatus> },
+        {
+          content: action ? (
+            <Link
+              href={evaluationAddress(program, opportunity.id, proponent.id, evaluation ? account.id : null)}
+              aria-label={`${action}: ${proponent.anonymousProponentName}`}
+              data-testid="evaluation-open-proponent"
+            >
+              {action}
+            </Link>
+          ) : null,
+        },
+      ],
+    };
+  });
+
   return (
     <>
+      <EvaluationStyles />
       {refusal ? (
-        <div tabIndex={-1} ref={refusalRef} data-testid={refusal.includes(INCOMPLETE_EVALUATION) ? "evaluation-incomplete-error" : undefined}>
-          <InlineAlert variant="danger" role="alert" title="Your scores were not submitted" description={refusal.join(" ")} />
-        </div>
+        <Refusal
+          key={round}
+          testId={refusal.includes(INCOMPLETE_EVALUATION) ? "evaluation-incomplete-error" : undefined}
+          title="Your scores were not submitted"
+          description={refusal.join(" ")}
+        />
       ) : null}
-      <Text elementType="p">
+      <p className="op-text">
         {submitted || !individual
           ? hasReachedConsensus(opportunity.status)
             ? "Every evaluator on the panel has submitted their scores, and the consensus stage has begun. Your evaluations can be read but not changed."
             : "You have submitted your scores. The consensus stage begins when every evaluator on the panel has submitted theirs."
           : `Score every proponent's ${QUESTION_NOUN[program]}s on your own. Proponents are listed by their anonymous names. Nobody else on the panel sees your scores until the consensus stage.`}
-      </Text>
-      <div role="region" aria-labelledby="evaluations-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="evaluation-individual-table">
-          <caption id="evaluations-caption" style={{ textAlign: "start" }}>
-            <Text size="small" color="secondary">
-              Your evaluations, by anonymous proponent name
-            </Text>
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col" style={cell}>Proponent</th>
-              <th scope="col" style={cell}>Your evaluation</th>
-              <th scope="col" style={cell}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {proponents.map((proponent) => {
-              const evaluation = own(proponent.id);
-              const editable = individual && evaluation?.status === "DRAFT";
-              const action = !evaluation ? (individual ? "Start evaluation" : null) : editable ? "Continue evaluation" : "View evaluation";
-              return (
-                <tr key={proponent.id} data-testid="evaluation-proponent-row">
-                  <td style={cell}>
-                    <span data-testid="proposal-proponent-name">{proponent.anonymousProponentName}</span>
-                  </td>
-                  <td style={cell}>
-                    <span style={badge} data-testid="evaluation-status">
-                      {evaluationStatusLabel(evaluation, questions)}
-                    </span>
-                  </td>
-                  <td style={cell}>
-                    {action ? (
-                      <Link
-                        href={evaluationAddress(program, opportunity.id, proponent.id, evaluation ? account.id : null)}
-                        aria-label={`${action}: ${proponent.anonymousProponentName}`}
-                        data-testid="evaluation-open-proponent"
-                      >
-                        {action}
-                      </Link>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      </p>
+      <Rows
+        captionId="evaluations-caption"
+        caption="Your evaluations, by anonymous proponent name"
+        columns={["Proponent", "Your evaluation", "Action"]}
+        layout="ev-cols-3"
+        unlabelled={["Action"]}
+        testId="evaluation-individual-table"
+        rows={rows}
+      />
       {individual && !submitted ? (
-        <Stack gap="medium">
-          <Text elementType="p" id="submit-hint">
+        <>
+          <p className="op-text" id="submit-hint">
             {ready
               ? `Every evaluation is complete. Your scores for all ${awaited.length} proponents are submitted together, and cannot be changed afterwards.`
               : "You can submit once every proponent has a complete evaluation: a score and a comment for every question. Submitted scores cannot be changed."}
-          </Text>
-          <div>
+          </p>
+          <Actions>
             <Button
               variant="primary"
               isDisabled={!ready || busy}
@@ -233,8 +214,8 @@ export function EvaluationListTab({
             >
               Submit scores for consensus
             </Button>
-          </div>
-        </Stack>
+          </Actions>
+        </>
       ) : null}
     </>
   );

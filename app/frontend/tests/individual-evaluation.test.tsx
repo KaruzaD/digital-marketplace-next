@@ -312,6 +312,23 @@ describe("the evaluator's list (R-5.25, R-5.35)", () => {
     expect(writes()).toEqual([{ method: "PUT", address: `/api/opportunities/sprint-with-us/${ID}`, body: { tag: "submitIndividualQuestionEvaluations" } }]);
   });
 
+  it("draws the proponents as the kit's rows, each status a label coloured by its state and named in words", async () => {
+    listing([evaluation(P1, "Proponent 1", "DRAFT", complete), evaluation(P2, "Proponent 2", "SUBMITTED", complete)]);
+    const list = await screen.findByTestId("evaluation-individual-table");
+    expect(list.tagName).toBe("UL");
+    expect(list.getAttribute("aria-labelledby")).toBe("evaluations-caption");
+    const rows = within(list).getAllByTestId("evaluation-proponent-row");
+    expect(rows.every((row) => row.tagName === "LI")).toBe(true);
+    expect(rows.map((row) => within(row).getByTestId("evaluation-status").className)).toEqual([
+      "dm-label dm-label-blue",
+      "dm-label dm-label-green",
+      "dm-label dm-label-grey",
+    ]);
+    expect(rows[0]!.textContent).toContain("Your evaluation: Draft: complete");
+    expect(screen.getByTestId("evaluation-submit-for-consensus").closest(".op-actions")).toBeTruthy();
+    expect(document.querySelector("table")).toBeNull();
+  });
+
   it("shows each evaluation read-only once the set is submitted", async () => {
     listing([P1, P2, P3].map((id, index) => evaluation(id, `Proponent ${index + 1}`, "SUBMITTED", complete)));
     const rows = await screen.findAllByTestId("evaluation-proponent-row");
@@ -352,6 +369,40 @@ describe("one proponent's evaluation (R-5.3, R-5.21 to R-5.24, R-5.35)", () => {
     expect(screen.getAllByTestId("evaluation-question-score-field")).toHaveLength(2);
     expect(screen.getAllByTestId("evaluation-question-notes-field")).toHaveLength(2);
     expect(screen.getByText("Proponent 2 of 3")).toBeTruthy();
+  });
+
+  it("draws the scoring head and one question box per question, as the catalogue does", async () => {
+    scoring([]);
+    renderAt(CREATE);
+    const name = await screen.findByTestId("proposal-proponent-name");
+    const head = name.closest(".op-head")!;
+    expect(name.closest("h1")).toBeTruthy();
+    expect(head.querySelector(".op-eyebrow")!.textContent).toBe("Evaluate a Sprint With Us proponent");
+    expect(head.querySelector(".op-labels")!.textContent).toBe("Sprint With Us");
+    expect([...head.querySelectorAll(".op-facts > li")].map((fact) => fact.textContent)).toEqual([
+      "Seeded closed Sprint With Us opportunity",
+      "Proponent 2 of 3",
+    ]);
+    const boxes = [...document.querySelectorAll("fieldset.op-fieldset")];
+    expect(boxes.map((box) => [box.id, box.querySelector("legend")!.textContent])).toEqual([
+      ["question-1", "Question 1"],
+      ["question-2", "Question 2"],
+    ]);
+    expect(screen.getAllByTestId("evaluation-question-response").every((block) => block.classList.contains("ev-response"))).toBe(true);
+  });
+
+  it("shows the error summary's title and puts the draft's status in the head as a label", async () => {
+    const stored = evaluation(P2, "Proponent 2", "DRAFT", [{ score: 6, notes: "Too high" }, { score: 2, notes: "Fine" }]);
+    scoring([stored], { read: () => json(200, stored), edit: () => json(200, stored) });
+    renderAt(EDIT);
+    const status = await screen.findByTestId("evaluation-status");
+    expect(status.closest(".op-labels")).toBeTruthy();
+    expect(status.className).toBe("dm-label dm-label-blue");
+    fireEvent.click(screen.getByTestId("evaluation-save-changes"));
+    const link = await screen.findByTestId("evaluation-score-error");
+    const alert = link.closest(".ev-focus") as HTMLElement;
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+    expect(alert.querySelector("#alert-title")!.textContent).toBe("This evaluation has 1 problem");
   });
 
   it("keeps a draft as entered and moves on to the next proponent (R-5.23, R-5.35)", async () => {
@@ -410,6 +461,9 @@ describe("one proponent's evaluation (R-5.3, R-5.21 to R-5.24, R-5.35)", () => {
     expect(screen.queryByTestId("evaluation-question-score-field")).toBeNull();
     expect(screen.queryByTestId("evaluation-save-changes")).toBeNull();
     expect(screen.getByText("4 out of 5")).toBeTruthy();
+    expect(screen.getByTestId("evaluation-status").className).toBe("dm-label dm-label-green");
+    expect(screen.getByRole("heading", { level: 2, name: "Question 1" }).closest(".op-panel")).toBeTruthy();
+    expect(screen.getByTestId("evaluation-read-only-notice").classList.contains("ev-alert")).toBe(true);
   });
 
   it("shows the missing page to anyone who may not record an evaluation (R-5.21)", async () => {

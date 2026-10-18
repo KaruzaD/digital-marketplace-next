@@ -1,11 +1,14 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
-import { Hidden } from "./marketplace";
+import { ButtonGroup, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
+import { PROGRAM_NAMES, type Program } from "@rules/opportunities";
+import { Hidden, Label, type LabelColour } from "./marketplace";
+import { PageTitle } from "./opportunity-kit";
 
 /**
  * The pieces the evaluation screens are put together from in the chosen direction, as
  * `design/catalogue/evaluation-kit.tsx` draws them: the rows that become stacked cards on a phone,
- * the panel's member rows and its select-and-add cluster, and the alerts. Built on the opportunity
+ * the panel's member rows and its select-and-add cluster, an evaluation's status label, the head of
+ * a scoring form, a question's box and its proponent's response, and the alerts. Built on the opportunity
  * kit, whose page frame and manage-page head they sit inside; this project's own compositions of
  * design-system components and tokens, none of them a design-system component.
  *
@@ -24,7 +27,8 @@ const css = `
   flex-direction: column;
   gap: var(--layout-margin-small);
 }
-.ev-rows > *, .ev-row > *, .ev-cell > *, .ev-member > *, .ev-member-body > *, .ev-cluster > *, .ev-error > *, .ev-alert > * {
+.ev-rows > *, .ev-row > *, .ev-cell > *, .ev-member > *, .ev-member-body > *, .ev-cluster > *, .ev-response > *,
+.ev-body > *, .ev-error > *, .ev-alert > * {
   margin: var(--layout-margin-none);
 }
 .ev-caption { font: var(--typography-regular-small-body); color: var(--typography-color-secondary); }
@@ -96,6 +100,14 @@ const css = `
 .ev-member-email { font: var(--typography-regular-small-body); color: var(--typography-color-secondary); }
 .ev-cluster { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--layout-margin-small); }
 .op-regions .ev-cluster > .bcds-react-aria-Select { flex: 1 1 240px; width: auto; }
+.ev-response {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-margin-small);
+  padding: var(--layout-padding-small);
+  border-inline-start: var(--layout-border-width-medium) solid var(--surface-color-border-medium);
+}
+.ev-body { display: flex; flex-direction: column; gap: var(--layout-margin-medium); }
 .ev-errors { margin: var(--layout-margin-none); padding-inline-start: var(--layout-padding-large); }
 .ev-focus:focus {
   outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
@@ -109,6 +121,95 @@ const css = `
 /** This kit's style sheet; the opportunity kit's is placed by the root layout. */
 export function EvaluationStyles() {
   return <style>{css}</style>;
+}
+
+/**
+ * An evaluation's or a consensus's state in words, coloured as the direction colours status: grey
+ * before it is begun, blue while it is a draft (as a draft proposal is marked), green once it is
+ * submitted. Whether a draft is complete is in its words, never in its colour alone.
+ */
+export function evaluationColour(status: string): LabelColour {
+  const word = status.toLowerCase();
+  if (word.startsWith("draft")) return "blue";
+  if (word.startsWith("submitted")) return "green";
+  return "grey";
+}
+
+export function EvaluationStatus({ testId, children }: { testId?: string; children: string }) {
+  return (
+    <Label colour={evaluationColour(children)} testId={testId}>
+      {children}
+    </Label>
+  );
+}
+
+/**
+ * The head of a scoring form: what the page is, the program and the evaluation's status as labels,
+ * the proponent's anonymous name as the H1, then the opportunity's title and the proponent's place
+ * in the order as small facts.
+ */
+export function ScoringHead({
+  eyebrow,
+  program,
+  status,
+  statusTestId,
+  name,
+  facts = [],
+}: {
+  eyebrow: string;
+  program: Program;
+  status?: string;
+  statusTestId?: string;
+  name: string;
+  facts?: readonly string[];
+}) {
+  return (
+    <div className="op-head">
+      <p className="op-eyebrow">{eyebrow}</p>
+      <div className="op-labels">
+        <Label>{PROGRAM_NAMES[program]}</Label>
+        {status ? <EvaluationStatus testId={statusTestId}>{status}</EvaluationStatus> : null}
+      </div>
+      <PageTitle>
+        <span data-testid="proposal-proponent-name">{name}</span>
+      </PageTitle>
+      {facts.length > 0 ? (
+        <ul className="op-facts">
+          {facts.map((fact) => (
+            <li key={fact}>{fact}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/** One question of a scoring form: a fieldset whose legend names the question, its contents `medium` apart. */
+export function QuestionBox({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <fieldset className="op-fieldset" id={`question-${n}`}>
+      <legend>Question {n}</legend>
+      <div className="op-fieldset-body">{children}</div>
+    </fieldset>
+  );
+}
+
+/**
+ * The proponent's words, set apart from the question and from the evaluator's own fields by a rule
+ * at their start. The design system's Callout is an emphasis box; a quotation needs no emphasis.
+ */
+export function Response({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <div className="ev-response" data-testid="evaluation-question-response">
+      <p className="op-note">{name}'s response</p>
+      <p className="op-text">{children}</p>
+    </div>
+  );
+}
+
+/** A form's save row: the design system's ButtonGroup, named for what it saves. */
+export function SaveRow({ label, children }: { label: string; children: ReactNode }) {
+  return <ButtonGroup ariaLabel={label}>{children}</ButtonGroup>;
 }
 
 export type Cell = { content: ReactNode; testId?: string };
@@ -182,6 +283,18 @@ export function Focused({ testId, children }: { testId?: string; children: React
     <div ref={box} tabIndex={-1} className="ev-focus ev-alert" data-testid={testId}>
       {children}
     </div>
+  );
+}
+
+/**
+ * A refusal from the service, in a danger alert that takes focus. The wrapper carries the test ID,
+ * because InlineAlert passes no `data-*` attribute.
+ */
+export function Refusal({ testId, title, description }: { testId?: string; title: string; description: string }) {
+  return (
+    <Focused testId={testId}>
+      <InlineAlert variant="danger" role="alert" title={title} description={description} />
+    </Focused>
   );
 }
 
