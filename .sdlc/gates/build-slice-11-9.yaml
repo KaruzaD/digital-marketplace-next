@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Slice 11 asks whether a vendor can register and look after an organization. Verify recorded a current pass for build-slice-11-9 against tree a293aef: all 13 claimed criteria (R-8.13, R-8.21, R-8.28, R-8.30, R-3.1, R-3.2, R-3.3, R-3.18, R-3.19, R-3.20, R-3.21, R-3.22, R-3.24) were exercised and met. The diff only restyles slice 11's own screens to the approved design: the organization list (a table on a wide screen, cards on a phone), registering an organization, and the management page's head and Organization tab. Shared pieces move into organization-kit.tsx. Behaviour is unchanged: test IDs are the same, the owner and qualification columns still show only where R-3.21 allows, the logo still sits above the name (R-8.28), and Edit and Archive are still offered only where the viewer may change the organization (R-3.18). The team, qualification and changelog tabs belong to slices 12 and 13 and keep their bodies. New unit tests cover the phone card layout, the page head, the regions inside the tab and the three registration panels. There is no secret or personal data in the code and no protected path is touched. The page's R-4.14 investigation is outside this slice's claims and doesn't affect the ruling. It points at the acceptance suite or seed records renaming shared personas, not at app/. A stale or failing verify result, or a restyle that changed behaviour a claimed criterion relies on, would change the ruling.
+conditions: []
+cost: 0.714024
+turns: 1
+session: "f73170ce-af7d-48f0-b44d-43d8f2df18bb"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T18:35:26.904Z

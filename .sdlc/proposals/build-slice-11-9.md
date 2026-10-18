@@ -39,3 +39,14 @@ I didn't add `prompt=login` to the sign-in request to force a fresh identity-pro
 **Not mine to change.** If the cause is tests renaming shared personas at the same time, the fix belongs to the acceptance suite or the seed, not `app/`: give R-4.14 a vendor nobody else renames, or run tests that rename shared personas one at a time. If a re-run shows R-4.14 failing again with the vendor's own row reading a different name than its `/users/me` page did, the sign-in path is worth checking next.
 
 **Slice 11.** I left everything else from slice 11 as it was. That covers the public organization list, registering an organization with its logo, the organization tab at `/organizations/:orgId/edit` with edit and archive for owners and administrators, the archive notice, the list of organizations a vendor may act for, and the image rules R-8.13, R-8.21, R-8.28 and R-8.30.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Slice 11 asks whether a vendor can register and look after an organization. Verify recorded a current pass for build-slice-11-9 against tree a293aef: all 13 claimed criteria (R-8.13, R-8.21, R-8.28, R-8.30, R-3.1, R-3.2, R-3.3, R-3.18, R-3.19, R-3.20, R-3.21, R-3.22, R-3.24) were exercised and met. The diff only restyles slice 11's own screens to the approved design: the organization list (a table on a wide screen, cards on a phone), registering an organization, and the management page's head and Organization tab. Shared pieces move into organization-kit.tsx. Behaviour is unchanged: test IDs are the same, the owner and qualification columns still show only where R-3.21 allows, the logo still sits above the name (R-8.28), and Edit and Archive are still offered only where the viewer may change the organization (R-3.18). The team, qualification and changelog tabs belong to slices 12 and 13 and keep their bodies. New unit tests cover the phone card layout, the page head, the regions inside the tab and the three registration panels. There is no secret or personal data in the code and no protected path is touched. The page's R-4.14 investigation is outside this slice's claims and doesn't affect the ruling. It points at the acceptance suite or seed records renaming shared personas, not at app/. A stale or failing verify result, or a restyle that changed behaviour a claimed criterion relies on, would change the ruling.
+
+**Conditions:**
+none
