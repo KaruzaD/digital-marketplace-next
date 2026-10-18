@@ -1906,6 +1906,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T02:55:02.406Z
+    taken: 2026-10-18T02:59:20.216Z
+    taken_by: bind-adapter-new-97
   - stage: bind-adapter
     target: new
     why: "R-2.15: in the case 'a draft submitted after the deadline',
@@ -1917,6 +1919,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T02:55:02.406Z
+    taken: 2026-10-18T02:59:20.216Z
+    taken_by: bind-adapter-new-97
   - stage: bind-adapter
     target: new
     why: "R-8.22, R-8.31, R-1.35, R-1.36, R-2.2, R-2.3, R-2.4, R-2.13, R-2.23:
@@ -1935,3 +1939,5 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T02:55:02.406Z
+    taken: 2026-10-18T02:59:20.216Z
+    taken_by: bind-adapter-new-97
