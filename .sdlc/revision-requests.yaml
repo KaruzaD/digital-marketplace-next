@@ -2182,3 +2182,108 @@ requests:
     at: 2026-10-18T09:52:39.772Z
     taken: 2026-10-18T09:55:15.705Z
     taken_by: derive-tests-organizations-12
+  - stage: bind-adapter
+    target: new
+    why: "R-2.7: proposalSwuCreate.setScrumMaster threw 'Charlie Placeholder is not
+      on the implementation phase's team' because tickScrumMaster
+      (tests/adapters/new/index.ts:13451-13461) only matches a radio named
+      /^scrum master: <name>,/; the page (.sdlc/evidence/slice-15/R-2.7.txt
+      lines 44-51) shows Charlie Placeholder in the phase's team list and a
+      radiogroup named 'Scrum master for the implementation phase (required)'
+      holding a radio named 'Charlie Placeholder', with test ID
+      proposal-scrum-master. Find the radio by the member's name inside the
+      phase's 'Scrum master for the <phase> phase' radiogroup (or by
+      proposal-scrum-master within the phase group), and change onPhase
+      (index.ts:13448) to match the same way."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+  - stage: bind-adapter
+    target: new
+    why: "R-2.9: same failure as R-2.7. proposalSwuCreate.setScrumMaster looks for a
+      radio named 'Scrum master: Charlie Placeholder, implementation phase', but
+      the page (.sdlc/evidence/slice-15/R-2.9.txt) names the radio 'Charlie
+      Placeholder' inside the radiogroup 'Scrum master for the implementation
+      phase (required)'."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+  - stage: bind-adapter
+    target: new
+    why: "R-2.11: same failure as R-2.7. proposalSwuCreate.setScrumMaster looks for
+      'Scrum master: Charlie Placeholder, implementation phase', but the page
+      (.sdlc/evidence/slice-15/R-2.11.txt) names the radio 'Charlie Placeholder'
+      inside the radiogroup 'Scrum master for the implementation phase
+      (required)'."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+  - stage: bind-adapter
+    target: new
+    why: "R-2.16: same failure as R-2.7 for 'Blake Placeholder'.
+      proposalSwuCreate.setScrumMaster looks for 'Scrum master: Blake
+      Placeholder, implementation phase', but the page
+      (.sdlc/evidence/slice-15/R-2.16.txt) names the radio 'Blake Placeholder'
+      inside the radiogroup 'Scrum master for the implementation phase
+      (required)'."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+  - stage: bind-adapter
+    target: new
+    why: "R-2.18: proposalSwuCreate.pendingTeamMember read '' because
+      addPhaseTeamMember never added the pending person. pickListed
+      (tests/adapters/new/index.ts:13342) accepts an option only as '<Name>' or
+      '<Name> (pending)', but the phase's chooser offers 'Quinn Placeholder
+      (membership pending)', the catalogue's wording
+      (design/catalogue/proposal-swu-create.default.stories.tsx:21,
+      DESIGN.md:4314). Accept '<Name> (membership pending)'. The second R-2.18
+      case failed on the same scrum master name as R-2.7
+      (.sdlc/evidence/slice-15/R-2.18-2.txt: radio 'Blake Placeholder' in
+      radiogroup 'Scrum master for the implementation phase (required)')."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+  - stage: bind-adapter
+    target: new
+    why: "R-2.19: same failure as R-2.7. setScrumMaster looks for 'Scrum master:
+      <Name>, <phase> phase', but the page names each radio by the member alone
+      inside 'Scrum master for the <phase> phase (required)'
+      (.sdlc/evidence/slice-15/R-2.19.txt, R-2.19-2.txt, R-2.19-3.txt). The
+      three cases verify did not describe (missing phase capability, phase cost
+      over budget, total cost over budget) run through the same step; re-check
+      them once it binds."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+  - stage: bind-adapter
+    target: new
+    why: "R-2.22: same failure as R-2.7, on both proposalSwuEdit.setScrumMaster and
+      proposalSwuCreate.setScrumMaster. The adapter looks for 'Scrum master:
+      Blake Placeholder, implementation phase', but the create and edit forms
+      (.sdlc/evidence/slice-15/R-2.22.txt, R-2.22-2.txt, R-2.22-3.txt) name the
+      radio 'Blake Placeholder' inside the radiogroup 'Scrum master for the
+      implementation phase (required)'."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+  - stage: design
+    why: "DESIGN.md lines 3017-3020 say each scrum master radio carries an
+      aria-label 'Scrum master: Test Designer, implementation phase', but the
+      approved catalogue story
+      design/catalogue/proposal-swu-create.default.stories.tsx (line 99 onward)
+      draws a RadioGroup labelled 'Scrum master for the <phase> phase' whose
+      radios are named by the person alone. The built screen followed the
+      catalogue, and the test adapter was bound to the prose, which failed seven
+      slice-15 criteria. Make DESIGN.md and the catalogue say the same thing."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
