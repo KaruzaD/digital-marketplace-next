@@ -159,6 +159,10 @@
 - 00:42:20 drive: step 1: `sdlc run verify --slice 2` — build-slice-2-17 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
 - 01:12:55 verify slice 2: not verified — R-6.1 could not be tested in this environment.
 - 01:12:57 run verify: regenerated 3 files in .sdlc, site
+- 01:13:00 drive: stopped after 1 step — waiting on a person: tech-lead: build-slice-2-17
+- 00:42:09 run build: ok, cost 2.404173, turns 52, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 00:42:09 propose build-slice-2-17 at G3
+- 01:14:04 rule build-slice-2-17 approve at G3 by tech-lead (human)
 
 # Run record 2026-10-17
 
