@@ -3438,3 +3438,16 @@ conditions:
         editor), and design/report.json shows 0 violations
       by: agent:ux-reviewer
       at: 2026-10-17T23:06:52.054Z
+  - ref: build-slice-8-12#2
+    text: "app/frontend/src/screens/opportunity-list.tsx: once the adapter answer is
+      approved, start the Closed Opportunities group collapsed again as the
+      approved design says (remove defaultOpen from its Disclosure), withdraw
+      docs/decisions/0071-the-closed-opportunities-group-starts-open.md, and put
+      the unit tests in app/frontend/tests/finding-opportunities.test.tsx back
+      to opening the closed group before reading its rows."
+    from: build-slice-8-12
+    family: build-slice-8
+    gate: G3
+    stage: build
+    by: agent:reviewer
+    at: 2026-10-18T00:30:29.524Z
