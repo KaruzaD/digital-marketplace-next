@@ -40,6 +40,7 @@ Profile: rebuild
 - [bind-adapter-new-105](proposals/bind-adapter-new-105.md)
 - [bind-adapter-new-106](proposals/bind-adapter-new-106.md)
 - [bind-adapter-new-107](proposals/bind-adapter-new-107.md)
+- [bind-adapter-new-108](proposals/bind-adapter-new-108.md)
 - [bind-adapter-new-11](proposals/bind-adapter-new-11.md)
 - [bind-adapter-new-12](proposals/bind-adapter-new-12.md)
 - [bind-adapter-new-13](proposals/bind-adapter-new-13.md)
@@ -236,6 +237,7 @@ Profile: rebuild
 - [build-slice-11-4](proposals/build-slice-11-4.md)
 - [build-slice-11-5](proposals/build-slice-11-5.md)
 - [build-slice-11-6](proposals/build-slice-11-6.md)
+- [build-slice-11-7](proposals/build-slice-11-7.md)
 - [build-slice-12](proposals/build-slice-12.md)
 - [build-slice-12-2](proposals/build-slice-12-2.md)
 - [build-slice-12-3](proposals/build-slice-12-3.md)
@@ -741,11 +743,11 @@ Profile: rebuild
 
 ## Totals
 
-- Journal cost: $1140.624946
+- Journal cost: $1141.532579
 - Rulings cost: $572.532122
-- Total cost: $1713.157068
-- Agent-held rulings: 646
-- Runner rulings (automatic, no seat held): 37
+- Total cost: $1714.064701
+- Agent-held rulings: 647
+- Runner rulings (automatic, no seat held): 38
 - Human rulings: 28
 - Rulings whose seat this page does not recognise: 0
 - Open escalations: 0

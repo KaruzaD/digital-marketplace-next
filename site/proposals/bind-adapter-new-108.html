@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bind-adapter-new-108 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">713</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">707</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">567</span></a></li><li><a href="../runs.html">Run log <span class="count">26</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>bind-adapter-new-108</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 17:37</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does this adapter bind every surface action and observation on new, and nothing else?</h2>
+<p><strong>Recommendation.</strong> I fixed <code>organizationEdit.serviceAreaCheckbox</code> in <code>tests/adapters/new/index.ts:7757</code>.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I fixed <code>organizationEdit.serviceAreaCheckbox</code> in <code>tests/adapters/new/index.ts:7757</code>. I couldn&#39;t confirm the fix on the restyled tab, because the target running at <a href="http://localhost:4300">http://localhost:4300</a> doesn&#39;t draw that tab. I also couldn&#39;t type-check the file or run the suite, because shell commands weren&#39;t permitted in this session.</p>
+<p><strong>What was wrong.</strong> The member decided whether the service areas were being edited before it opened the Team With Us qualification tab. It was still on the Organization tab at that point, which has no checkboxes, so the answer was always no. On the restyled tab, an administrator sees the checkboxes straight away, with no &quot;Edit service areas&quot; button to press. The member therefore took its read-only branch, looked for list items under &quot;Approved service areas&quot;, found none, and returned &quot;&quot;. That matches the R-3.28 failure verify reported on build-slice-11-7.</p>
+<p><strong>The fix.</strong></p>
+<ul><li>If checkboxes are already showing, the member reads them where they are without reopening the tab, so ticks an earlier step left unsaved are kept.</li><li>Otherwise it opens the tab, and only then decides whether it is being edited.</li><li>If checkboxes are showing on the open tab, it reads them as they stand and does not press Cancel, since it opened no editor.</li><li>The result is unchanged: the names of the ticked areas, one per line, in the order the page draws them.</li><li>The test ID <code>organization-service-area-checkbox</code> is still tried first, then the group named for service areas. That group falls back to any checkbox in the main region, and the restyled heading &quot;Service areas this organization is approved for&quot; also fits it.</li><li>For a tab that has an &quot;Edit service areas&quot; button, or a read-only list, the member behaves as before.</li></ul>
+<p><strong>Checked against the running application</strong> (seeded qualified organization, Northern Pines Digital Ltd.):</p>
+<ul><li><strong>Administrator:</strong> the tab still draws the earlier style: &quot;Approved service areas&quot; listing Agile coach and Full stack developer, with an &quot;Edit service areas&quot; button. I replayed the member&#39;s new steps in the browser, which can&#39;t stand in for type-checking or running the suite. It found no checkboxes on the open tab and opened the editor with the button. Five boxes appeared, all carrying their test ID, with only Full stack developer and Agile coach ticked. It read &quot;Full stack developer\nAgile coach&quot; and pressed Cancel, which closed the editor.</li><li><strong>Owner:</strong> the tab shows the same two areas as read-only items with their test ID, &quot;Only an administrator can change which service areas an organization is approved for.&quot;, and no checkboxes or buttons. The member&#39;s read-only branch returns those two names.</li></ul>
+<p>The new branch should therefore make R-3.28 pass on the restyled build. This read is unconfirmed until verify runs against that build.</p>
+<p><strong>Other notes.</strong></p>
+<ul><li>The old binding returns the ticked areas as stored codes (&quot;FULL_STACK_DEVELOPER&quot;). The new binding returns display names (&quot;Full stack developer&quot;), and I kept that because changing the form is outside this fix.</li><li><code>tests/adapters/new/bindings.yaml</code> still lists <code>service_area_checkbox</code> as bound, and nothing else in it changed.</li><li>No other member or file was edited, and every route I visited loaded.</li></ul></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by runner:checks (persona agent) on 2026-10-18 17:38.</p>
+<div class="body"><p>Approved by the runner&#39;s checks, which policy.gates.G3.auto_approve lets settle bind-adapter proposals: the acceptance typecheck of b3f26dbda5 is clean; no condition is open against it; no escalation stands on it; nothing outside tests/adapters changed.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>
