@@ -4305,41 +4305,83 @@ export default function create(
   // by title or location" search box; the list narrows as each is changed ("Showing N
   // opportunities. The list changes as you choose."). Each card is a link: title, program,
   // status badge, "Closes <date> at <time>" (or "Closed …"), summary, value, location.
-  // The list heads its groups "Unpublished", "Open" and "Closed", each a line of its own.
+  // The list draws each group as a section of its own under a level-2 heading, "Unpublished",
+  // "Open" or "Closed" (a line of description, then the group's list of cards). Whatever
+  // follows the last group on the page, such as a panel describing the programs, is no part
+  // of it.
   const OPPORTUNITY_GROUPS = [
     /^unpublished(?: opportunities)?$/i,
     /^open(?: opportunities)?$/i,
     /^closed(?: opportunities)?$/i,
   ];
 
-  async function opportunityGroup(header: RegExp): Promise<string> {
-    const rows = async (): Promise<string[] | null> => {
-      const lines = await textLines();
-      const start = lines.findIndex((line) => header.test(line));
-      if (start < 0) return null;
-      const body: string[] = [];
-      for (let i = start + 1; i < lines.length; i++) {
-        if (OPPORTUNITY_GROUPS.some((group) => group.test(lines[i]))) break;
-        body.push(lines[i]);
+  // The group's own section: the region, group or disclosure holding that group's heading
+  // (or its header button) and no other group's.
+  async function groupSection(header: RegExp): Promise<Locator | null> {
+    const main = page.getByRole("main");
+    const named = main.getByRole("heading", { name: header }).or(main.getByRole("button", { name: header }));
+    const candidates = seen(
+      main
+        .getByRole("region", { name: header })
+        .or(main.getByRole("group", { name: header }))
+        .or(main.getByRole("region").filter({ has: named }))
+        .or(main.getByRole("group").filter({ has: named })),
+    );
+    let best: Locator | null = null;
+    let bestOthers = Infinity;
+    for (let i = 0; i < (await candidates.count()); i++) {
+      const one = candidates.nth(i);
+      let others = 0;
+      for (const group of OPPORTUNITY_GROUPS) {
+        if (group === header) continue;
+        others += await one.getByRole("heading", { name: group }).or(one.getByRole("button", { name: group })).count();
       }
-      if (body.length && /^\d+$/.test(body[0])) body.shift();
-      return body;
-    };
-    await ready();
-    let body = await rows();
-    // This reader is shown no such group at all: nothing is in it for them.
-    if (body === null) return "";
-    if (!body.length) {
-      // A folded group shows only its header, and opens when that is chosen.
-      const shown = seen(page.getByText(header));
-      const count = await shown.count();
-      if (count) {
-        await shown.nth(count - 1).click();
-        await settle();
-        body = (await rows()) ?? [];
+      if (others < bestOthers) {
+        best = one;
+        bestOthers = others;
       }
     }
-    return body.join("\n");
+    return best && bestOthers === 0 ? best : null;
+  }
+
+  async function opportunityGroup(header: RegExp): Promise<string> {
+    await ready();
+    const main = page.getByRole("main");
+    // A folded group shows only its header, a button marked collapsed; it is opened before
+    // anything in it is read.
+    const folded = seen(main.getByRole("button", { name: header, expanded: false })).first();
+    if (await folded.count()) {
+      await folded.click();
+      await settle();
+      await seen(main.getByRole("button", { name: header, expanded: true }))
+        .first()
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => undefined);
+    }
+    const section = await groupSection(header);
+    if (!section) {
+      // The list shows this reader no such group at all: nothing is in it for them.
+      const heading = seen(main.getByRole("heading", { name: header }).or(main.getByRole("button", { name: header })));
+      if (!(await heading.count())) return "";
+      unbound(
+        "opportunity-list." + ["unpublished_group", "open_group", "closed_group"][OPPORTUNITY_GROUPS.indexOf(header)],
+        `the list on ${page.url()} shows a group headed ${header} but no section of its own holding that group's cards`,
+      );
+    }
+    // A section drawn as a disclosure that is still shut is opened by its summary.
+    const shut = seen(section.getByRole("button", { name: header, expanded: false })).first();
+    if (await shut.count()) {
+      await shut.click();
+      await settle();
+    }
+    const lines = (await section.innerText())
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    // The section's own heading is not one of its rows, nor the count drawn beside it.
+    while (lines.length && header.test(lines[0])) lines.shift();
+    if (lines.length && /^\d+$/.test(lines[0])) lines.shift();
+    return lines.join("\n");
   }
 
   const PROGRAM_WORDS: [RegExp, string][] = [
