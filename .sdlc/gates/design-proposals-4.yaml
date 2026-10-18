@@ -1,0 +1,15 @@
+gate: G-DESIGN
+verdict: approve
+by: agent:ux-reviewer
+held_by: agent
+rationale: |2-
+  The question is whether the proposals screens still meet their criteria and use the design system, now that the revision makes DESIGN.md match the catalogue. Approved. Every Sprint With Us create and edit story (swu-create default and invalid, swu-edit editing and organization-locked) draws one required RadioGroup per phase labelled 'Scrum master for the <phase> phase', and each Radio in it (proposal-scrum-master) is named by the person alone. DESIGN.md's accessibility list and components table now say exactly that, and the stale Checkbox row is gone, which answers the revision request from build-slice-15-6. The Code With Us edit story now asks the create page's proponent question with 'Individual' and 'Organization', and the create page's second street line is now a separate named field, 'Street Address line 2' (WCAG 2.2 SC 2.4.6). Both screens were checked by eye: content stays in the shared page container, in line with the banner, with even spacing. No test_id changed, and report.json shows ok: true with no axe messages. Two small inconsistencies are left for a later pass and do not justify a return: the proponent radios run side by side on create but stack on edit, and edit uses sentence-case labels where create uses title case. The ruling would change if a story still drew the scrum master any other way, or if the rescanned catalogue showed an accessibility violation.
+conditions: []
+cost: 0.35228600000000004
+turns: 5
+session: "d47bda17-20dc-4389-8ace-4458dbb84e48"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T15:53:32.859Z

@@ -32,3 +32,14 @@ I also added a short section, "Corrections after the build", at the end of the p
 **Inconsistency I left alone:** the edit story's other field labels use sentence case ("Legal name", "Email address"), while the create page uses the original site's title case ("Legal Name", "Email Address"). Nobody asked about those labels, so I didn't change them. A later pass may want to make them match.
 
 No condition here was addressed to a person, and nothing asked me to change paths outside this stage's boundary.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:ux-reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+The question is whether the proposals screens still meet their criteria and use the design system, now that the revision makes DESIGN.md match the catalogue. Approved. Every Sprint With Us create and edit story (swu-create default and invalid, swu-edit editing and organization-locked) draws one required RadioGroup per phase labelled 'Scrum master for the <phase> phase', and each Radio in it (proposal-scrum-master) is named by the person alone. DESIGN.md's accessibility list and components table now say exactly that, and the stale Checkbox row is gone, which answers the revision request from build-slice-15-6. The Code With Us edit story now asks the create page's proponent question with 'Individual' and 'Organization', and the create page's second street line is now a separate named field, 'Street Address line 2' (WCAG 2.2 SC 2.4.6). Both screens were checked by eye: content stays in the shared page container, in line with the banner, with even spacing. No test_id changed, and report.json shows ok: true with no axe messages. Two small inconsistencies are left for a later pass and do not justify a return: the proponent radios run side by side on create but stack on edit, and edit uses sentence-case labels where create uses title case. The ruling would change if a story still drew the scrum master any other way, or if the rescanned catalogue showed an accessibility violation.
+
+**Conditions:**
+none
