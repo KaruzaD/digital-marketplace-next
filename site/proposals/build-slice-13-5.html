@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-13-5 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">719</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">713</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">571</span></a></li><li><a href="../runs.html">Run log <span class="count">26</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-13-5</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 20:09</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 13 (An organization can qualify for Sprint With Us and Team With Us) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I restyled slice 13&#39;s screens to match the approved design catalogue.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I restyled slice 13&#39;s screens to match the approved design catalogue. Behaviour, wording and test IDs are unchanged apart from two small additions, and <code>npm --prefix app run check</code> passes for every workspace.</p>
+<p><strong>What this run was.</strong> Slice 13 had already been built (decision record 0053), so this pass only changes how its screens look. The service side of R-3.25 to R-3.28 is untouched: the requirement checks, accepting the program terms once, refusing a second acceptance, and service-area approvals that only an administrator may set and that replace the earlier ones when saved. The qualified marks on the organization list and on a vendor&#39;s own organizations section were already restyled with slices 11 and 12 (records 0079 and 0080), and they still use the same test IDs.</p>
+<p><strong>Shared pieces.</strong> I added the two pieces the slice still needed to the shared organization kit (<code>app/frontend/src/app/organization-kit.tsx</code>), once, so the screens don&#39;t each draw their own:</p>
+<ul><li><strong>Requirement list:</strong> each item starts with a &quot;Met&quot; label in green or &quot;Not met&quot; in yellow, always in words.</li><li><strong>Terms page frame:</strong> the organization&#39;s name in small grey text above the page heading, the acceptance line, any refusal, the terms text in a bordered panel (<code>organization-terms-body</code>), then the buttons.</li></ul>
+<p>Both screens now use the shared page frame, regions and button rows, so they no longer set their own spacing or use the old circular badge and inline-styled card.</p>
+<p><strong>Qualification tabs</strong> (<code>/organizations/&lt;id&gt;/edit?tab=swu-qualification</code> and <code>twu-qualification</code>), in <code>screens/organization-qualification.tsx</code>:</p>
+<ul><li>Each tab is a region under its heading, in the stories&#39; order: the not-qualified notice, the requirements, then the approved service areas and the terms as sub-regions.</li><li>&quot;Edit service areas&quot; is offered to a service administrator only. While editing, the tab shows only the checkboxes with Save and Cancel, as the <code>service-areas-editing</code> story does.</li></ul>
+<p><strong>Terms pages</strong> (<code>/organizations/&lt;id&gt;/sprint-with-us-terms-and-conditions</code> and <code>…/team-with-us-terms-and-conditions</code>), in <code>screens/organization-terms.tsx</code>:</p>
+<ul><li>The owner sees the sentence about what accepting means, then Accept and Cancel.</li><li>Anyone else, or anyone once the terms are accepted, sees a single &quot;Back to the organization&quot; button.</li><li>The loading state uses the design&#39;s shared waiting indicator.</li></ul>
+<p><strong>The two additions:</strong></p>
+<ul><li>After saving service areas, a status line says &quot;Service areas saved.&quot; The design asks for this change to be announced, but the story&#39;s status line disappears when the form closes. Mine stays on the tab, so the message survives.</li><li>The loading line now reads &quot;Loading terms and conditions&quot;.</li></ul>
+<p><strong>Where I kept the earlier behaviour over the stories</strong> (recorded in the new decision record 0081, <code>docs/decisions/0081-the-qualification-tabs-and-terms-pages-follow-the-chosen-direction.md</code>):</p>
+<ul><li>The terms text is the service&#39;s own page, not the story&#39;s placeholder.</li><li>Accept is still offered to the owner only. The design&#39;s gap 12 would offer it to organization administrators too, but the service refuses them (record 0053).</li><li>The refusal messages use the alert style the other organization screens use.</li></ul>
+<p><strong>Tests.</strong> The existing qualification tests in <code>app/frontend/tests/qualification.test.tsx</code> still pass. I added tests that check:</p>
+<ul><li>the Met and Not met labels and their colours;</li><li>the tab&#39;s region and its Terms and conditions sub-region;</li><li>the terms page&#39;s name line, heading and panel, with a single Accept button;</li><li>the &quot;Service areas saved.&quot; status line.</li></ul>
+<p>Before checking I had to install the app&#39;s dependencies with <code>npm ci</code>. I couldn&#39;t start the app or look at a page here, so nothing has been checked visually. The compose file is unchanged and still publishes the app at :4300 and the identity provider&#39;s realm at :8080.</p>
+<p><strong>Not done.</strong> Nothing in the slice was outside what I&#39;m allowed to change. I also updated <code>app/README.md</code> to describe where the qualification tabs and terms pages live. Every organizations-domain screen through slice 13 is now restyled, so the next slice inherits a complete organization kit.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-18 20:45.</p>
+<div class="body"><p>Does slice 13 (organization qualification for Sprint With Us and Team With Us) do what R-3.25–R-3.28 say after this restyle pass? Approve. The verify result is pass for all four criteria and current: it was recorded against app tree 03ea186, which is this branch head&#39;s app/ tree. The diff only changes presentation, moving the qualification tabs and terms pages onto shared organization-kit pieces (Requirements, TermsPage, Region, PageAlert, SaveStatus). Requirement met/unmet states still come from the service&#39;s own answer, so R-3.25 and R-3.26 hold. Accept is still offered to the owner only through offersProgramTermsAcceptance. Service-area editing is still gated by mayQualifyServiceAreas, so the owner sees no editing control and saving replaces the earlier approvals (R-3.28). Test IDs and the wording the tests depend on are unchanged. The two additions, a &#39;Service areas saved.&#39; role=status line and a reworded loading label, do not exceed any criterion. Where the code departs from the design stories, decision record 0081 gives the reasons, including keeping owner-only acceptance per record 0053. No secrets or personal data appear. New unit tests in app/frontend/tests/qualification.test.tsx cover the new kit pieces and the status line. The ruling would change if the verify result were recorded against a different app tree, or if the restyle had changed who is offered Accept or the service-area editing control.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

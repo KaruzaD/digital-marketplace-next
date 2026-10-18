@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
-import { Button, ButtonGroup, Heading, Text } from "@bcgov/design-system-react-components";
+import { Button, ButtonGroup } from "@bcgov/design-system-react-components";
 import { QualifyingProgram, offersProgramTermsAcceptance } from "@rules/organizations";
 import { Page, fetchPage } from "../api/content";
 import { Organization, acceptProgramTerms, fetchOrganization } from "../api/organizations";
 import { useSession } from "../auth/session";
 import { useGoTo } from "../app/go-to";
-import { card } from "../app/layout";
-import { Loading, useLoadingShown } from "../app/loading";
+import { useLoadingShown } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Actions, PageTitle, Waiting } from "../app/opportunity-kit";
+import { OrganizationPage, PageAlert, TermsPage } from "../app/organization-kit";
 import { useScreenTitle } from "../app/screen-title";
-import { TitledAlert } from "../app/titled-alert";
 import { readMoment } from "../lib/dates";
 import { FormattedText } from "../lib/formatted-text/formatted-text";
 
 /**
  * A program's terms for one organization, at `/organizations/:orgId/sprint-with-us-terms-and-conditions`
- * and `…/team-with-us-terms-and-conditions` (organization-swu-terms, organization-twu-terms).
+ * and `…/team-with-us-terms-and-conditions` (organization-swu-terms, organization-twu-terms), drawn
+ * as the catalogue's `default`, `accepted` and `administrator` stories (decision record 0081).
  *
  * The terms are the body of the service's own page at the same address under `/content`, rendered
  * as it is there. The organization's owner is offered Accept while the terms stand unaccepted; once
@@ -64,10 +64,10 @@ export function OrganizationTermsScreen({ program, orgId }: { program: Qualifyin
   if (loading) {
     if (!loadingShown) return null;
     return (
-      <Stack gap="large">
-        <Heading level={1}>{title}</Heading>
-        <Loading label="Loading terms and conditions…" />
-      </Stack>
+      <OrganizationPage>
+        <PageTitle>{title}</PageTitle>
+        <Waiting label="Loading terms and conditions" />
+      </OrganizationPage>
     );
   }
   if (!viewer || answer === "missing" || answer === "loading") return <NotFound />;
@@ -79,12 +79,12 @@ export function OrganizationTermsScreen({ program, orgId }: { program: Qualifyin
 function Failed({ title }: { title: string }) {
   useScreenTitle(title);
   return (
-    <Stack gap="large">
-      <Heading level={1}>{title}</Heading>
-      <TitledAlert variant="danger" role="alert" title="The organization could not be loaded">
-        <Text elementType="p">Try again in a moment.</Text>
-      </TitledAlert>
-    </Stack>
+    <OrganizationPage>
+      <PageTitle>{title}</PageTitle>
+      <PageAlert variant="danger" role="alert" title="The organization could not be loaded">
+        <p className="op-text">Try again in a moment.</p>
+      </PageAlert>
+    </OrganizationPage>
   );
 }
 
@@ -121,38 +121,36 @@ function Terms({
     setRefused(answer.reasons);
   }
 
+  const notice = accepted ? (
+    <p className="op-text" data-testid="organization-terms-accepted-on">
+      {organization.legalName} accepted these terms on <time dateTime={accepted.dateTime}>{accepted.label}</time>
+    </p>
+  ) : offersAccept ? null : (
+    <p className="op-text">
+      {organization.legalName} has not accepted these terms.{" "}
+      {organization.viewerMembership ? "Only the organization’s owner can accept them." : "Only the organization’s own people can accept them."}
+    </p>
+  );
+
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          {organization.legalName}
-        </Text>
-        <Heading level={1}>{page.title}</Heading>
-      </Stack>
-      {accepted ? (
-        <Text elementType="p" data-testid="organization-terms-accepted-on">
-          {organization.legalName} accepted these terms on <time dateTime={accepted.dateTime}>{accepted.label}</time>
-        </Text>
-      ) : offersAccept ? null : (
-        <Text elementType="p">
-          {organization.legalName} has not accepted these terms.{" "}
-          {organization.viewerMembership
-            ? "Only the organization’s owner can accept them."
-            : "Only the organization’s own people can accept them."}
-        </Text>
-      )}
-      {refused ? (
-        <TitledAlert variant="danger" role="alert" title="The terms could not be accepted">
-          <Text elementType="p">{refused.join(" ") || "Try again in a moment."}</Text>
-        </TitledAlert>
-      ) : null}
-      <TermsBody slug={page.slug} />
+    <TermsPage
+      legalName={organization.legalName}
+      title={page.title}
+      notice={notice}
+      before={
+        refused ? (
+          <PageAlert variant="danger" role="alert" title="The terms could not be accepted">
+            <p className="op-text">{refused.join(" ") || "Try again in a moment."}</p>
+          </PageAlert>
+        ) : null
+      }
+      terms={<TermsBody slug={page.slug} />}
+    >
       {offersAccept ? (
-        <Stack gap="medium">
-          <Text elementType="p">
-            By accepting, you agree to these terms on behalf of {organization.legalName}. They are accepted once for the
-            organization.
-          </Text>
+        <div className="og-body">
+          <p className="op-text">
+            By accepting, you agree to these terms on behalf of {organization.legalName}. They are accepted once for the organization.
+          </p>
           <ButtonGroup ariaLabel="Terms actions">
             <Button variant="primary" onPress={() => void accept()} data-testid="organization-accept-terms-button">
               Accept terms and conditions
@@ -161,15 +159,15 @@ function Terms({
               Cancel
             </Button>
           </ButtonGroup>
-        </Stack>
+        </div>
       ) : (
-        <div>
+        <Actions>
           <Button variant="secondary" onPress={() => goTo(back)} data-testid="organization-terms-cancel">
             Back to the organization
           </Button>
-        </div>
+        </Actions>
       )}
-    </Stack>
+    </TermsPage>
   );
 }
 
@@ -189,14 +187,5 @@ function TermsBody({ slug }: { slug: string }) {
       current = false;
     };
   }, [slug]);
-  return (
-    <section aria-labelledby="terms-heading" style={card} data-testid="organization-terms-body">
-      <Stack gap="medium">
-        <Heading level={2} id="terms-heading">
-          Terms and conditions
-        </Heading>
-        {body ? <FormattedText markup={body.body} /> : null}
-      </Stack>
-    </section>
-  );
+  return body ? <FormattedText markup={body.body} /> : null;
 }
