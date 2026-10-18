@@ -1,0 +1,17 @@
+gate: G3
+verdict: return
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Does slice 12 do what its criteria say? Verify recorded a fail against tree febd809, and an approval is refused while it stands. All 19 criteria the slice claims passed. The diff is the restyle the proposal describes: test IDs and wording unchanged, the two status announcements added, the four kept differences recorded with reasons in decision record 0080, and nothing outside app/ and docs/decisions touched. Both failures are in other slices' criteria, and the evidence points at the adapter in each case, not at this build. R-3.28: the page as it failed shows 'Approved service areas' listing exactly Agile coach and Full stack developer and not Data professional, which is the state the setup poll expected. Because an 'Edit service areas' button was present, the serviceAreaCheckbox read skipped that list and read ticked boxes in the edit form instead, and that read did not match. R-8.31: the outline at failure is still the CWU management page with Edit, Submit and Delete all disabled, meaning the deletion was in flight. The screenshot taken later is the dashboard, so the deletion did complete. deleteOpportunity returned before the delete finished, and the file read that followed ran ahead of it. This returns to build with nothing for build to change. The ruling would become an approval once bind-adapter has fixed both bindings and a current verify for this proposal is green.
+conditions:
+  - "addressed-to bind-adapter: R-3.28: organizationEdit.serviceAreaCheckbox, read as the administrator on /organizations/<id>/edit with the Team With Us qualification section closed, did not report the approvals the page shows. .sdlc/evidence/slice-12/R-3.28.png shows the region 'Approved service areas' listing exactly 'Agile coach' and 'Full stack developer', with an 'Edit service areas' button beneath it. Because that button is present, the member skips the listed approvals and opens the edit form to read ticked checkboxes, and that read did not yield both areas. Read the approvals from the 'Approved service areas' list whenever the form is not already open, whether or not an 'Edit service areas' button is offered."
+  - "addressed-to bind-adapter: R-8.31: opportunityCwuEdit.deleteOpportunity returned before the deletion had finished. The outline captured at failure (.sdlc/evidence/slice-12/R-8.31.txt) is still /opportunities/code-with-us/<id>/edit, with the Edit, Submit for review and Delete actions all disabled, meaning the delete was still in flight. The screenshot taken afterwards (.sdlc/evidence/slice-12/R-8.31.png) is the Dashboard, so the deletion did complete. The fileDownload read that followed ran before the delete finished and was let through. After confirming the delete, wait until the management page has been left (the URL is no longer the opportunity's edit page) before returning."
+cost: 0.9674726000000001
+turns: 13
+session: "0adde0eb-e732-4568-a8ce-9d38cc5786e4"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T19:23:01.563Z
