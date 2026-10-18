@@ -68,3 +68,22 @@ Two kinds of lookup remain that a reviewer may want to look at:
 **Data touched while walking.** Probe content pages and a draft Sprint With Us opportunity were created and then deleted. One stored image file from that probe remains. Clicking the team-scenario start once was refused and changed nothing. A Sprint With Us proposal form was filled and then abandoned without saving.
 
 `bindings.yaml` names every page and member once, spelled as in the contract. Its comments now say the test ID comes first.
+
+## Ruling
+
+**Verdict:** approve
+**By:** runner:checks
+
+Approved by the runner's checks, which policy.gates.G3.auto_approve lets settle bind-adapter proposals: the acceptance typecheck of ba98e381cb is clean; no condition is open against it; no escalation stands on it; nothing outside tests/adapters changed.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `ba98e381cbe0456ac425de68cc89bf524fb822e5`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
