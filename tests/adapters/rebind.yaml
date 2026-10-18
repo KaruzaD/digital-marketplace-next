@@ -14147,3 +14147,211 @@ rebind:
       why: tests/adapters/old has changed since this was found
       by: runner:calibrate
       at: 2026-10-04T22:43:38.517Z
+  - id: R-8.31
+    target: new
+    why: 'unbound: proposal-cwu-create.choose_proponent_organization — no "An
+      organization" choice under "Who is submitting this proposal?" on
+      http://localhost:4400/opportunities/code-with-us/b3e6b881-e1d2-4827-8bce-2475e87253ac/proposals/create;
+      it offers button "org.admin@example.test", button "Add Attachment", button
+      "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"'
+    found: unbound
+    adapter: 4838504ac787027fd15e1af4f18f3e2826bcd0ba
+    slice: 14
+    app_tree: 6f06aaab8c1634887833b248539582fed3240825
+    by: runner:verify
+    at: 2026-10-18T02:53:33.634Z
+  - id: R-1.35
+    target: new
+    why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
+      individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4900/opportunities/code-with-us/00000000-0000-4000-8000-000000000601/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"'
+    found: unbound
+    adapter: 4838504ac787027fd15e1af4f18f3e2826bcd0ba
+    slice: 14
+    app_tree: 6f06aaab8c1634887833b248539582fed3240825
+    by: runner:verify
+    at: 2026-10-18T02:53:33.634Z
+  - id: R-1.36
+    target: new
+    why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
+      individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4800/opportunities/code-with-us/00000000-0000-4000-8000-000000000601/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"'
+    found: unbound
+    adapter: 4838504ac787027fd15e1af4f18f3e2826bcd0ba
+    slice: 14
+    app_tree: 6f06aaab8c1634887833b248539582fed3240825
+    by: runner:verify
+    at: 2026-10-18T02:53:33.634Z
+  - id: R-2.2
+    target: new
+    why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
+      individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4300/opportunities/code-with-us/3e95a501-8964-4769-a870-479ff9199629/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"; unbound: proposal-cwu-create.choose_proponent_individual — no
+      "An individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4300/opportunities/code-with-us/89ac1064-fe2a-4e3b-8383-ac4b19d9a0da/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"'
+    found: unbound
+    adapter: 4838504ac787027fd15e1af4f18f3e2826bcd0ba
+    slice: 14
+    app_tree: 6f06aaab8c1634887833b248539582fed3240825
+    by: runner:verify
+    at: 2026-10-18T02:53:33.634Z
+  - id: R-2.3
+    target: new
+    why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
+      individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4600/opportunities/code-with-us/8ef21047-014f-4662-ac4f-199c9865fe3d/proposals/create;
+      it offers button "vendor.terms.reset@example.test", button "Add
+      Attachment", button "Submit", button "Save Draft", button "Cancel", link
+      "Skip to main content", link "Dashboard", link "Opportunities", link
+      "Organizations", link "Read the guide", link "Home", link "About", link
+      "Disclaimer", link "Privacy", link "Accessibility", link "Copyright", link
+      "Contact Us", link "Source Code", textbox "Proposal (required)", textbox
+      "Additional Comments"; unbound:
+      proposal-cwu-create.choose_proponent_individual — no "An individual"
+      choice under "Who is submitting this proposal?" on
+      http://localhost:4600/opportunities/code-with-us/250cebce-0813-4e8c-aa7c-0e0c15a5e6a4/proposals/create;
+      it offers button "vendor.terms.reset@example.test", button "Add
+      Attachment", button "Submit", button "Save Draft", button "Cancel", link
+      "Skip to main content", link "Dashboard", link "Opportunities", link
+      "Organizations", link "Read the guide", link "Home", link "About", link
+      "Disclaimer", link "Privacy", link "Accessibility", link "Copyright", link
+      "Contact Us", link "Source Code", textbox "Proposal (required)", textbox
+      "Additional Comments"'
+    found: unbound
+    adapter: 4838504ac787027fd15e1af4f18f3e2826bcd0ba
+    slice: 14
+    app_tree: 6f06aaab8c1634887833b248539582fed3240825
+    by: runner:verify
+    at: 2026-10-18T02:53:33.634Z
+  - id: R-2.4
+    target: new
+    why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
+      individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4800/opportunities/code-with-us/c3486077-6842-4ecf-bd1b-f14bf311bea3/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"; unbound: proposal-cwu-create.choose_proponent_individual — no
+      "An individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4800/opportunities/code-with-us/b2332947-321a-402e-aaf1-14affad76564/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"'
+    found: unbound
+    adapter: 4838504ac787027fd15e1af4f18f3e2826bcd0ba
+    slice: 14
+    app_tree: 6f06aaab8c1634887833b248539582fed3240825
+    by: runner:verify
+    at: 2026-10-18T02:53:33.634Z
+  - id: R-2.13
+    target: new
+    why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
+      individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4900/opportunities/code-with-us/12604e0a-5614-4cc1-96d5-0a03e1c04672/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"; unbound: proposal-cwu-create.choose_proponent_individual — no
+      "An individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4900/opportunities/code-with-us/3e533e1f-603e-42e0-a9a2-af59cae0f78a/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"; unbound: proposal-cwu-create.choose_proponent_individual — no
+      "An individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4900/opportunities/code-with-us/c64c699e-cfb6-493e-a9ff-defbe2968fd7/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"; unbound: proposal-cwu-create.accept_program_terms — no "Submit
+      proposal" on
+      http://localhost:4900/opportunities/code-with-us/a66e3392-646a-4de3-b1a3-1066d28b4557/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"'
+    found: unbound
+    adapter: 4838504ac787027fd15e1af4f18f3e2826bcd0ba
+    slice: 14
+    app_tree: 6f06aaab8c1634887833b248539582fed3240825
+    by: runner:verify
+    at: 2026-10-18T02:53:33.634Z
+  - id: R-2.23
+    target: new
+    why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
+      individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4500/opportunities/code-with-us/46d65234-ecee-4ae7-8f60-8ddf7b1c9b22/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"; unbound: proposal-cwu-create.choose_proponent_individual — no
+      "An individual" choice under "Who is submitting this proposal?" on
+      http://localhost:4500/opportunities/code-with-us/a7a1c560-29eb-41a0-90d2-ac595a353648/proposals/create;
+      it offers button "vendor.one@example.test", button "Add Attachment",
+      button "Submit", button "Save Draft", button "Cancel", link "Skip to main
+      content", link "Dashboard", link "Opportunities", link "Organizations",
+      link "Read the guide", link "Home", link "About", link "Disclaimer", link
+      "Privacy", link "Accessibility", link "Copyright", link "Contact Us", link
+      "Source Code", textbox "Proposal (required)", textbox "Additional
+      Comments"'
+    found: unbound
+    adapter: 4838504ac787027fd15e1af4f18f3e2826bcd0ba
+    slice: 14
+    app_tree: 6f06aaab8c1634887833b248539582fed3240825
+    by: runner:verify
+    at: 2026-10-18T02:53:33.634Z
