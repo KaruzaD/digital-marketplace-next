@@ -1,0 +1,18 @@
+gate: G3
+verdict: return
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Does slice 14 do what its criteria say? Verify reports fail (7 pass, 11 not), so an approval is refused, but every failure traces to the adapter rather than the application. R-2.12 and R-2.15 read an empty status on the manage page. The saved outlines show the page rendering 'Code With Us Draft' in its head as the coloured status label, which carries the proposal-status test ID the contract binds status to. The adapter's proposalCwuEdit.status() reads a 'Status' entry in the details list instead, and the restyle moved the status out of that list into the head label. The nine unbound criteria (R-8.22, R-8.31, R-1.35, R-1.36, R-2.2, R-2.3, R-2.4, R-2.13, R-2.23) all stop in chooseProponent, which looks for a radio labelled exactly 'An individual' or 'An organization'. The create page now labels those radios 'Individual' and 'Organization' in the original site's wording, and they still carry the contract's test IDs proposal-proponent-individual and proposal-proponent-organization. The build itself stays inside the slice: behaviour unchanged, test IDs kept, departures from the design recorded in decision record 0072, unit tests covering the new kit. So the only conditions go to bind-adapter. The ruling becomes an approval when verify, rerun on this tree after rebinding, reports pass. If verify then fails on what the page actually shows, the build is returned.
+conditions:
+  - "addressed-to bind-adapter: R-2.12: proposalCwuEdit.status() read \"\" from a 'Status' term in the details list on /opportunities/code-with-us/:opportunityId/proposals/:proposalId/edit; the page no longer has a Status term and shows the status as the label beside the program in the page head ('Code With Us Draft' in the outline), the element carrying test ID proposal-status, which is what the contract surface binds proposal-cwu-edit status to; read it from there."
+  - "addressed-to bind-adapter: R-2.15: in the case 'a draft submitted after the deadline', proposalCwuEdit.status() read \"\" for the same reason: the manage page shows 'Draft' as the head's status label carrying test ID proposal-status, not as a 'Status' term in the details list; bind status to proposal-status as the contract surface says."
+  - "addressed-to bind-adapter: R-8.22, R-8.31, R-1.35, R-1.36, R-2.2, R-2.3, R-2.4, R-2.13, R-2.23: proposal-cwu-create.choose_proponent_individual and choose_proponent_organization were reported unbound because chooseProponent looks for a radio named exactly 'An individual' / 'An organization' under 'Who is submitting this proposal?'; the create page now offers the radios labelled 'Individual' and 'Organization' under 'Will you be submitting a proposal for this opportunity as an Individual or Organization?' (the manage page's edit form keeps 'An individual' / 'An organization'), and both carry the test IDs proposal-proponent-individual and proposal-proponent-organization that the contract surface binds these members to; locate them by those test IDs, or by a label that accepts both wordings."
+cost: 1.0648678
+turns: 13
+session: "960e5326-f4ac-4b57-9b7c-4c57c7eeb1e9"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T02:55:02.383Z
