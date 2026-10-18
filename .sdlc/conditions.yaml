@@ -3519,3 +3519,52 @@ conditions:
         cwuHeadStatus().
       by: agent:reviewer
       at: 2026-10-18T01:49:10.403Z
+  - ref: bind-adapter-new-97#1
+    text: "R-2.13: the proposal-cwu-create submit binding
+      (tests/adapters/new/index.ts:10353) only matches 'Submit proposal' or
+      'Save changes and submit', but the create page's form button now reads
+      'Submit'. Make the pattern also accept the bare 'Submit' on the create
+      form, without loosening it so far that it matches unrelated buttons. Check
+      the terms-dialog confirm (around line 10403) and the actions-row check at
+      line 10703 against the page as walked too, and update them if they
+      changed."
+    from: bind-adapter-new-97
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:reviewer
+    at: 2026-10-18T03:00:41.403Z
+  - ref: bind-adapter-new-97#2
+    text: The create-page address field patterns
+      (tests/adapters/new/index.ts:6728-6738, /^\s*province or state/i and
+      /^\s*postal code/i) do not match the labels now drawn, 'Province /
+      State(required)' and 'Postal / ZIP Code(required)'. Accept those labels,
+      as well as the old ones, for every alias mapped there.
+    from: bind-adapter-new-97
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:reviewer
+    at: 2026-10-18T03:00:41.403Z
+  - ref: bind-adapter-new-97#3
+    text: The default-organization step in the proponent flow waits for the
+      organization chooser to read 'Select an item', but on the create page it
+      starts out reading 'Organization'. Detect an empty chooser by its current
+      form, so that a test naming no organization still gets one picked.
+    from: bind-adapter-new-97
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:reviewer
+    at: 2026-10-18T03:00:41.403Z
+  - ref: bind-adapter-new-97#4
+    text: The optional second address line is now labelled just 'Street Address',
+      the same label as the first line. Make sure the street-address bindings
+      choose the first and second fields by position, not by label alone, so
+      neither fills the other.
+    from: bind-adapter-new-97
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:reviewer
+    at: 2026-10-18T03:00:41.403Z
