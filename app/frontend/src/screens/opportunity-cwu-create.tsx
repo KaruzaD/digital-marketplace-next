@@ -1,8 +1,7 @@
-import { Heading, Text } from "@bcgov/design-system-react-components";
 import { useNavigate } from "@tanstack/react-router";
 import type { Account } from "../api/accounts";
 import { createCwuOpportunity } from "../api/opportunities";
-import { Stack } from "../app/page-layout";
+import { OpportunityPage, PageTitle } from "../app/opportunity-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { StaffOnly } from "../app/staff-only";
 import { BLANK_FORM, CwuOpportunityForm } from "./opportunity-cwu-form";
@@ -13,7 +12,8 @@ import { todayInPacific } from "./opportunity-parts";
  * (opportunity-cwu-create). A public sector employee saves a draft or submits it for review; an
  * administrator saves a draft or publishes it, after confirming (R-1.22, R-1.48). Once saved, the
  * person is taken to the opportunity's manage page, which shows its identifier. Anybody else is
- * shown the missing page (R-1.7).
+ * shown the missing page (R-1.7). Drawn as the catalogue's stories draw it: the H1, the sentence
+ * about required fields, and the form's parts as panels.
  */
 export function OpportunityCwuCreateScreen() {
   useScreenTitle("Create a Code With Us opportunity");
@@ -27,11 +27,9 @@ function CreateCwu({ account }: { account: Account }) {
   const today = todayInPacific();
   const administrator = account.type === "ADMIN";
   return (
-    <Stack gap="large">
-      <Heading level={1}>Create a Code With Us opportunity</Heading>
-      <Text elementType="p">
-        Required fields are needed to submit for review or publish. A draft can be saved with any of them blank.
-      </Text>
+    <OpportunityPage>
+      <PageTitle>Create a Code With Us opportunity</PageTitle>
+      <p className="op-text">Required fields are needed to submit for review or publish. A draft can be saved with any of them blank.</p>
       <CwuOpportunityForm
         purpose="create"
         account={account}
@@ -41,11 +39,11 @@ function CreateCwu({ account }: { account: Account }) {
         earliestDeadline={today}
         headingLevel={2}
         consequence={
-          <Text elementType="p">
+          <p className="op-text">
             {administrator
               ? "Nothing is checked until you publish. You will be asked to confirm before anything is published."
               : "Nothing is checked until you submit for review. An administrator publishes the opportunity after reviewing it."}
-          </Text>
+          </p>
         }
         onSend={(action, submission) =>
           createCwuOpportunity(submission, action === "draft" ? "DRAFT" : action === "publish" ? "PUBLISHED" : "UNDER_REVIEW")
@@ -54,6 +52,6 @@ function CreateCwu({ account }: { account: Account }) {
           void navigate({ to: "/opportunities/code-with-us/$opportunityId/edit", params: { opportunityId: opportunity.id } })
         }
       />
-    </Stack>
+    </OpportunityPage>
   );
 }

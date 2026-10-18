@@ -103,7 +103,8 @@ version. The states and permitted changes of all three programs, and who may do 
 `backend/src/rules/opportunities.ts`; the service's answers and refusals are decision record 0029.
 Submitting for review emails every administrator, publishing emails everyone with new-opportunity
 notices on, each in batches of `MAILER_BATCH_SIZE` (50) blind copies, and both confirm to the
-author.
+author. These screens and the attachment control are drawn from the opportunity kit, whose style
+sheet the root layout places once for every screen (decision record 0071).
 
 ## Finding and following opportunities
 
