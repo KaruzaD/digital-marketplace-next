@@ -1,11 +1,10 @@
 import { FormEvent, useState } from "react";
-import { AlertDialog, Button, Form, Link, Modal, Text, TextArea } from "@bcgov/design-system-react-components";
+import { AlertDialog, Button, Form, Link, Modal, TextArea } from "@bcgov/design-system-react-components";
 import { fileContentAddress } from "@rules/files";
 import { ADDENDUM_MAX, NOTE_MAX, addendumProblem, cancellationNoteProblem, historyEntryLabel } from "@rules/opportunities";
 import { downloadFile } from "../api/files";
 import { Addendum, Attachment, HistoryEntry, Reporting } from "../api/opportunities";
-import { DataTable, Details, Region, SectionTitle } from "../app/opportunity-kit";
-import { Stack } from "../app/page-layout";
+import { Actions, DataTable, Details, Region, SectionTitle } from "../app/opportunity-kit";
 import { readDate } from "../lib/dates";
 import { momentLabel } from "./opportunity-parts";
 
@@ -89,32 +88,30 @@ export function AddendaTab({
     <>
       <AddendaList addenda={addenda} showAuthor />
       {mayAdd ? (
-        <Form validationBehavior="aria" onSubmit={(event) => void add(event)}>
-          <Stack gap="medium">
-            <TextArea
-              label="New addendum"
-              isRequired
-              description={`Up to ${ADDENDUM_MAX.toLocaleString("en-CA")} characters.`}
-              value={text}
-              onChange={(value) => {
-                setText(value);
-                if (problem) setProblem(null);
-              }}
-              isInvalid={problem !== null}
-              errorMessage={problem ?? undefined}
-              data-testid="addendum-text-field"
-            />
-            <Text elementType="p">
-              {announced
-                ? "An addendum cannot be changed or removed once it is added. Everyone watching this opportunity, everyone who has submitted a proposal, and its author will be emailed."
-                : "An addendum cannot be changed or removed once it is added. Nobody is emailed, because this opportunity has been cancelled."}
-            </Text>
-            <div>
-              <Button type="submit" variant="primary" isDisabled={sending} data-testid="addendum-add-button">
-                Add addendum
-              </Button>
-            </div>
-          </Stack>
+        <Form validationBehavior="aria" className="op-region" onSubmit={(event) => void add(event)}>
+          <TextArea
+            label="New addendum"
+            isRequired
+            description={`Up to ${ADDENDUM_MAX.toLocaleString("en-CA")} characters.`}
+            value={text}
+            onChange={(value) => {
+              setText(value);
+              if (problem) setProblem(null);
+            }}
+            isInvalid={problem !== null}
+            errorMessage={problem ?? undefined}
+            data-testid="addendum-text-field"
+          />
+          <p className="op-text">
+            {announced
+              ? "An addendum cannot be changed or removed once it is added. Everyone watching this opportunity, everyone who has submitted a proposal, and its author will be emailed."
+              : "An addendum cannot be changed or removed once it is added. Nobody is emailed, because this opportunity has been cancelled."}
+          </p>
+          <Actions>
+            <Button type="submit" variant="primary" isDisabled={sending} data-testid="addendum-add-button">
+              Add addendum
+            </Button>
+          </Actions>
         </Form>
       ) : null}
     </>
@@ -209,11 +206,11 @@ export function CancelDialog({
           </>
         }
       >
-        <Stack gap="medium">
-          <Text elementType="p">
+        <div className="op-dialog">
+          <p className="op-text">
             It will stop accepting proposals, and this cannot be undone. Everyone watching it and everyone who has submitted a
             proposal will be told it has been cancelled, and its author will be told separately.
-          </Text>
+          </p>
           <TextArea
             label="Note (optional)"
             description={`Up to ${NOTE_MAX.toLocaleString("en-CA")} characters.`}
@@ -223,7 +220,7 @@ export function CancelDialog({
             errorMessage={problem ?? undefined}
             data-testid="opportunity-cancel-note-field"
           />
-        </Stack>
+        </div>
       </AlertDialog>
     </Modal>
   );
