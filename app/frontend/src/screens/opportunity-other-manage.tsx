@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, ButtonGroup, Heading, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
+import { Button, InlineAlert } from "@bcgov/design-system-react-components";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   OpportunityStatus,
-  PROGRAM_NAMES,
   changeIsAnnounced,
   earliestDeadlineFor,
   isPermittedTransition,
@@ -15,6 +14,7 @@ import {
   mayManageOpportunity,
   mayPublishOpportunity,
   maySubmitForReview,
+  statusLabel,
 } from "@rules/opportunities";
 import type { OtherProgram } from "@rules/other-program-drafts";
 import { EvaluatedOpportunity, EvaluationTab, evaluationTabsFor } from "@rules/individual-evaluation";
@@ -32,9 +32,18 @@ import {
   runOtherProgramOpportunity,
   submissionFrom,
 } from "../api/other-programs";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import {
+  ActionBar,
+  Details,
+  ManageTabs,
+  OpportunityHead,
+  OpportunityPage,
+  PageTitle,
+  Region,
+  Waiting,
+  type Detail,
+} from "../app/opportunity-kit";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
 import { EvaluationPanelTab } from "./evaluation-panel-tab";
@@ -46,7 +55,7 @@ import { PublishDialog } from "./opportunity-cwu-form";
 import { DeleteDialog, Notice, NoticeArea, refusalNotice } from "./opportunity-cwu-edit";
 import { usePanelCandidates } from "./opportunity-other-create";
 import { OtherProgramForm } from "./opportunity-other-form";
-import { Fact, StatusBadge, dayLabel, deadlineLabel, publishedLabel, todayInPacific } from "./opportunity-parts";
+import { dayLabel, deadlineLabel, publishedLabel, todayInPacific } from "./opportunity-parts";
 import { AddendaTab, CancelDialog, HistoryTable, ReportingSection, Sent } from "./opportunity-running";
 
 /**
@@ -194,10 +203,10 @@ function ManageLoader({ program, account, opportunityId }: { program: OtherProgr
 
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{TITLES[program]}</Heading>
-        <Loading label="Loading opportunity…" />
-      </Stack>
+      <OpportunityPage>
+        <PageTitle>{TITLES[program]}</PageTitle>
+        <Waiting label="Loading opportunity" />
+      </OpportunityPage>
     );
   }
   const opportunity = loaded.kind === "found" ? loaded.opportunity : null;
@@ -351,121 +360,88 @@ function Manage({ program, account, initial }: { program: OtherProgram; account:
   if (chosen === null) return <NotFound />;
 
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          {TITLES[program]}
-        </Text>
-        <Heading level={1}>{opportunity.title || "Untitled opportunity"}</Heading>
-      </Stack>
-      <Stack direction="row" align="center" gap="medium">
-        <Text elementType="p">
-          Status: <StatusBadge status={opportunity.status} program={program} />
-        </Text>
-        <Text elementType="p" size="small" color="secondary">
-          Opportunity ID: <span data-testid="opportunity-identifier">{opportunity.id}</span>
-        </Text>
-      </Stack>
-      {(offers.edit && !editing) || offers.submit || offers.publish || offers.delete || offers.cancel || offers.finalize || offers.startTeamScenario || offers.award ? (
-        <ButtonGroup ariaLabel="Opportunity actions">
-          {offers.edit && !editing ? (
-            <Button variant="secondary" onPress={() => goToTab("opportunity")} data-testid="opportunity-edit-button">
-              Edit
-            </Button>
-          ) : null}
-          {offers.submit ? (
-            <Button variant="primary" isDisabled={busy} onPress={() => void act("submit")} data-testid="opportunity-submit-for-review">
-              Submit for review
-            </Button>
-          ) : null}
-          {offers.publish ? (
-            <Button variant="primary" isDisabled={busy} onPress={() => setDialog("publish")} data-testid="opportunity-publish">
-              Publish
-            </Button>
-          ) : null}
-          {offers.finalize ? (
-            <Button variant="primary" isDisabled={busy} onPress={() => setDialog("finalize")} data-testid="finalize-consensus-button">
-              Finalize consensus scores
-            </Button>
-          ) : null}
-          {offers.startTeamScenario ? (
-            <Button variant="primary" isDisabled={busy} onPress={() => void beginTeamScenario()} data-testid="start-team-scenario-button">
-              Start team scenario
-            </Button>
-          ) : null}
-          {offers.award ? (
-            <Button variant="primary" onPress={() => goToTab("proposals")} data-testid="opportunity-award-button">
-              Award a proposal
-            </Button>
-          ) : null}
-          {offers.delete ? (
-            <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("delete")} data-testid="opportunity-delete-button">
-              Delete
-            </Button>
-          ) : null}
-          {offers.cancel ? (
-            <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("cancel")} data-testid="opportunity-cancel-button">
-              Cancel opportunity
-            </Button>
-          ) : null}
-        </ButtonGroup>
-      ) : null}
-      <nav aria-label="Opportunity sections">
-        <Stack as="ul" direction="row" gap="medium">
-          {offered.map((name) => (
-            <li key={name}>
-              <Link href={`${base}?tab=${name}`} aria-current={name === tab ? "page" : undefined} data-testid={TAB_TEST_IDS[name]}>
-                {TAB_NAMES[name]}
-              </Link>
-            </li>
-          ))}
-        </Stack>
-      </nav>
+    <OpportunityPage>
+      <OpportunityHead
+        eyebrow={TITLES[program]}
+        program={program}
+        status={statusLabel(opportunity.status, program)}
+        title={opportunity.title || "Untitled opportunity"}
+      />
+      <Details items={[{ term: "Opportunity ID", value: opportunity.id, testId: "opportunity-identifier" }]} />
+      {/* The bar is always present, holding exactly the changes of state offered from here, and
+          empty when there are none (offered_state_changes). As on the Code With Us page, it stays
+          on every tab and only Edit is left off where the form is already open (decision record 0032). */}
+      <ActionBar>
+        {(offers.edit && !editing) || offers.submit || offers.publish || offers.delete || offers.cancel || offers.finalize || offers.startTeamScenario || offers.award ? (
+          <>
+            {offers.edit && !editing ? (
+              <Button variant="secondary" onPress={() => goToTab("opportunity")} data-testid="opportunity-edit-button">
+                Edit
+              </Button>
+            ) : null}
+            {offers.submit ? (
+              <Button variant="primary" isDisabled={busy} onPress={() => void act("submit")} data-testid="opportunity-submit-for-review">
+                Submit for review
+              </Button>
+            ) : null}
+            {offers.publish ? (
+              <Button variant="primary" isDisabled={busy} onPress={() => setDialog("publish")} data-testid="opportunity-publish">
+                Publish
+              </Button>
+            ) : null}
+            {offers.finalize ? (
+              <Button variant="primary" isDisabled={busy} onPress={() => setDialog("finalize")} data-testid="finalize-consensus-button">
+                Finalize consensus scores
+              </Button>
+            ) : null}
+            {offers.startTeamScenario ? (
+              <Button variant="primary" isDisabled={busy} onPress={() => void beginTeamScenario()} data-testid="start-team-scenario-button">
+                Start team scenario
+              </Button>
+            ) : null}
+            {offers.award ? (
+              <Button variant="primary" onPress={() => goToTab("proposals")} data-testid="opportunity-award-button">
+                Award a proposal
+              </Button>
+            ) : null}
+            {offers.delete ? (
+              <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("delete")} data-testid="opportunity-delete-button">
+                Delete
+              </Button>
+            ) : null}
+            {offers.cancel ? (
+              <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("cancel")} data-testid="opportunity-cancel-button">
+                Cancel opportunity
+              </Button>
+            ) : null}
+          </>
+        ) : null}
+      </ActionBar>
+      <ManageTabs base={base} current={tab} tabs={offered.map((key) => ({ key, label: TAB_NAMES[key], testId: TAB_TEST_IDS[key] }))} />
       {finalizeRefusal ? <FinalizeRefusal reasons={finalizeRefusal} alertRef={finalizeRef} /> : null}
       {advanceRefusal ? (
         <div tabIndex={-1} ref={advanceRef} data-testid="advance-refused-message">
           <InlineAlert variant="danger" role="alert" title="The team scenario could not be started" description={advanceRefusal.join(" ")} />
         </div>
       ) : null}
-      <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-        <Heading level={2} id="tab-heading">
-          {TAB_NAMES[tab]}
-        </Heading>
+      <Region id="tab-heading" title={TAB_NAMES[tab]} testId={tab === "history" ? "opportunity-history-section" : undefined}>
         <NoticeArea notice={notice} noticeRef={noticeRef} />
         {tab === "summary" ? (
           <>
-            {opportunity.status === "EVAL_QUESTIONS_CONSENSUS" && offers.finalize ? <Text elementType="p">{finalizingWords(program)}</Text> : null}
+            {opportunity.status === "EVAL_QUESTIONS_CONSENSUS" && offers.finalize ? <p className="op-text">{finalizingWords(program)}</p> : null}
             {offers.startTeamScenario ? (
-              <Text elementType="p">
+              <p className="op-text">
                 The team scenario can start once every proponent in the code challenge has been scored or disqualified and at least one
                 remains screened in.
-              </Text>
+              </p>
             ) : null}
             {offers.award ? (
-              <Text elementType="p">
+              <p className="op-text">
                 Every proponent still in contention has been evaluated. A proposal is awarded from its own page on the Proposals tab, and
                 the opportunity is awarded with it.
-              </Text>
+              </p>
             ) : null}
-            <Stack as="dl" direction="row" gap="medium">
-              <Fact label="Program">{PROGRAM_NAMES[program]}</Fact>
-              <Fact label="Proposal deadline">{deadlineLabel(opportunity.proposalDeadline)}</Fact>
-              <Fact label="Assignment date">{dayLabel(opportunity.assignmentDate)}</Fact>
-              <Fact label={opportunity.value.term}>
-                {opportunity.value.amount > 0 ? `$${opportunity.value.amount.toLocaleString("en-CA")}` : "Not entered"}
-              </Fact>
-              <Fact label="Published">{publishedLabel(opportunity.publishedAt)}</Fact>
-              {opportunity.createdBy ? (
-                <Fact label="Created by" testId="opportunity-created-by">
-                  {opportunity.createdBy.name}
-                </Fact>
-              ) : null}
-              {opportunity.updatedBy ? (
-                <Fact label="Last changed by" testId="opportunity-last-changed-by">
-                  {opportunity.updatedBy.name}
-                </Fact>
-              ) : null}
-            </Stack>
+            <Details items={summaryDetails(opportunity)} />
             <ReportingSection reporting={opportunity.reporting} unpublished={isUnpublished(opportunity.status)} />
           </>
         ) : null}
@@ -481,11 +457,11 @@ function Manage({ program, account, initial }: { program: OtherProgram; account:
             headingLevel={3}
             readOnly={!mayEdit}
             consequence={
-              <Text elementType="p">
+              <p className="op-text">
                 {draft
                   ? "Saving records a new version of the draft. Nothing is checked until it is submitted for review or published."
                   : "Saving records a new version. Everyone watching this opportunity, everyone who has submitted a proposal, and its author will be emailed."}
-              </Text>
+              </p>
             }
             initialAttachments={opportunity.attachments}
             attachNow={async (fileIds) => {
@@ -537,7 +513,7 @@ function Manage({ program, account, initial }: { program: OtherProgram; account:
           <EvaluationListTab program={program} account={account} opportunity={opportunity} onSubmitted={setOpportunity} />
         ) : null}
         {tab === "consensus" ? <ConsensusTab program={program} account={account} opportunity={opportunity} onSubmitted={setOpportunity} /> : null}
-      </Stack>
+      </Region>
       <CancelDialog
         key={dialog === "cancel" ? "open" : "closed"}
         isOpen={dialog === "cancel"}
@@ -557,6 +533,29 @@ function Manage({ program, account, initial }: { program: OtherProgram; account:
         onConfirm={() => void finalize()}
       />
       <DeleteDialog isOpen={dialog === "delete"} isSending={busy} onCancel={() => setDialog(null)} onConfirm={() => void remove()} />
-    </Stack>
+    </OpportunityPage>
   );
+}
+
+/**
+ * The Summary tab's facts, in the head's order — the deadline and the dates the opportunity holds
+ * itself, so a draft saved without them shows the days it was given (R-1.9), then the money the
+ * program names — then the first publication and who made and last changed it (R-1.23, R-1.29).
+ * A Sprint With Us start date is its phases', and a completion date is not listed here.
+ */
+export function summaryDetails(opportunity: OtherProgramOpportunity): Detail[] {
+  return [
+    { term: "Proposal deadline", value: deadlineLabel(opportunity.proposalDeadline) },
+    { term: "Assignment date", value: dayLabel(opportunity.assignmentDate) },
+    ...(opportunity.program === "team-with-us" ? [{ term: "Start date", value: dayLabel(opportunity.startDate) }] : []),
+    {
+      term: opportunity.value.term,
+      value: opportunity.value.amount > 0 ? `$${opportunity.value.amount.toLocaleString("en-CA")}` : "Not entered",
+    },
+    { term: "Published", value: publishedLabel(opportunity.publishedAt) },
+    ...(opportunity.createdBy ? [{ term: "Created by", value: opportunity.createdBy.name, testId: "opportunity-created-by" }] : []),
+    ...(opportunity.updatedBy
+      ? [{ term: "Last changed by", value: opportunity.updatedBy.name, testId: "opportunity-last-changed-by" }]
+      : []),
+  ];
 }

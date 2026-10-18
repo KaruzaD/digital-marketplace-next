@@ -6,7 +6,8 @@ import type { Account } from "../src/api/accounts";
 import type { IdentityClient } from "../src/auth/identity-client";
 import { resetSessionForTests } from "../src/auth/session";
 import { routeTree } from "../src/router";
-import { panelEntriesOf, panelFormProblems, panelRefusalProblems } from "../src/screens/evaluation-panel-tab";
+import { PANEL_SAVED, panelEntriesOf, panelFormProblems, panelRefusalProblems, peopleOf } from "../src/screens/evaluation-panel-tab";
+import { sprintNotices } from "../src/screens/opportunity-other-view";
 
 /**
  * Sprint With Us and Team With Us opportunities once they exist (decision record 0045): the manage
@@ -121,7 +122,15 @@ function serve(handler: (method: string, path: string, body: unknown) => Respons
       const url = new URL(input.url);
       requests.push({ method: input.method, address: url.pathname, body });
       if (input.method === "GET" && url.pathname === "/api/sessions/current") {
-        return json(200, { id: "s", user: staff, panelCandidates: [{ id: staff.id, name: staff.name }, other, third] });
+        return json(200, {
+          id: "s",
+          user: staff,
+          panelCandidates: [
+            { id: staff.id, name: staff.name, email: staff.email },
+            { ...other, email: "jordan@example.test" },
+            { ...third, email: "riley@example.test" },
+          ],
+        });
       }
       return handler(input.method, url.pathname, body) ?? json(404, { errors: ["Not here."] });
     }),
@@ -148,16 +157,40 @@ afterEach(() => {
 describe("the evaluation panel tab (R-5.1, R-5.9, R-5.16, R-5.18, R-5.37)", () => {
   const panelAddress = `/opportunities/sprint-with-us/${ID}/edit?tab=evaluationPanel`;
 
-  it("lists each evaluator with the chair ticked and chosen, and saves the panel as it stands", async () => {
+  /** Opens the tab and presses Edit evaluation panel, which the tab opens read-only behind. */
+  async function startEditing() {
+    fireEvent.click(await screen.findByTestId("evaluation-panel-edit"));
+    await screen.findByTestId("evaluation-panel-save");
+  }
+
+  it("opens read-only, listing each member with their role, and offers Edit while the panel may change", async () => {
+    serve((method, path) => (method === "GET" && path === `/api/opportunities/sprint-with-us/${ID}` ? json(200, sprint()) : null));
+    resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
+    renderAt(panelAddress);
+    expect(await screen.findByTestId("evaluation-panel-edit")).toBeTruthy();
+    expect(screen.getByTestId("opportunity-tab-evaluation-panel").getAttribute("aria-current")).toBe("page");
+    expect(screen.getAllByTestId("evaluation-panel-member-row").map((row) => row.textContent)).toEqual([
+      "Casey PlaceholderRole: Evaluator and chair",
+      "Jordan PlaceholderRole: Evaluator",
+    ]);
+    expect(screen.queryByTestId("evaluation-panel-save")).toBeNull();
+    expect(screen.queryByTestId("evaluation-panel-chair-field")).toBeNull();
+  });
+
+  it("names each evaluator with their email address while editing, and saves the panel as it stands", async () => {
     serve((method, path) => {
       if (path !== `/api/opportunities/sprint-with-us/${ID}`) return null;
       return method === "GET" || method === "PUT" ? json(200, sprint()) : null;
     });
     resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
     renderAt(panelAddress);
-    const rows = await screen.findAllByTestId("evaluation-panel-member-row");
-    expect(rows).toHaveLength(2);
-    expect(screen.getByTestId("opportunity-tab-evaluation-panel").getAttribute("aria-current")).toBe("page");
+    await startEditing();
+    await waitFor(() =>
+      expect(screen.getAllByTestId("evaluation-panel-member-row").map((row) => row.querySelector("p")?.textContent)).toEqual([
+        "Casey Placeholder (staff.one@example.test)",
+        "Jordan Placeholder (jordan@example.test)",
+      ]),
+    );
     expect(screen.getByTestId("evaluation-panel-chair-field")).toBeTruthy();
     const chairs = screen.getAllByTestId("evaluation-panel-member-chair").map((box) => (box.querySelector("input") as HTMLInputElement).checked);
     expect(chairs).toEqual([true, false]);
@@ -170,14 +203,54 @@ describe("the evaluation panel tab (R-5.1, R-5.9, R-5.16, R-5.18, R-5.37)", () =
         { user: other.id, evaluator: true, chair: false },
       ],
     });
-    expect(await screen.findByText("The evaluation panel has been saved.")).toBeTruthy();
+    // A saved panel returns the tab to read-only, and says so.
+    expect(await screen.findByText(PANEL_SAVED)).toBeTruthy();
+    expect(screen.getByTestId("evaluation-panel-edit")).toBeTruthy();
+    expect(screen.queryByTestId("evaluation-panel-save")).toBeNull();
+  });
+
+  it("seats the person chosen to add as an evaluator and not the chair", async () => {
+    serve((method, path) => {
+      if (path !== `/api/opportunities/sprint-with-us/${ID}`) return null;
+      return method === "GET" || method === "PUT" ? json(200, sprint()) : null;
+    });
+    resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
+    renderAt(panelAddress);
+    await startEditing();
+    const choice = screen.getByTestId("evaluation-panel-member-choice");
+    await waitFor(() => expect(within(choice).getByText("Riley Placeholder (riley@example.test)", { selector: "option" })).toBeTruthy());
+    fireEvent.change(choice.querySelector("select") as HTMLSelectElement, { target: { value: third.id } });
+    fireEvent.click(screen.getByTestId("evaluation-panel-add-member"));
+    expect(screen.getAllByTestId("evaluation-panel-member-row")).toHaveLength(3);
+    fireEvent.click(screen.getByTestId("evaluation-panel-save"));
+    await waitFor(() => expect(requests.some((request) => request.method === "PUT")).toBe(true));
+    expect(requests.find((request) => request.method === "PUT")?.body).toEqual({
+      tag: "editEvaluationPanel",
+      value: [
+        { user: staff.id, evaluator: true, chair: true },
+        { user: other.id, evaluator: true, chair: false },
+        { user: third.id, evaluator: true, chair: false },
+      ],
+    });
+  });
+
+  it("returns to the panel as it stood when editing is cancelled, sending nothing", async () => {
+    serve((method, path) => (method === "GET" && path === `/api/opportunities/sprint-with-us/${ID}` ? json(200, sprint()) : null));
+    resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
+    renderAt(panelAddress);
+    await startEditing();
+    fireEvent.click(screen.getAllByTestId("evaluation-panel-remove-member")[1] as HTMLElement);
+    fireEvent.click(screen.getByTestId("evaluation-panel-cancel"));
+    expect(await screen.findByTestId("evaluation-panel-edit")).toBeTruthy();
+    expect(screen.getAllByTestId("evaluation-panel-member-row")).toHaveLength(2);
+    expect(requests.some((request) => request.method === "PUT")).toBe(false);
   });
 
   it("refuses a panel of one before sending it, and keeps the panel it had", async () => {
     serve((method, path) => (method === "GET" && path === `/api/opportunities/sprint-with-us/${ID}` ? json(200, sprint()) : null));
     resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
     renderAt(panelAddress);
-    await screen.findAllByTestId("evaluation-panel-member-row");
+    await startEditing();
     fireEvent.click(screen.getAllByTestId("evaluation-panel-remove-member")[1] as HTMLElement);
     fireEvent.click(screen.getByTestId("evaluation-panel-save"));
     expect((await screen.findByTestId("evaluation-panel-minimum-error")).textContent).toBe("Evaluation panel: name at least two members");
@@ -193,11 +266,14 @@ describe("the evaluation panel tab (R-5.1, R-5.9, R-5.16, R-5.18, R-5.37)", () =
     });
     resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
     renderAt(panelAddress);
-    await screen.findAllByTestId("evaluation-panel-member-row");
+    await startEditing();
     fireEvent.click(screen.getByTestId("evaluation-panel-save"));
     expect((await screen.findByTestId("evaluation-panel-not-public-sector-error")).textContent).toBe(
       "Evaluator 2: Jordan Placeholder is not a public sector employee",
     );
+    // The row's own problem is said on that row, and the form stays open.
+    expect(screen.getAllByTestId("evaluation-panel-member-row")[1]?.textContent).toContain("Jordan Placeholder is not a public sector employee.");
+    expect(screen.getByTestId("evaluation-panel-save")).toBeTruthy();
   });
 
   it("lists the panel, fixed, from the consensus stage", async () => {
@@ -212,10 +288,11 @@ describe("the evaluation panel tab (R-5.1, R-5.9, R-5.16, R-5.18, R-5.37)", () =
     // The state as Sprint With Us names it.
     expect(screen.getByTestId("opportunity-status").textContent).toBe("Team questions: consensus");
     expect(screen.getAllByTestId("evaluation-panel-member-row").map((row) => row.textContent)).toEqual([
-      "Casey PlaceholderEvaluator and chair",
-      "Jordan PlaceholderEvaluator",
+      "Casey PlaceholderRole: Evaluator and chair",
+      "Jordan PlaceholderRole: Evaluator",
     ]);
     expect(screen.queryByTestId("evaluation-panel-save")).toBeNull();
+    expect(screen.queryByTestId("evaluation-panel-edit")).toBeNull();
   });
 
   it("is the missing page to anybody but the author and administrators (R-5.18)", async () => {
@@ -230,13 +307,16 @@ describe("the evaluation panel tab (R-5.1, R-5.9, R-5.16, R-5.18, R-5.37)", () =
     expect(screen.queryByTestId("evaluation-panel-save")).toBeNull();
   });
 
-  it("has no accessibility violations", async () => {
+  it("has no accessibility violations, read-only or while editing", async () => {
     serve((method, path) => (method === "GET" && path === `/api/opportunities/sprint-with-us/${ID}` ? json(200, sprint()) : null));
     resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
     renderAt(panelAddress);
     await screen.findAllByTestId("evaluation-panel-member-row");
-    const results = await axe.run(document.body, { rules: { region: { enabled: false } } });
-    expect(results.violations.map((violation) => violation.id)).toEqual([]);
+    const readOnly = await axe.run(document.body, { rules: { region: { enabled: false } } });
+    expect(readOnly.violations.map((violation) => violation.id)).toEqual([]);
+    await startEditing();
+    const editing = await axe.run(document.body, { rules: { region: { enabled: false } } });
+    expect(editing.violations.map((violation) => violation.id)).toEqual([]);
   });
 });
 
@@ -261,6 +341,15 @@ describe("the panel form's own rules", () => {
     ]);
     expect(panelFormProblems(["a", "a"], "a", nameOf).map((problem) => problem.text)).toEqual(["Evaluator 2: Ann is already on the panel"]);
     expect(panelFormProblems(["a"], "b", nameOf)).toEqual([]);
+  });
+
+  it("names everyone the list offers, then anybody seated whom it no longer names", () => {
+    expect(
+      peopleOf([{ id: "a", label: "Ann", email: "ann@example.test" }], [{ user: { id: "b", name: "Bo" }, evaluator: true, chair: false }]),
+    ).toEqual([
+      { id: "a", name: "Ann", email: "ann@example.test" },
+      { id: "b", name: "Bo", email: "" },
+    ]);
   });
 
   it("places the service's refusals where the form shows them", () => {
@@ -350,6 +439,29 @@ describe("the manage page (R-1.21, R-1.53, R-1.56)", () => {
     expect(screen.queryByTestId("opportunity-edit-button")).toBeNull();
     expect(screen.queryByTestId("opportunity-delete-button")).toBeNull();
     expect((document.getElementById("opp-deadline") as HTMLInputElement | null)?.value ?? "").toBe("2030-10-16");
+    // The bar is there, and empty: nothing is offered to the author once it is published.
+    expect(screen.getByTestId("opportunity-actions").textContent).toBe("");
+    expect(screen.getByTestId("opportunity-status").textContent).toBe("Published");
+  });
+
+  it("draws the head, the tabs at their own addresses, and a History section with nothing to add a note with", async () => {
+    serve((method, path) =>
+      method === "GET" && path === `/api/opportunities/sprint-with-us/${ID}` ? json(200, sprint({ status: "EVAL_QUESTIONS_INDIVIDUAL" })) : null,
+    );
+    resetSessionForTests({ status: "signed-in", account: account({ id: "00000000-0000-4000-8000-000000000101", type: "ADMIN" }) }, fakeIdentity());
+    renderAt(`/opportunities/sprint-with-us/${ID}/edit?tab=history`);
+    const section = await screen.findByTestId("opportunity-history-section");
+    expect(within(section).queryByRole("textbox")).toBeNull();
+    expect(within(section).queryByRole("button")).toBeNull();
+    expect(screen.getByText("Manage a Sprint With Us opportunity")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Modernize the licence renewal service");
+    expect(screen.getByTestId("opportunity-status").textContent).toBe("Team questions: individual evaluation");
+    expect(screen.getByTestId("opportunity-identifier").textContent).toBe(ID);
+    expect(screen.getByTestId("opportunity-tab-evaluation-panel").getAttribute("href")).toBe(
+      `/opportunities/sprint-with-us/${ID}/edit?tab=evaluationPanel`,
+    );
+    expect(screen.getByTestId("opportunity-tab-history").getAttribute("aria-current")).toBe("page");
+    expect(within(screen.getByTestId("opportunity-actions")).getByTestId("opportunity-cancel-button")).toBeTruthy();
   });
 
   it("lets an administrator change a published opportunity's details, sending the content but never the panel", async () => {
@@ -441,8 +553,19 @@ describe("the public views (R-1.8, R-7.17, R-7.29)", () => {
     expect(await screen.findByTestId("opportunity-phases")).toBeTruthy();
     await waitFor(() => expect(requests.some((request) => request.address === "/api/content/sprint-with-us-opportunity-scope")).toBe(true));
     expect(screen.getByTestId("opportunity-scope").textContent).toBe("");
+    // The missing page raises no message of its own above the opportunity.
+    expect(screen.getByTestId("opportunity-page-messages").textContent).toBe("");
     expect(screen.getByTestId("opportunity-addenda")).toBeTruthy();
     expect(screen.getByTestId("opportunity-identifier").textContent).toBe(ID);
+  });
+
+  it("raises its own notices only to a visitor while it accepts proposals, and once it is awarded", () => {
+    const now = new Date("2030-10-01T17:00:00.000Z");
+    const open = { status: "PUBLISHED" as const, proposalDeadline: "2030-10-16" };
+    expect(sprintNotices(open, false, now)).toEqual(["Sign in as a vendor to submit a proposal to this opportunity."]);
+    expect(sprintNotices(open, true, now)).toEqual([]);
+    expect(sprintNotices({ status: "EVAL_QUESTIONS_INDIVIDUAL", proposalDeadline: "2030-09-16" }, false, now)).toEqual([]);
+    expect(sprintNotices({ status: "AWARDED", proposalDeadline: "2030-09-16" }, true, now)).toEqual(["This opportunity has been awarded."]);
   });
 
   it("shows a Team With Us opportunity's resources, contract dates and terms, and counts the view", async () => {
@@ -465,8 +588,11 @@ describe("the public views (R-1.8, R-7.17, R-7.29)", () => {
     renderAt(`/opportunities/team-with-us/${ID}`);
     expect((await screen.findByTestId("opportunity-resources")).textContent).toContain("Data Professional: 50% of full time");
     expect(screen.getByTestId("opportunity-max-budget").textContent).toBe("$900,000");
-    expect(screen.getByTestId("opportunity-start-date").textContent).toBe("Start date: November 2, 2030");
-    expect(screen.getByTestId("opportunity-completion-date").textContent).toBe("Completion date: October 29, 2031");
+    expect(screen.getByTestId("opportunity-start-date").textContent).toBe("November 2, 2030");
+    expect(screen.getByTestId("opportunity-completion-date").textContent).toBe("October 29, 2031");
+    // A visitor reads whether it is open, as the opportunity list says it; Team With Us raises no notices of its own.
+    expect(screen.getByTestId("opportunity-status").textContent).toBe("Open");
+    expect(screen.queryByTestId("opportunity-page-messages")).toBeNull();
     expect((await screen.findByTestId("opportunity-terms-body")).textContent).toBe("The terms.");
     expect(screen.queryByTestId("opportunity-phases")).toBeNull();
     expect(screen.queryByTestId("opportunity-watch-toggle")).toBeNull();

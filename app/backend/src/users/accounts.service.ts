@@ -65,6 +65,8 @@ export const NOT_PERMITTED_TO_READ_ACCOUNT = "You are not permitted to read that
 export interface PanelCandidate {
   readonly id: string;
   readonly name: string;
+  /** Shown after the name, as the panel tab offers each person (decision record 0075). */
+  readonly email: string | null;
 }
 
 /** The refusal of the list of users, or of the contact list, to anyone but an administrator (R-4.21, R-4.32). */
@@ -178,14 +180,15 @@ export class AccountsService {
 
   /**
    * Who may be put on an evaluation panel, for public sector staff choosing one: every active
-   * public sector employee and administrator, by name alone (decision record 0045). Nobody's
-   * address or standing is told, so the list of everyone stays an administrator's (R-4.21).
+   * public sector employee and administrator, by name and email address, as the panel tab offers
+   * them (decision records 0045 and 0075). Nobody else is listed and nobody's standing is told, so
+   * the list of everyone stays an administrator's (R-4.21).
    */
   async panelCandidates(viewer: Account | null): Promise<PanelCandidate[] | null> {
     if (!viewer || (viewer.type !== "GOV" && viewer.type !== "ADMIN") || viewer.status !== "ACTIVE") return null;
     return (await this.accounts.list())
       .filter((account) => (account.type === "GOV" || account.type === "ADMIN") && account.status === "ACTIVE")
-      .map((account) => ({ id: account.id, name: account.name }))
+      .map((account) => ({ id: account.id, name: account.name, email: account.email ?? null }))
       .sort((a, b) => a.name.localeCompare(b.name, "en-CA") || a.id.localeCompare(b.id));
   }
 
