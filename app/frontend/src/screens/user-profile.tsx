@@ -46,8 +46,19 @@ import { ImagePicker, PictureRejection, checkChosenPicture } from "../app/image-
 import { Stack } from "../app/page-layout";
 import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
+import { Actions, PageTitle, Region, Waiting } from "../app/opportunity-kit";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
+import {
+  AccountFacts as AccountFactList,
+  DetailsRegion,
+  ErrorSummary,
+  Fields,
+  Group,
+  ProfileTabs,
+  SaveStatus,
+  UserPage,
+} from "../app/user-kit";
 import {
   DEACTIVATED_OWN_ACCOUNT_NOTICE,
   endAfterOwnDeactivation,
@@ -96,6 +107,8 @@ const STATUS_LABELS: Record<Account["status"], string> = {
   INACTIVE_ADMIN: "Inactive",
 };
 
+// The organizations section's membership labels. That section's own restyle is the organizations
+// domain's; until then it keeps the outlined badge it was drawn with.
 const badge = {
   display: "inline-block",
   paddingInline: "var(--layout-padding-small)",
@@ -103,27 +116,24 @@ const badge = {
   borderRadius: "var(--layout-border-radius-circular)",
 } as const;
 
-// Keeps a picture inside its column. Not spacing.
-const image = { maxWidth: "100%", height: "auto" } as const;
-
-// A capability row's rule and inner padding are its own; its content is laid out by the stack.
-const capabilityItem = {
-  paddingBlock: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-
 /** `/users/me`, and `/users/:userId`. */
 export function UserProfileScreen({ userId }: { userId: string }) {
   const search = useSearch({ strict: false }) as Record<string, unknown>;
+  // Arriving from a message's unsubscribe offer, the wait is for the notification settings
+  // (notification-unsubscribe-landing · loading).
+  const unsubscribing = search.unsubscribe !== undefined;
   return (
-    <RequireSignIn title="User Profile" loadingLabel="Loading your profile…">
+    <RequireSignIn
+      title={unsubscribing ? "Notifications" : "User Profile"}
+      loadingLabel={unsubscribing ? "Loading your notification settings…" : "Loading your profile…"}
+    >
       {(viewer) =>
         userId === "me" || userId === viewer.id ? (
           <OwnProfile
             account={viewer}
             base={userId === "me" ? "/users/me" : `/users/${viewer.id}`}
             asked={search.tab}
-            unsubscribe={search.unsubscribe !== undefined}
+            unsubscribe={unsubscribing}
             invitation={invitationArrival(search)}
           />
         ) : (
@@ -161,10 +171,10 @@ function SomebodyElsesProfile({ viewer, userId }: { viewer: Account; userId: str
   if (answer === "refused") return <NotFound />;
   if (answer === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>User Profile</Heading>
-        <Loading label="Loading profile…" />
-      </Stack>
+      <UserPage>
+        <PageTitle>User Profile</PageTitle>
+        <Waiting label="Loading profile" />
+      </UserPage>
     );
   }
   return <AdministratorsView account={answer} />;
@@ -176,19 +186,13 @@ function AdministratorsView({ account: read }: { account: Account }) {
   const [account, setAccount] = useState(read);
   useEffect(() => setAccount(read), [read]);
   return (
-    <Stack gap="large">
-      <Heading level={1}>User Profile</Heading>
+    <UserPage>
+      <PageTitle>User Profile</PageTitle>
       <AccountFacts account={account} />
-      <Stack as="section" gap="medium" aria-labelledby="details-heading">
-        <Heading level={2} id="details-heading">
-          Details
-        </Heading>
-        <StoredPicture account={account} whose="their" />
-        <ReadOnlyDetails account={account} />
-      </Stack>
+      <DetailsRegion picture={<StoredPicture account={account} whose="their" />} fields={<ReadOnlyDetails account={account} />} />
       <AdministratorRights account={account} onSaved={setAccount} />
       <AccountStatusControls account={account} onSaved={setAccount} />
-    </Stack>
+    </UserPage>
   );
 }
 
@@ -229,11 +233,8 @@ function AdministratorRights({ account, onSaved }: { account: Account; onSaved: 
   }
 
   return (
-    <Stack as="section" gap="medium" aria-labelledby="permissions-heading">
-      <Heading level={2} id="permissions-heading">
-        Permissions
-      </Heading>
-      <Stack gap="small">
+    <Region id="permissions-heading" title="Permissions">
+      <Group>
         <Checkbox
           isSelected={on}
           isDisabled={saving}
@@ -243,17 +244,17 @@ function AdministratorRights({ account, onSaved }: { account: Account; onSaved: 
         >
           Administrator
         </Checkbox>
-        <Text id="admin-hint" elementType="p" size="small" color="secondary">
+        <p id="admin-hint" className="op-note">
           The change takes effect as soon as you tick or untick the box.
-        </Text>
+        </p>
         {refusal ? (
           <div id="admin-refused">
             <InlineAlert variant="danger" role="alert" title={refusal} />
           </div>
         ) : null}
-      </Stack>
-      <div role="status">{status ? <Text elementType="p">{status}</Text> : null}</div>
-    </Stack>
+      </Group>
+      <SaveStatus>{status}</SaveStatus>
+    </Region>
   );
 }
 
@@ -304,28 +305,25 @@ function AccountStatusControls({ account, onSaved }: { account: Account; onSaved
   }
 
   return (
-    <Stack as="section" gap="medium" aria-labelledby="status-heading">
-      <Heading level={2} id="status-heading">
-        Account status
-      </Heading>
+    <Region id="status-heading" title="Account status">
       {deactivating ? (
         <>
-          <Text elementType="p">Deactivating this account removes the person’s access. They will be told by email.</Text>
-          <div>
+          <p className="op-text">Deactivating this account removes the person’s access. They will be told by email.</p>
+          <Actions>
             <Button variant="secondary" danger onPress={() => setAsking(true)} data-testid="profile-deactivate-button">
               Deactivate account
             </Button>
-          </div>
+          </Actions>
         </>
       ) : offersReactivation(account.status) ? (
         <>
-          <Text elementType="p">An administrator deactivated this account{onDate}.</Text>
-          <Text elementType="p">Reactivating it lets the person sign in again. They will be told by email.</Text>
-          <div>
+          <p className="op-text">An administrator deactivated this account{onDate}.</p>
+          <p className="op-text">Reactivating it lets the person sign in again. They will be told by email.</p>
+          <Actions>
             <Button variant="primary" onPress={() => setAsking(true)} data-testid="profile-reactivate-button">
               Reactivate account
             </Button>
-          </div>
+          </Actions>
         </>
       ) : (
         <InlineAlert
@@ -335,7 +333,7 @@ function AccountStatusControls({ account, onSaved }: { account: Account; onSaved
         />
       )}
       {refusal ? <InlineAlert variant="danger" role="alert" title={refusal} /> : null}
-      <div role="status">{status ? <Text elementType="p">{status}</Text> : null}</div>
+      <SaveStatus>{status}</SaveStatus>
       <Modal isOpen={asking} isDismissable onOpenChange={(open) => (working ? undefined : setAsking(open))}>
         <AlertDialog
           variant={deactivating ? "destructive" : "confirmation"}
@@ -363,14 +361,14 @@ function AccountStatusControls({ account, onSaved }: { account: Account; onSaved
             </>
           }
         >
-          <Text elementType="p">
+          <p className="op-text">
             {deactivating
               ? `${account.name} will no longer be able to sign in. They will be sent an email saying an administrator has removed their access.`
               : `${account.name} will be able to sign in again. They will be sent an email saying an administrator has reactivated their account.`}
-          </Text>
+          </p>
         </AlertDialog>
       </Modal>
-    </Stack>
+    </Region>
   );
 }
 
@@ -394,23 +392,9 @@ function OwnProfile({
   // question asked, whatever section was named (R-6.6, R-4.29).
   const section = unsubscribe && offered.includes("notifications") ? "notifications" : profileSectionShown(offered, asked);
   return (
-    <Stack gap="large">
-      <Heading level={1}>{HEADINGS[section]}</Heading>
-      <nav aria-label="Profile sections">
-        <Stack as="ul" direction="row" gap="medium">
-          {offered.map((name) => (
-            <li key={name}>
-              <Link
-                href={name === "profile" ? base : `${base}?tab=${name}`}
-                aria-current={name === section ? "page" : undefined}
-                data-testid={`profile-tab-${name}`}
-              >
-                {SECTION_NAMES[name]}
-              </Link>
-            </li>
-          ))}
-        </Stack>
-      </nav>
+    <UserPage>
+      <PageTitle>{HEADINGS[section]}</PageTitle>
+      <ProfileTabs base={base} current={section} tabs={offered.map((key) => ({ key, label: SECTION_NAMES[key] }))} />
       {section === "capabilities" ? (
         <CapabilitiesSection account={account} />
       ) : section === "organizations" ? (
@@ -422,7 +406,7 @@ function OwnProfile({
       ) : (
         <ProfileSectionOwn account={account} />
       )}
-    </Stack>
+    </UserPage>
   );
 }
 
@@ -437,28 +421,24 @@ function AccountFacts({ account }: { account: Account }) {
     account.email,
   ].filter((part): part is string => Boolean(part));
   return (
-    <Stack gap="medium">
+    <>
       {whose.length > 0 ? (
-        <Text elementType="p">
+        <p className="op-text">
           <strong>{whose[0]}</strong>
           {whose.length > 1 ? ` · ${whose.slice(1).join(" · ")}` : null}
-        </Text>
+        </p>
       ) : null}
-      <Text elementType="p">
-        Account type: <span data-testid="profile-account-type">{ACCOUNT_TYPE_LABELS[account.type]}</span>
-      </Text>
-      <Text elementType="p">
-        Status:{" "}
-        <span style={badge} data-testid="profile-status-badge">
-          {STATUS_LABELS[account.status] ?? account.status}
-        </span>
-      </Text>
-      <Text elementType="p" size="small" color="secondary">
-        Account ID: <span data-testid="profile-user-identifier">{account.id}</span>
-      </Text>
-    </Stack>
+      <AccountFactList
+        type={ACCOUNT_TYPE_LABELS[account.type]}
+        status={STATUS_LABELS[account.status] ?? account.status}
+        id={account.id}
+      />
+    </>
   );
 }
+
+// Keeps a picture at its stored size and inside its column. Not spacing.
+const image = { maxWidth: "100%", height: "auto", alignSelf: "flex-start" } as const;
 
 function StoredPicture({ account, whose }: { account: Account; whose: "your" | "their" }) {
   return account.avatarImageFile ? (
@@ -469,9 +449,7 @@ function StoredPicture({ account, whose }: { account: Account; whose: "your" | "
       data-testid="profile-image"
     />
   ) : (
-    <Text elementType="p" size="small" color="secondary">
-      No profile picture has been added.
-    </Text>
+    <p className="op-note">No profile picture has been added.</p>
   );
 }
 
@@ -510,13 +488,8 @@ function ProfileSectionOwn({ account }: { account: Account }) {
           }}
         />
       ) : (
-        <Stack as="section" gap="medium" aria-labelledby="details-heading">
-          <Heading level={2} id="details-heading">
-            Details
-          </Heading>
-          <StoredPicture account={account} whose="your" />
-          <ReadOnlyDetails account={account} />
-          <div>
+        <DetailsRegion picture={<StoredPicture account={account} whose="your" />} fields={<ReadOnlyDetails account={account} />}>
+          <Actions>
             <Button
               variant="primary"
               onPress={() => {
@@ -527,21 +500,18 @@ function ProfileSectionOwn({ account }: { account: Account }) {
             >
               Edit profile
             </Button>
-          </div>
-        </Stack>
+          </Actions>
+        </DetailsRegion>
       )}
-      <div role="status">{saved ? <Text elementType="p">Your profile has been saved.</Text> : null}</div>
+      <SaveStatus>{saved ? "Your profile has been saved." : null}</SaveStatus>
       {isPublicSector(account.type) ? (
-        <Stack as="section" gap="medium" aria-labelledby="permissions-heading">
-          <Heading level={2} id="permissions-heading">
-            Permissions
-          </Heading>
-          <Text elementType="p" data-testid="profile-permissions-label">
+        <Region id="permissions-heading" title="Permissions">
+          <p className="op-text" data-testid="profile-permissions-label">
             {account.type === "ADMIN"
               ? "You have administrator permissions."
               : "You do not have administrator permissions."}
-          </Text>
-        </Stack>
+          </p>
+        </Region>
       ) : null}
       {offersOwnDeactivation(account.type) ? <DeactivateOwnAccount account={account} /> : null}
     </>
@@ -582,15 +552,10 @@ function ProfileForm({ account, onDone }: { account: Account; onDone: (saved: bo
   const [errors, setErrors] = useState<ProfileErrors>({});
   const [saveFailed, setSaveFailed] = useState(false);
   const [saving, setSaving] = useState(false);
-  const summary = useRef<HTMLDivElement>(null);
 
   const problems: Problem[] = (Object.keys(errors) as (keyof ProfileErrors)[])
     .filter((field) => errors[field])
     .map((field) => ({ field, label: FIELDS[field].label, message: errors[field] as string }));
-
-  useEffect(() => {
-    if (problems.length > 0) summary.current?.focus();
-  }, [problems.length]);
 
   function choose(file: File) {
     // Only the latest choice counts: one still being read when another is made is set aside.
@@ -671,82 +636,82 @@ function ProfileForm({ account, onDone }: { account: Account; onDone: (saved: bo
         />
       ) : null}
       {problems.length > 0 ? (
-        <div tabIndex={-1} ref={summary}>
-          <InlineAlert variant="danger" role="alert">
-            <span className="title" id="alert-title">
-              {`Your changes have ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`}
-            </span>
-            <ul>
-              {problems.map((problem) => (
-                <li key={problem.field} data-testid="field-error">
-                  <Link href={`#${FIELDS[problem.field].id}`}>
-                    {`${problem.label}: ${problem.message.charAt(0).toLowerCase()}${problem.message.slice(1)}`}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </InlineAlert>
-        </div>
+        // Keyed by the number of problems, so a summary that changes takes focus again.
+        <ErrorSummary
+          key={problems.length}
+          title={`Your changes have ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`}
+        >
+          {problems.map((problem) => (
+            <li key={problem.field} data-testid="field-error">
+              <Link href={`#${FIELDS[problem.field].id}`}>
+                {`${problem.label}: ${problem.message.charAt(0).toLowerCase()}${problem.message.slice(1)}`}
+              </Link>
+            </li>
+          ))}
+        </ErrorSummary>
       ) : null}
-      <Form validationBehavior="aria" onSubmit={save}>
-        <Stack gap="medium">
-          <Heading level={2}>Edit your details</Heading>
-          <ImagePicker
-            storedFileId={account.avatarImageFile}
-            chosen={chosen}
-            rejection={rejection}
-            rejectionFocus={rejectionFocus}
-            onChoose={choose}
-          />
-          <TextField
-            label="Sign-in username"
-            value={account.idpUsername}
-            isReadOnly
-            description="This cannot be changed."
-            data-testid="idp-username-field"
-          />
-          <TextField
-            id="profile-name"
-            label="Name"
-            value={name}
-            onChange={setName}
-            isRequired
-            isInvalid={Boolean(errors.name)}
-            errorMessage={errors.name}
-            data-testid="name-field"
-          />
-          <TextField
-            id="profile-email"
-            label="Email address"
-            type="email"
-            value={email}
-            onChange={setEmail}
-            isRequired
-            isInvalid={Boolean(errors.email)}
-            errorMessage={errors.email}
-            data-testid="email-field"
-          />
-          {asksJobTitle ? (
-            <TextField
-              id="profile-job-title"
-              label="Job title (optional)"
-              value={jobTitle}
-              onChange={setJobTitle}
-              isInvalid={Boolean(errors.jobTitle)}
-              errorMessage={errors.jobTitle}
-              data-testid="job-title-field"
+      <Region id="edit-heading" title="Edit your details">
+        <Form validationBehavior="aria" onSubmit={save}>
+          <div className="us-form">
+            <ImagePicker
+              storedFileId={account.avatarImageFile}
+              chosen={chosen}
+              rejection={rejection}
+              rejectionFocus={rejectionFocus}
+              onChoose={choose}
             />
-          ) : null}
-          <ButtonGroup ariaLabel="Profile actions">
-            <Button type="submit" variant="primary" isDisabled={saving} data-testid="profile-save-button">
-              Save changes
-            </Button>
-            <Button variant="secondary" onPress={() => onDone(false)} data-testid="profile-cancel-button">
-              Cancel
-            </Button>
-          </ButtonGroup>
-        </Stack>
-      </Form>
+            <Fields>
+              <TextField
+                label="Sign-in username"
+                value={account.idpUsername}
+                isReadOnly
+                description="This cannot be changed."
+                data-testid="idp-username-field"
+              />
+              <TextField
+                id="profile-name"
+                label="Name"
+                value={name}
+                onChange={setName}
+                isRequired
+                isInvalid={Boolean(errors.name)}
+                errorMessage={errors.name}
+                data-testid="name-field"
+              />
+              <TextField
+                id="profile-email"
+                label="Email address"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                isRequired
+                isInvalid={Boolean(errors.email)}
+                errorMessage={errors.email}
+                data-testid="email-field"
+              />
+              {asksJobTitle ? (
+                <TextField
+                  id="profile-job-title"
+                  label="Job title (optional)"
+                  value={jobTitle}
+                  onChange={setJobTitle}
+                  isInvalid={Boolean(errors.jobTitle)}
+                  errorMessage={errors.jobTitle}
+                  data-testid="job-title-field"
+                />
+              ) : null}
+            </Fields>
+            <ButtonGroup ariaLabel="Profile actions">
+              <Button type="submit" variant="primary" isDisabled={saving} data-testid="profile-save-button">
+                Save changes
+              </Button>
+              <Button variant="secondary" onPress={() => onDone(false)} data-testid="profile-cancel-button">
+                Cancel
+              </Button>
+            </ButtonGroup>
+          </div>
+        </Form>
+      </Region>
     </>
   );
 }
@@ -778,11 +743,8 @@ function DeactivateOwnAccount({ account }: { account: Account }) {
   }
 
   return (
-    <Stack as="section" gap="medium" aria-labelledby="status-heading">
-      <Heading level={2} id="status-heading">
-        Deactivate your account
-      </Heading>
-      <Text elementType="p">You will be signed out at once. You can come back at any time by signing in again.</Text>
+    <Region id="status-heading" title="Deactivate your account">
+      <p className="op-text">You will be signed out at once. You can come back at any time by signing in again.</p>
       {failed ? (
         <InlineAlert
           variant="danger"
@@ -791,11 +753,11 @@ function DeactivateOwnAccount({ account }: { account: Account }) {
           description="Nothing has changed. Please try again."
         />
       ) : null}
-      <div>
+      <Actions>
         <Button variant="secondary" danger onPress={() => setAsking(true)} data-testid="profile-deactivate-button">
           Deactivate account
         </Button>
-      </div>
+      </Actions>
       <Modal isOpen={asking} isDismissable onOpenChange={(open) => (working ? undefined : setAsking(open))}>
         <AlertDialog
           variant="destructive"
@@ -823,13 +785,13 @@ function DeactivateOwnAccount({ account }: { account: Account }) {
             </>
           }
         >
-          <Text elementType="p">
+          <p className="op-text">
             You will be signed out straight away. Your account will be kept, and you can reactivate it at any time by
             signing in again. We will email you to confirm.
-          </Text>
+          </p>
         </AlertDialog>
       </Modal>
-    </Stack>
+    </Region>
   );
 }
 
@@ -870,16 +832,16 @@ function CapabilitiesSection({ account }: { account: Account }) {
 
   return (
     <>
-      <Text elementType="p">
+      <p className="op-text">
         Tick each capability you have. Your choices are saved as you make them, and you may leave them all unticked.
-      </Text>
-      <Stack as="ul" gap="medium" aria-label="Capabilities">
+      </p>
+      <ul className="us-rows" aria-label="Capabilities">
         {CAPABILITIES.map((capability, index) => {
           const isExpanded = expanded.includes(capability.name);
           const descriptionId = `capability-${index}-description`;
           return (
-            <li key={capability.name} style={capabilityItem} data-testid="capability-row">
-              <Stack gap="small">
+            <li key={capability.name} className="us-row" data-testid="capability-row">
+              <div className="us-row-line">
                 <Checkbox
                   isSelected={held.includes(capability.name)}
                   onChange={(on) => void toggle(capability.name, on)}
@@ -887,45 +849,43 @@ function CapabilitiesSection({ account }: { account: Account }) {
                 >
                   {capability.name}
                 </Checkbox>
-                <div>
-                  <Button
-                    variant="tertiary"
-                    size="small"
-                    aria-expanded={isExpanded}
-                    aria-controls={descriptionId}
-                    onPress={() =>
-                      setExpanded(
-                        isExpanded
-                          ? expanded.filter((entry) => entry !== capability.name)
-                          : [...expanded, capability.name],
-                      )
-                    }
-                    data-testid="capability-description-toggle"
-                  >
-                    {isExpanded ? `Hide description of ${capability.name}` : `Show description of ${capability.name}`}
-                  </Button>
-                </div>
-                <div id={descriptionId} hidden={!isExpanded}>
-                  {isExpanded ? (
-                    <Text elementType="p" size="small" color="secondary" data-testid="capability-description">
-                      {capability.description}
-                    </Text>
-                  ) : null}
-                </div>
-                {refused === capability.name ? (
-                  <InlineAlert
-                    variant="danger"
-                    role="alert"
-                    title="That change could not be saved"
-                    description={`${capability.name} is as it was. Please try again.`}
-                  />
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  aria-expanded={isExpanded}
+                  aria-controls={descriptionId}
+                  onPress={() =>
+                    setExpanded(
+                      isExpanded
+                        ? expanded.filter((entry) => entry !== capability.name)
+                        : [...expanded, capability.name],
+                    )
+                  }
+                  data-testid="capability-description-toggle"
+                >
+                  {isExpanded ? `Hide description of ${capability.name}` : `Show description of ${capability.name}`}
+                </Button>
+              </div>
+              <div id={descriptionId} hidden={!isExpanded}>
+                {isExpanded ? (
+                  <p className="us-description" data-testid="capability-description">
+                    {capability.description}
+                  </p>
                 ) : null}
-              </Stack>
+              </div>
+              {refused === capability.name ? (
+                <InlineAlert
+                  variant="danger"
+                  role="alert"
+                  title="That change could not be saved"
+                  description={`${capability.name} is as it was. Please try again.`}
+                />
+              ) : null}
             </li>
           );
         })}
-      </Stack>
-      <div role="status">{status ? <Text elementType="p">{status}</Text> : null}</div>
+      </ul>
+      <SaveStatus>{status}</SaveStatus>
     </>
   );
 }
@@ -1343,16 +1303,16 @@ function NotificationsSection({
 
   return (
     <>
-      <Text elementType="p" data-testid="notifications-email-address">
+      <p className="op-text" data-testid="notifications-email-address">
         {address
           ? `Notifications are sent to ${address}. If this address is wrong, `
           : "No email address is held for you, so no notifications can be sent. To add one, "}
         <Link href={base}>correct it on your profile</Link>.
-      </Text>
-      <Text elementType="p">
+      </p>
+      <p className="op-text">
         This setting covers only emails announcing newly published opportunities. Other emails from the service, such
         as those about opportunities you watch or proposals you have submitted, are not affected by it.
-      </Text>
+      </p>
       <Checkbox
         isSelected={on}
         isDisabled={saving}
@@ -1372,7 +1332,7 @@ function NotificationsSection({
           description="Nothing has changed. Please try again."
         />
       ) : null}
-      <div role="status">{status ? <Text elementType="p">{status}</Text> : null}</div>
+      <SaveStatus>{status}</SaveStatus>
       <Modal isOpen={asking} isDismissable onOpenChange={(open) => (saving ? undefined : setAsking(open))}>
         <AlertDialog
           variant="warning"
@@ -1394,6 +1354,13 @@ function NotificationsSection({
                 onPress={() => {
                   setAsking(false);
                   void save(false);
+                  // Focus goes back to the checkbox once the dialog has closed: on arrival from a
+                  // message nothing on the page opened the dialog to return it to.
+                  setTimeout(() => {
+                    document
+                      .querySelector<HTMLInputElement>('[data-testid="notifications-new-opportunities-checkbox"] input')
+                      ?.focus();
+                  }, 0);
                 }}
                 data-testid="unsubscribe-confirm-button"
               >
@@ -1402,12 +1369,12 @@ function NotificationsSection({
             </>
           }
         >
-          <Text elementType="p">
+          <p className="op-text">
             {`You are signed in as ${account.name}. `}
             <span data-testid="unsubscribe-confirmation-address">{address ?? "Your account"}</span>
             {" will no longer be emailed when new opportunities are posted."}
-          </Text>
-          <Text elementType="p">You can turn these emails back on at any time from this page.</Text>
+          </p>
+          <p className="op-text">You can turn these emails back on at any time from this page.</p>
         </AlertDialog>
       </Modal>
     </>
@@ -1463,21 +1430,15 @@ function LegalSection({ account: held }: { account: Account }) {
 
   return (
     <>
-      <Stack as="section" gap="medium" aria-labelledby="privacy-heading" data-testid="legal-privacy-policy">
-        <Heading level={2} id="privacy-heading">
-          Privacy policy
-        </Heading>
-        <Text elementType="p">
+      <Region id="privacy-heading" title="Privacy policy" testId="legal-privacy-policy">
+        <p className="op-text">
           The Digital Marketplace collects your name, email address and the details you give in your profile so that
           it can run your account, tell you about opportunities and process the proposals you submit.{" "}
           <Link href="/content/privacy">Read the Digital Marketplace privacy policy</Link>.
-        </Text>
-        <Text elementType="p">You agreed to this policy when your account was created.</Text>
-      </Stack>
-      <Stack as="section" gap="medium" aria-labelledby="terms-heading">
-        <Heading level={2} id="terms-heading">
-          Terms and conditions
-        </Heading>
+        </p>
+        <p className="op-text">You agreed to this policy when your account was created.</p>
+      </Region>
+      <Region id="terms-heading" title="Terms and conditions">
         {agreed ? null : (
           <div data-testid="legal-terms-updated-warning">
             <InlineAlert
@@ -1511,17 +1472,15 @@ function LegalSection({ account: held }: { account: Account }) {
             description="Nothing has changed. Please try again."
           />
         ) : null}
-        <div role="status">
-          {agreed && justAgreed ? (
-            <Text elementType="p">Thank you. Your agreement to the terms and conditions has been recorded.</Text>
-          ) : null}
-        </div>
-        <Text elementType="p">
+        <SaveStatus>
+          {agreed && justAgreed ? "Thank you. Your agreement to the terms and conditions has been recorded." : null}
+        </SaveStatus>
+        <p className="op-text">
           <Link href="/content/terms-and-conditions" data-testid="legal-app-terms-link">
             Read the Digital Marketplace terms and conditions
           </Link>
-        </Text>
-        <Text elementType="p" data-testid="legal-accepted-on">
+        </p>
+        <p className="op-text" data-testid="legal-accepted-on">
           {agreed ? (
             <>
               You agreed to the terms and conditions on <time dateTime={agreed.dateTime}>{agreed.label}</time>
@@ -1534,13 +1493,10 @@ function LegalSection({ account: held }: { account: Account }) {
           ) : (
             "You have not agreed to the terms and conditions."
           )}
-        </Text>
-      </Stack>
-      <Stack as="section" gap="medium" aria-labelledby="program-terms-heading">
-        <Heading level={2} id="program-terms-heading">
-          Program terms
-        </Heading>
-        <ul>
+        </p>
+      </Region>
+      <Region id="program-terms-heading" title="Program terms">
+        <ul className="op-list">
           <li>
             <Link href="/content/code-with-us-terms-and-conditions" data-testid="legal-program-terms-link">
               Code With Us terms and conditions
@@ -1557,7 +1513,7 @@ function LegalSection({ account: held }: { account: Account }) {
             </Link>
           </li>
         </ul>
-      </Stack>
+      </Region>
       <Modal isOpen={asking} isDismissable onOpenChange={(open) => (saving ? undefined : setAsking(open))}>
         <AlertDialog
           variant="confirmation"
@@ -1579,11 +1535,11 @@ function LegalSection({ account: held }: { account: Account }) {
             </>
           }
         >
-          <Text elementType="p">
+          <p className="op-text">
             By agreeing, you confirm you have read and agree to the{" "}
             <Link href="/content/terms-and-conditions">Digital Marketplace terms and conditions</Link>. The date and
             time you agree will be recorded on your account.
-          </Text>
+          </p>
         </AlertDialog>
       </Modal>
     </>
