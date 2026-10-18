@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  The question is whether this adapter still binds every action and observation on the new target, and nothing more, now that it has taken up the revision request from build-slice-14-6. Approve. The diff swaps one locator pattern in attachmentRegion() (tests/adapters/new/index.ts:9443). The old /^attachments$/i becomes /^\s*(\d+\.\s*)?attachments\s*$/i, so the lookup now finds the Code With Us proposal forms' '3. Attachments' part as well as the opportunity forms' plain 'Attachments' part. That is the change the build-slice-14-6 ruling asked for, and it is the reason R-8.31's proposal-removal case stopped with 'no row naming it'. The change only finds where things are on the page: it adds no assertion and no logic that decides a pass, it touches nothing under tests/acceptance and no protected path, and bindings.yaml correctly stays the same because no member moved between bound and unbound. The runner checked the types itself on this revision, with no diagnostics under adapters/new/, so the type check the author left out is covered. Nobody has yet shown R-8.31 passing with the new lookup; that is verify's job on the next run, and an adapter gate cannot ask for it. Owed instruction build-slice-14-6#2 (the stored-row change in app/frontend/src/app/attachments.tsx and decision record 0073) is build's to do and this proposal does not settle it, so it stays open. The ruling would change to a return if the new pattern matched a part that is not an attachments part, or if verify showed the proposal forms' attachments still not being found.
+conditions: []
+cost: 0.30764779999999997
+turns: 2
+session: "5bc63de4-1516-4c12-996c-83b91f374aee"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T03:34:39.327Z

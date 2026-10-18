@@ -9440,7 +9440,8 @@ export default function create(
   // proposal forms' attachments are their own pages' add_attachment.
   const ATTACH = "file-attachment-control";
   function attachmentRegion(): Locator {
-    return seen(regionNamed(page, /^attachments$/i)).first();
+    // The proposal forms draw this part under a numbered title ("3. Attachments").
+    return seen(regionNamed(page, /^\s*(\d+\.\s*)?attachments\s*$/i)).first();
   }
   async function onAttachments(member: string): Promise<Locator> {
     const where = `${ATTACH}.${member}`;
