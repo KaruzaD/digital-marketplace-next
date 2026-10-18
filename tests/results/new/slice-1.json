@@ -1,10 +1,10 @@
 {
   "slice": 1,
-  "proposal": "build-slice-1-9",
-  "app_tree": "072cfc8a53820eda1dcf7793584f9e03b7a171aa",
-  "at": "2026-10-17T20:35:30.255Z",
+  "proposal": "build-slice-1-11",
+  "app_tree": "79e81546c1960f143947cc03fa37bd70e8636027",
+  "at": "2026-10-18T07:32:46.852Z",
   "verdict": "pass",
-  "adapter": "2991b02ac6ce778211216fd2923d52e96abccb0e",
+  "adapter": "5a2ded993a2694c9d0e12f6a20fb5f5c8bc1ae2a",
   "rechecked": [
     "R-4.1",
     "R-4.2",
@@ -244,7 +244,7 @@
     "R-6.19"
   ],
   "measured": {
-    "harness": "60b56aca9be478d0f10ef80d5a1fd7604d2b5960d25b967e70de69377ab86a70",
+    "harness": "2ad6662f1c4c69f95fec1e89e5f06678a3d4a06d25fc50b4ceeb517bd13575a8",
     "passed": {
       "R-4.1": "3890cff45760ce7fd62352ec8823b0f71c9bf730",
       "R-4.2": "a18aab85acbe472641d67928cbf212ba033445c3",
@@ -391,7 +391,7 @@
       "R-3.25": "28cde6bbb60018b866971fc8ac1454e00d165f42",
       "R-3.26": "e5c8d9b827947a0375fc3bf54757816ac907948f",
       "R-3.27": "197c3006bca169ba05b89bfdb57376d87422813d",
-      "R-3.28": "fc9295bcc614ac3d0c9c1b48e68af2bd57d29a33",
+      "R-3.28": "df494c5272f60616ab1519d8993b882003f6f83e",
       "R-8.22": "1cd3bf318a0e03f83c1b33a1dd4423b791149876",
       "R-8.31": "a72499e5b6e5c7fd4a8c8935e2980ec8f980d6bc",
       "R-6.2": "bc7fd3047214cd83d2a0f47d16c4d1d677798aef",
@@ -498,7 +498,7 @@
         }
       ],
       "file_sha": "09a8250ff44dff07264b1225c46adc382cb73c08",
-      "adapter": "2991b02ac6ce778211216fd2923d52e96abccb0e"
+      "adapter": "5a2ded993a2694c9d0e12f6a20fb5f5c8bc1ae2a"
     },
     {
       "id": "R-7.2",
@@ -513,7 +513,7 @@
         }
       ],
       "file_sha": "4203b22723ee69352ac368c2d1d331c285273e13",
-      "adapter": "2991b02ac6ce778211216fd2923d52e96abccb0e"
+      "adapter": "5a2ded993a2694c9d0e12f6a20fb5f5c8bc1ae2a"
     },
     {
       "id": "R-7.3",
@@ -528,7 +528,7 @@
         }
       ],
       "file_sha": "cf697324cb49e379a3d57e6f2be1c5ece81afe8a",
-      "adapter": "2991b02ac6ce778211216fd2923d52e96abccb0e"
+      "adapter": "5a2ded993a2694c9d0e12f6a20fb5f5c8bc1ae2a"
     },
     {
       "id": "R-7.4",
@@ -547,7 +547,7 @@
         }
       ],
       "file_sha": "9abad77aa6a76e4c9bf5f5b9b3a0ef2b72683e00",
-      "adapter": "2991b02ac6ce778211216fd2923d52e96abccb0e"
+      "adapter": "5a2ded993a2694c9d0e12f6a20fb5f5c8bc1ae2a"
     },
     {
       "id": "R-7.18",
@@ -562,7 +562,7 @@
         }
       ],
       "file_sha": "8fa616544ccf59720ca16735e0fc6774865da7fc",
-      "adapter": "2991b02ac6ce778211216fd2923d52e96abccb0e"
+      "adapter": "5a2ded993a2694c9d0e12f6a20fb5f5c8bc1ae2a"
     },
     {
       "id": "R-7.19",
@@ -577,7 +577,7 @@
         }
       ],
       "file_sha": "96fc1a8a3bce53b52748f48b55d92498658b34b3",
-      "adapter": "2991b02ac6ce778211216fd2923d52e96abccb0e"
+      "adapter": "5a2ded993a2694c9d0e12f6a20fb5f5c8bc1ae2a"
     }
   ]
 }

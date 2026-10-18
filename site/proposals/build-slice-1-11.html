@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-1-11 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">694</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">688</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">554</span></a></li><li><a href="../runs.html">Run log <span class="count">26</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-1-11</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 07:02</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 1 (A visitor can read the service&#39;s own pages) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> The application build-slice-1-10 carried is proposed again unchanged, because the ruling on it asked nothing of the build.</p>
+<p>The application build-slice-1-10 carried is proposed again unchanged, because the ruling on it asked nothing of the build.</p>
+<p>Each of its 3 conditions went to another stage:</p>
+<ul><li>to bind-adapter: R-1.43: on /opportunities/sprint-with-us/00000000-0000-4000-a011-000000000001/edit?tab=evaluationPanel at the consensus stage, the page shows a region &quot;Evaluation panel&quot; holding the note &quot;The evaluation panel can no longer be changed — The consensus stage has begun, so the panel is fixed.&quot; (inside <code>evaluation-panel-locked-message</code>), with a read-only table region &quot;Members of the evaluation panel&quot; nested inside it. evaluationPanelPage&#39;s section() ends in <code>.last()</code>, so it resolves to the nested members-table region (it holds the member rows), which does not contain the note. lockNote() therefore counts 0, editable() returns true, and addPanelMember waits on a member chooser the locked page never draws until the 15s timeout. section() has to resolve to the outermost &quot;Evaluation panel&quot; region, or lockNote() has to look across the whole panel, so the lock is read as a refusal.</li><li>to bind-adapter: R-5.16: the same fault in evaluationPanelSwu.addPanelMember on /opportunities/sprint-with-us/00000000-0000-4000-8000-000000000701/edit?tab=evaluationPanel. The page shows status &quot;Team questions: consensus&quot; and the note &quot;The evaluation panel can no longer be changed&quot; in the outer &quot;Evaluation panel&quot; region. section()&#39;s <code>.last()</code> picks the nested &quot;Members of the evaluation panel&quot; table region, the lock note is missed, and the adapter tries to click a member chooser that is not on the page (locator.click timeout) instead of noting the refusal.</li><li>to bind-adapter: R-1.40: opportunityCwuComplete.fullReport on /opportunities/code-with-us/00000000-0000-4000-a008-000000000001/complete (as an administrator) returned text starting &quot;Opportunity Status Awarded Reward $5,000 …&quot;. It read only the element carrying <code>opportunity-full-report</code>, which starts at the &quot;Opportunity&quot; section. The page shows the opportunity&#39;s title &quot;Seeded awarded Code With Us opportunity&quot; as the report&#39;s H1, just above that element, and the report article is named by that title. fullReport has to include the report&#39;s heading (the H1 that labels the document), not only the body below it.</li></ul>
+<p>No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-18 07:33.</p>
+<div class="body"><p>Question: does slice 1 (a visitor can read the service&#39;s own pages) do what its criteria say? Ruling: approve. The verify result is pass, current for this proposal against application tree 79e8154: all six claimed criteria (R-7.1, R-7.2, R-7.3, R-7.4, R-7.18, R-7.19) were exercised and met. The diff restyles only slice 1&#39;s own screens (the public page, the learn-more screens, the shared missing page) without changing behaviour: the article is still labelled by the page&#39;s H1, the service level agreement link still resolves to /content/service-level-agreement, and malformed and unknown addresses still share one not-found screen that never says &#39;not allowed&#39;. The new content kit holds only what these screens use, and the managing-screen parts are left to slice 5 (decision record 0073). The formatted-text change is a style setting in the single shared renderer, so an embedded body still renders identically to the page&#39;s own address (R-7.17), and a new unit test confirms raw markup is still shown as text. The new slice-one-screens tests cover the parts this change creates. No secrets, personal data, logging or protected paths are touched. R-1.43, R-5.16 and R-1.40 are not slice 1&#39;s; the previous ruling already addressed them to bind-adapter. Would change: a claimed criterion failing or going unbound on a later verify, or the renderer change making an embedded body differ from the page&#39;s own rendering.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>
