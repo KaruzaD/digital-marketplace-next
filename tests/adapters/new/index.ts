@@ -7749,11 +7749,19 @@ export default function create(
     // The approved service areas only, one per line: with the editor open (the service
     // administrator's "Edit service areas"), the areas whose boxes are ticked; with it closed,
     // the items under "Approved service areas". Where the editor is offered it is opened to read
-    // the ticked boxes, then cancelled. An unticked area is never named.
+    // the ticked boxes, then cancelled. An unticked area is never named. Whether the section is
+    // being edited is decided once it is open: a section drawn with its boxes showing at once
+    // (an administrator's "Service areas this organization is approved for" over "Save service
+    // areas") is read as it stands. Boxes already showing — an earlier step's unsaved ticks —
+    // are read without reopening the section.
     serviceAreaCheckbox: async () => {
       await orgEdit.on("service_area_checkbox");
-      const editing = (await seen(page.getByRole("main").getByRole("checkbox")).count()) > 0;
-      if (!editing) await orgTabOpen("service_area_checkbox", ORG_TAB.twu);
+      const boxesShown = async (): Promise<boolean> => (await seen(page.getByRole("main").getByRole("checkbox")).count()) > 0;
+      let editing = await boxesShown();
+      if (!editing) {
+        await orgTabOpen("service_area_checkbox", ORG_TAB.twu);
+        editing = await boxesShown();
+      }
       const edit = await editServiceAreasControl();
       if (!editing && !(await edit.count())) {
         // Each approved area carries "organization-service-area".
