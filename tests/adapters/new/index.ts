@@ -13250,8 +13250,8 @@ export default function create(
   // "Incomplete: …" while its team falls short, the list "Capabilities the <phase> phase
   // requires" ("Backend Development: held" / "not held"), the radio group "Scrum master for the
   // <phase> phase" listing each member (a pending one marked "Membership pending") with its
-  // "Scrum master: <name>, <phase> phase" radio and "Remove", the chooser "Team member to add to
-  // the <phase> phase" (pending people offered as "<name> (pending)") with "Add team member to
+  // radio named for the member alone and "Remove", the chooser "Team member to add to
+  // the <phase> phase" (pending people offered as "<name> (membership pending)") with "Add team member to
   // the <phase> phase", and "Proposed cost for the <phase> phase(required)", whose message
   // ("Please enter a Proposed Cost less than or equal to 500,000.") follows its hint once the
   // cost is over the phase's budget. "Submit proposal" stays disabled while any phase is
@@ -13333,13 +13333,14 @@ export default function create(
   }
 
   // A chooser drawn as a button that opens a list: the option named, or its pending form
-  // ("Quinn Placeholder (pending)"). False, with the list put away, when it is not offered.
+  // ("Quinn Placeholder (membership pending)", or the older "Quinn Placeholder (pending)"). False, with the list put away, when it is not offered.
   async function pickListed(opener: Locator, name: string): Promise<{ picked: boolean; offered: string[] }> {
     await opener.click();
     const options = seen(page.getByRole("option"));
     await options.first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
     const offered = (await options.allInnerTexts().catch(() => [] as string[])).map((one) => one.trim()).filter(Boolean);
-    const wanted = offered.find((one) => squash(one) === squash(name)) ?? offered.find((one) => squash(one) === squash(`${name} (pending)`));
+    const wanted = offered.find((one) => squash(one) === squash(name)) ?? offered.find((one) => squash(one) === squash(`${name} (pending)`)) ??
+      offered.find((one) => squash(one) === squash(`${name} (membership pending)`));
     if (!wanted) {
       await page.keyboard.press("Escape").catch(() => undefined);
       await settle();
@@ -13444,21 +13445,33 @@ export default function create(
     return names;
   }
 
-  async function onPhase(group: Locator, name: string): Promise<boolean> {
-    return (await seen(group.getByRole("radio", { name: new RegExp(`^\\s*scrum master: ${escapeRx(name)},`, "i") })).count()) > 0;
+  // A member's radio inside the phase's "Scrum master for the <phase> phase (required)" group,
+  // named for the member alone ("Charlie Placeholder"); the radio group carries
+  // "proposal-scrum-master". The older "Scrum master: <name>, <phase> phase" naming is still read.
+  function scrumMasterRadio(group: Locator, word: string, name: string): Locator {
+    const member = new RegExp(`^\\s*${escapeRx(name)}(?:\\s*\\(?(?:membership )?pending\\)?)?\\s*$`, "i");
+    const older = new RegExp(`^\\s*scrum master: ${escapeRx(name)},`, "i");
+    const chooser = group
+      .getByTestId("proposal-scrum-master")
+      .or(group.getByRole("radiogroup", { name: new RegExp(`^\\s*scrum master for the ${word} phase`, "i") }));
+    return seen(chooser.getByRole("radio", { name: member }).or(group.getByRole("radio", { name: older }))).first();
+  }
+
+  async function onPhase(group: Locator, word: string, name: string): Promise<boolean> {
+    return (await scrumMasterRadio(group, word, name).count()) > 0;
   }
 
   async function tickScrumMaster(where: string, word: string, group: Locator, name: string): Promise<void> {
-    // Each member's radio sits inside a label carrying "proposal-scrum-master", named for them.
-    const named = new RegExp(`^\\s*scrum master: ${escapeRx(name)},`, "i");
-    const radio = seen(
-      group
-        .getByTestId("proposal-scrum-master")
-        .getByRole("radio", { name: named })
-        .or(group.getByRole("radio", { name: named })),
-    ).first();
+    const radio = scrumMasterRadio(group, word, name);
     if (!(await radio.count())) {
-      throw new Error(`${where} — "${name}" is not on the ${word} phase's team on ${page.url()}, so there is no "Scrum master: ${name}, ${word} phase" to choose`);
+      const listed = (
+        await seen(group.getByTestId("proposal-scrum-master").or(group.getByRole("radiogroup", { name: new RegExp(`^\\s*scrum master for the ${word} phase`, "i") }).getByRole("radio")))
+          .allInnerTexts()
+          .catch(() => [] as string[])
+      )
+        .map((one) => lined(one)[0] ?? "")
+        .filter(Boolean);
+      throw new Error(`${where} — "${name}" is not on the ${word} phase's team on ${page.url()}, so "Scrum master for the ${word} phase" has no radio named for them (it lists: ${listed.join(", ") || "nobody"})`);
     }
     if (!(await radio.isChecked())) await radio.check({ force: true });
     await settle();
@@ -13473,7 +13486,7 @@ export default function create(
     const names = await teamNames(typeof input === "string" && phaseWord(input) ? undefined : input);
     if (!names.length) unbound(where, `the input ${JSON.stringify(input)} names nobody for the ${word} phase`);
     for (const name of names) {
-      if (await onPhase(group, name)) continue;
+      if (await onPhase(group, word, name)) continue;
       const opener = seen(group.getByRole("button", { name: new RegExp(`team member to add to the ${word} phase`, "i") })).first();
       if (!(await opener.count())) unbound(where, `the ${word} phase on ${page.url()} offers no "Team member to add to the ${word} phase" chooser`);
       const { picked, offered: listed } = await pickListed(opener, name);
@@ -13946,7 +13959,7 @@ export default function create(
     await opener.click();
     const options = seen(page.getByRole("option"));
     await options.first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
-    const names = (await options.allInnerTexts().catch(() => [] as string[])).map((one) => one.replace(/\s*\(pending\)\s*$/i, "").trim()).filter(Boolean);
+    const names = (await options.allInnerTexts().catch(() => [] as string[])).map((one) => one.replace(/\s*\((?:membership )?pending\)\s*$/i, "").trim()).filter(Boolean);
     await page.keyboard.press("Escape").catch(() => undefined);
     await settle();
     return names.join("\n");
