@@ -2110,3 +2110,49 @@ requests:
     at: 2026-10-18T08:44:30.925Z
     taken: 2026-10-18T08:47:54.851Z
     taken_by: bind-adapter-new-103
+  - stage: bind-adapter
+    target: new
+    why: 'R-1.55: evaluation-panel-swu.add_panel_member clicked "Add an evaluator"
+      and timed out because the Evaluation panel section was still read-only:
+      the page shows the members list and an "Edit evaluation panel" button
+      (data-testid evaluation-panel-edit) that has to be pressed first, as
+      start_editing already does. Once editing, the person is picked in one
+      "Public sector employee to add" chooser (evaluation-panel-member-choice),
+      with entries reading "Name (email)", and then "Add an evaluator"
+      (evaluation-panel-add-member) seats them as a new evaluator row; member
+      rows no longer have their own chooser. Seen in
+      .sdlc/evidence/slice-10/R-1.55.txt and R-1.55-2.txt at
+      /opportunities/sprint-with-us/<id>/edit?tab=evaluationPanel.'
+    from: build-slice-10-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T09:09:46.746Z
+  - stage: bind-adapter
+    target: new
+    why: 'R-5.1: same cause as R-1.55. add_panel_member was called on the read-only
+      Evaluation panel section (members listed, "Edit evaluation panel" button
+      shown) without pressing that button, then waited for "Add an evaluator"
+      until it timed out. It must enter editing first, then add through the
+      single "Public sector employee to add" chooser and "Add an evaluator".
+      Seen in .sdlc/evidence/slice-10/R-5.1.txt and R-5.1-2.txt.'
+    from: build-slice-10-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T09:09:46.746Z
+  - stage: bind-adapter
+    target: new
+    why: 'R-5.17: in the published case, chair_field read "" and
+      mark_member_as_chair reported no evaluator named "Emery Placeholder"
+      ("nobody chosen, nobody chosen") although the read-only section lists
+      "Casey Placeholder, Role: Evaluator" and "Emery Placeholder, Role:
+      Evaluator and chair" above an "Edit evaluation panel" button. The adapter
+      looked for per-row choosers and the Chair chooser without entering
+      editing. Once editing, each seated member is a fieldset whose paragraph
+      reads "Name (email)" beside a Chair checkbox
+      (evaluation-panel-member-chair). In the draft case, add_panel_member timed
+      out on "Add an evaluator" for the same reason as R-1.55. Seen in
+      .sdlc/evidence/slice-10/R-5.17.txt and R-5.17-2.txt.'
+    from: build-slice-10-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T09:09:46.746Z
