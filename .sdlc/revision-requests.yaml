@@ -2000,6 +2000,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T06:57:02.334Z
+    taken: 2026-10-18T07:00:45.879Z
+    taken_by: bind-adapter-new-102
   - stage: bind-adapter
     target: new
     why: "R-5.16: the same fault in evaluationPanelSwu.addPanelMember on
@@ -2014,6 +2016,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T06:57:02.334Z
+    taken: 2026-10-18T07:00:45.879Z
+    taken_by: bind-adapter-new-102
   - stage: bind-adapter
     target: new
     why: "R-1.40: opportunityCwuComplete.fullReport on
@@ -2029,3 +2033,5 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T06:57:02.334Z
+    taken: 2026-10-18T07:00:45.879Z
+    taken_by: bind-adapter-new-102
