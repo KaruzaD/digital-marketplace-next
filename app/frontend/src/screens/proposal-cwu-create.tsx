@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Heading, Text } from "@bcgov/design-system-react-components";
+import { Link } from "@bcgov/design-system-react-components";
 import { useNavigate } from "@tanstack/react-router";
 import { isUnpublished } from "@rules/opportunities";
 import { isAcceptingProposals, mayStartProposal } from "@rules/proposals";
@@ -7,39 +7,43 @@ import { Account, changeOwnAccount } from "../api/accounts";
 import { CwuOpportunity, fetchCwuOpportunity } from "../api/opportunities";
 import { ActingFor, createCwuProposal, fetchOrganizationsActingFor, listCwuProposals } from "../api/proposals";
 import { useGoTo } from "../app/go-to";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { PageTitle, Waiting } from "../app/opportunity-kit";
+import { CreateHead, ProposalPage, type SummaryFacts } from "../app/proposal-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { useSession } from "../auth/session";
-import { CwuProposalForm, OpportunitySummary, blankValues } from "./proposal-cwu-form";
+import { deadlineLabel, rewardLabel } from "./opportunity-parts";
+import { CwuProposalForm, blankValues } from "./proposal-cwu-form";
 
 /**
  * Start a Code With Us proposal, at `/opportunities/code-with-us/:opportunityId/proposals/create`
- * (proposal-cwu-create).
+ * (proposal-cwu-create), drawn as the catalogue's Code With Us proposal form: one long form in
+ * three parts beside a summary of the opportunity that holds the actions.
  *
  * Only a vendor who has accepted the service's terms at some point may start one; anyone else —
  * staff, an administrator, a visitor — is shown the missing page (R-2.1). A vendor who already
  * holds a proposal on the opportunity is taken to it instead of a new one (R-2.2). A draft is saved
- * whatever it holds (R-2.12); Submit proposal checks the form first and then asks for both sets of
- * terms, recording the acceptance as it submits (R-2.3, R-2.13, R-2.14). An opportunity that has
- * closed is still shown here, unlike in the other two programs: submitting is sent unchecked and the
- * service's refusal, "This opportunity is no longer accepting proposals.", is what the vendor reads
- * (R-2.15).
+ * whatever it holds (R-2.12), and the vendor lands on its manage page, which says it was saved;
+ * Submit checks the form first and then asks for both sets of terms, recording the acceptance as it
+ * submits (R-2.3, R-2.13, R-2.14). An opportunity that has closed is still shown here, unlike in the
+ * other two programs: submitting is sent unchecked and the service's refusal, "This opportunity is
+ * no longer accepting proposals.", is what the vendor reads (R-2.15).
  */
 export function ProposalCwuCreateScreen({ opportunityId }: { opportunityId: string }) {
   useScreenTitle("Create a Code With Us proposal");
   const session = useSession();
-  if (session.status === "starting") {
-    return (
-      <Stack gap="large">
-        <Heading level={1}>Create a Code With Us proposal</Heading>
-        <Loading label="Loading opportunity…" />
-      </Stack>
-    );
-  }
+  if (session.status === "starting") return <CreateWaiting />;
   if (session.status !== "signed-in" || !mayStartProposal(session.account)) return <NotFound />;
   return <CreateLoader account={session.account} opportunityId={opportunityId} />;
+}
+
+function CreateWaiting() {
+  return (
+    <ProposalPage>
+      <PageTitle>Create a Code With Us Proposal</PageTitle>
+      <Waiting label="Loading opportunity" />
+    </ProposalPage>
+  );
 }
 
 type Loaded =
@@ -80,15 +84,18 @@ function CreateLoader({ account, opportunityId }: { account: Account; opportunit
   }, [account.id, opportunityId, goTo]);
 
   if (loaded.kind === "missing") return <NotFound />;
-  if (loaded.kind === "loading") {
-    return (
-      <Stack gap="large">
-        <Heading level={1}>Create a Code With Us proposal</Heading>
-        <Loading label="Loading opportunity…" />
-      </Stack>
-    );
-  }
+  if (loaded.kind === "loading") return <CreateWaiting />;
   return <Create account={account} opportunity={loaded.opportunity} organizations={loaded.organizations} />;
+}
+
+/** The opportunity as the form's summary gives it: program, title, closing date, then value, location and Remote OK. */
+export function createSummary(opportunity: Pick<CwuOpportunity, "title" | "proposalDeadline" | "reward" | "location" | "remoteOk">): SummaryFacts {
+  return {
+    program: "code-with-us",
+    title: opportunity.title || "Untitled opportunity",
+    closes: deadlineLabel(opportunity.proposalDeadline),
+    facts: [rewardLabel(opportunity.reward), opportunity.location, opportunity.remoteOk ? "Remote OK" : ""].filter((fact) => fact.trim() !== ""),
+  };
 }
 
 function Create({
@@ -102,36 +109,46 @@ function Create({
 }) {
   const navigate = useNavigate();
   return (
-    <Stack gap="large">
-      <Heading level={1}>Create a Code With Us proposal</Heading>
-      <OpportunitySummary opportunity={opportunity} />
-      <Text elementType="p">A draft can be saved with any field blank. Every required field is needed to submit.</Text>
-      <CwuProposalForm
-        purpose="create"
-        opportunityId={opportunity.id}
-        initial={blankValues()}
-        organizations={organizations}
-        accepting={isAcceptingProposals(opportunity, new Date())}
-        headingLevel={2}
-        refusalTitle="Your proposal was not created"
-        onSend={async (action, submission) => {
-          if (action === "submit") {
-            // Submitting records the acceptance of the service's terms (R-2.3).
-            const accepted = await changeOwnAccount(account.id, "acceptTerms");
-            if (accepted.kind !== "saved") return { kind: "failed" };
-          }
-          return createCwuProposal(opportunity.id, submission, action === "submit" ? "SUBMITTED" : "DRAFT");
-        }}
-        onSaved={(proposal) => {
-          void navigate({
-            to: "/opportunities/code-with-us/$opportunityId/proposals/$proposalId/edit",
-            params: { opportunityId: opportunity.id, proposalId: proposal.id },
-          });
-        }}
-        onCancel={() => {
-          void navigate({ to: "/opportunities/code-with-us/$opportunityId", params: { opportunityId: opportunity.id } });
-        }}
-      />
-    </Stack>
+    <CwuProposalForm
+      purpose="create"
+      opportunityId={opportunity.id}
+      head={<CreateHead title="Create a Code With Us Proposal" opportunity={opportunity.title || "Untitled opportunity"} />}
+      intro={
+        <>
+          <p className="pf-text">
+            Use the form provided to create your proposal for this Code With Us opportunity. You can either save a draft of your
+            proposal to complete the form at a later time, or you can complete the form now to submit your proposal immediately.
+          </p>
+          <p className="pf-text">
+            Need help? <Link href="/content/code-with-us-proposal-guide">Read the guide</Link> to learn how to create and manage a
+            Code With Us proposal.
+          </p>
+        </>
+      }
+      summary={createSummary(opportunity)}
+      initial={blankValues()}
+      organizations={organizations}
+      accepting={isAcceptingProposals(opportunity, new Date())}
+      refusalTitle="Your proposal was not created"
+      onSend={async (action, submission) => {
+        if (action === "submit") {
+          // Submitting records the acceptance of the service's terms (R-2.3).
+          const accepted = await changeOwnAccount(account.id, "acceptTerms");
+          if (accepted.kind !== "saved") return { kind: "failed" };
+        }
+        return createCwuProposal(opportunity.id, submission, action === "submit" ? "SUBMITTED" : "DRAFT");
+      }}
+      onSaved={(proposal, action) => {
+        void navigate({
+          to: "/opportunities/code-with-us/$opportunityId/proposals/$proposalId/edit",
+          params: { opportunityId: opportunity.id, proposalId: proposal.id },
+          // The manage page says the draft was saved, as the create page's draft-saved story does.
+          state: { proposalSaved: action === "submit" ? "submitted" : "draft" } as never,
+        });
+      }}
+      onCancel={() => {
+        void navigate({ to: "/opportunities/code-with-us/$opportunityId", params: { opportunityId: opportunity.id } });
+      }}
+    />
   );
 }
