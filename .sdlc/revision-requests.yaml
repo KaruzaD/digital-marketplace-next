@@ -2162,3 +2162,21 @@ requests:
     at: 2026-10-18T09:09:46.746Z
     taken: 2026-10-18T09:14:05.551Z
     taken_by: bind-adapter-new-104
+  - stage: derive-tests
+    why: "Rewrite tests/acceptance/organizations/R-3.28.spec.ts so nothing another
+      test does can change what it reads. It sets its scenario up on
+      seed.organizations.qualified (00000000-0000-4000-8000-000000000301), which
+      other tests also read and change while verify runs the suite in parallel
+      across copies of the application, so it passes or fails by timing: it
+      passed in the verifies of build-slice-14-8, build-slice-1-11 and
+      build-slice-2-17, and failed in build-slice-10-8's at line 58 ('the
+      organization does not stand approved for exactly FULL_STACK_DEVELOPER and
+      AGILE_COACH') while the page showed exactly Full stack developer and Agile
+      coach approved. Give the test an organization of its own that no other
+      test reads or changes, created in the test through the surface and
+      approved for the service areas it needs, and read and change only that
+      organization."
+    from: build-slice-10-8
+    gate: G3
+    by: tech-lead
+    at: 2026-10-18T09:52:39.772Z
