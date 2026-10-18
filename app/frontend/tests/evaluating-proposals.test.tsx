@@ -251,6 +251,86 @@ describe("awarding (R-2.33, R-2.36)", () => {
   }, 30_000);
 });
 
+describe("the page as its stories draw it (proposal-cwu-view)", () => {
+  /** Where each landmark of the page is, in document order. */
+  function order(...elements: Element[]): number[] {
+    const all = Array.from(document.body.querySelectorAll("*"));
+    return elements.map((element) => all.indexOf(element));
+  }
+
+  it("is the proposal kit's page: head, details, score, printable copy, action bar, tabs, then the tab's region", async () => {
+    evaluating(staff, {}, () => json(500, {}));
+    renderAt(VIEW);
+    const name = await screen.findByTestId("proposal-proponent-name");
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading.contains(name)).toBe(true);
+    expect(name.textContent).toBe("Northern Pines Digital");
+    const head = heading.closest(".op-head") as HTMLElement;
+    expect(within(head).getByText("Code With Us proposal")).toBeTruthy();
+    expect(within(head).getByText("Code With Us")).toBeTruthy();
+    expect(within(head).getByTestId("proposal-status").textContent).toBe("Under review");
+    expect(heading.closest(".op-regions")).toBeTruthy();
+
+    const scores = screen.getByRole("region", { name: "Score" });
+    expect(within(scores).getByTestId("proposal-score").textContent).toBe("Not yet scored");
+    const tabs = screen.getByRole("navigation", { name: "Proposal sections" });
+    const tabRegion = screen.getByRole("region", { name: "Proposal" });
+    const positions = order(
+      head,
+      screen.getByTestId("proposal-identifier"),
+      scores,
+      screen.getByTestId("proposal-export-link"),
+      screen.getByTestId("proposal-actions"),
+      tabs,
+      tabRegion,
+    );
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+    expect(within(tabs).getByTestId("proposal-tab-proposal").getAttribute("aria-current")).toBe("page");
+    expect(within(tabRegion).getByRole("heading", { level: 3, name: "Proponent" })).toBeTruthy();
+    // One primary button at most: Enter score here, Disqualify a secondary one.
+    expect(screen.getByTestId("proposal-enter-score").className).not.toBe(screen.getByTestId("proposal-disqualify-button").className);
+  });
+
+  it("keeps the action bar, empty, when nothing can be done with the proposal", async () => {
+    evaluating(staff, { status: "WITHDRAWN" }, () => json(500, {}));
+    renderAt(VIEW);
+    const actions = await screen.findByTestId("proposal-actions");
+    expect(actions.childElementCount).toBe(0);
+    expect(actions.textContent).toBe("");
+  });
+
+  it("moves focus to a refused score, keeping what was typed", async () => {
+    evaluating(staff, {}, () => json(500, {}));
+    renderAt(VIEW);
+    fireEvent.click(await screen.findByTestId("proposal-enter-score"));
+    const dialog = await screen.findByTestId("proposal-score-dialog");
+    expect(within(dialog).getByRole("heading", { level: 2, name: "Enter score" })).toBeTruthy();
+    fireEvent.change(field("proposal-score-field"), { target: { value: "104" } });
+    fireEvent.click(screen.getByTestId("proposal-score-confirm"));
+    await screen.findByText(SCORE_MESSAGE);
+    await waitFor(() => expect(document.activeElement).toBe(field("proposal-score-field")));
+    expect(field("proposal-score-field").value).toBe("104");
+  });
+
+  it("moves focus to the reason when Disqualify proposal is pressed without one", async () => {
+    evaluating(staff, {}, () => json(500, {}));
+    renderAt(VIEW);
+    fireEvent.click(await screen.findByTestId("proposal-disqualify-button"));
+    await screen.findByTestId("proposal-disqualify-dialog");
+    fireEvent.click(screen.getByTestId("proposal-disqualify-confirm"));
+    await screen.findByText(DISQUALIFY_REASON_MESSAGE);
+    await waitFor(() => expect(document.activeElement).toBe(field("proposal-disqualify-reason-field")));
+  });
+
+  it("is waited for on the kit's page while the proposal is on its way", async () => {
+    serve(() => new Promise<Response>(() => {}));
+    resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
+    renderAt(VIEW);
+    const heading = await screen.findByRole("heading", { level: 1, name: "Code With Us proposal" });
+    expect(heading.closest(".op-regions")).toBeTruthy();
+  });
+});
+
 describe("the vendor's own result (R-2.32)", () => {
   it("shows the score and rank on the manage page once decided", async () => {
     serve((_method, path) =>
