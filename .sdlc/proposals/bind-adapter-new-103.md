@@ -37,3 +37,23 @@ I also stopped the reader from asking the chair chooser for its choice when ther
 `bindings.yaml` is unchanged: `panel_member_row` was already listed as bound on both evaluation panel pages. No route failed to resolve, and nothing outside `tests/adapters/new/` was touched.
 
 All five requests were taken up; none deferred.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:tech-lead
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+The question is whether bind-adapter-new-103 binds the evaluation panel's member rows as the new build draws them, and nothing beyond that. bind-adapter escalated it to me because the build-slice-10 requests went past policy.loops.request (4 sends against a limit of 2). That is a policy cap on rounds, not a stage unable to produce what the gate asks, so I am ruling rather than escalating. The last five requests (build-slice-10-6#1-#5, items 18-22 of the account) say the same thing: panel members now appear as read-only list items with no cells or choosers, so rows() read '' or timed out. The diff does exactly that and no more: a shownRow() helper reads a cell row as before or a list item from its own text (name, then the role after the visually hidden 'Role:'); the unlocked branch uses the chooser only on rows that have one, and reads existing members in edit mode from name plus Chair box; and chairChooser() is only queried when present, which removes a timeout. Rows are still found by data-testid evaluation-panel-member-row and still read as 'name — role'. bindings.yaml is unchanged and nothing outside tests/adapters/new/ moved. The runner's type-check on af966c4 passed with no diagnostics in adapters/new/. The author names memberGroup, addPanelMember and chairField() as likely to hit the same chooser problem but leaves them alone because no request named them. That is right for evidence-scoped work: a failing verify run will raise its own request. What would change this ruling: a verify run on this revision where panelMemberRow() still reads '' on the read-only or locked list, which would mean the row-text parsing does not match the real markup. build-slice-10-6#1 (R-1.9 assignment date, owed by build) is not settled here and stays open.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `af966c496bf4eb4e10e714b8137d357be95b3a1f`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
