@@ -1,18 +1,5 @@
-import { RefObject, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Button,
-  ButtonGroup,
-  Form,
-  Heading,
-  Link,
-  NumberField,
-  Radio,
-  RadioGroup,
-  Select,
-  Text,
-  TextArea,
-  TextField,
-} from "@bcgov/design-system-react-components";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { Button, Link, NumberField, Radio, RadioGroup, Select, Text, TextArea, TextField } from "@bcgov/design-system-react-components";
 import { SERVICE_AREAS, SWU_PHASES, SWU_PHASE_NAMES, SwuPhase } from "@rules/other-program-drafts";
 import {
   MemberStanding,
@@ -44,15 +31,17 @@ import { TeamMember, fetchOrganization, fetchTeam } from "../api/organizations";
 import type { ActingFor } from "../api/proposals";
 import type { TeamProposal, TeamProposalSaveAnswer } from "../api/team-proposals";
 import { AttachmentControl, useAttachments } from "../app/attachments";
-import { badge, card } from "../app/layout";
-import { Stack } from "../app/page-layout";
+import { Fieldset } from "../app/opportunity-kit";
+import { Focused, FormPart, GroupError, ProposalFormPage, ProposalStatus, type SummaryFacts } from "../app/proposal-kit";
 import { TitledAlert } from "../app/titled-alert";
-import { Fact, dayLabel, deadlineLabel } from "./opportunity-parts";
+import { dayLabel, deadlineLabel } from "./opportunity-parts";
 import { TermsDialog } from "./proposal-cwu-form";
 
 /**
  * The Sprint With Us and Team With Us proposal form (proposal-swu-create, proposal-twu-create, and
- * the Proposal tab of their manage pages; decision record 0058).
+ * the Proposal tab of their manage pages while editing; decision records 0058 and 0078), drawn as
+ * the catalogue draws it: one long form in numbered parts beside a summary of the opportunity that
+ * holds the actions.
  *
  * The organization is chosen from those the vendor owns or administers, and its qualification is
  * said as soon as it is chosen (R-2.16, R-2.17). Sprint With Us asks for a team for each of the
@@ -167,8 +156,8 @@ export function memberStandings(team: readonly TeamMember[]): Map<string, Member
 /**
  * The people a phase or a resource may add (proposal-swu-create and proposal-twu-create,
  * team_member_choices): for Sprint With Us everyone whose membership stands, pending invitees
- * marked, leaving out anybody already in that phase; for Team With Us active members only, leaving
- * out anybody already named anywhere on the proposal.
+ * marked "(membership pending)", leaving out anybody already in that phase; for Team With Us active
+ * members only, leaving out anybody already named anywhere on the proposal.
  */
 export function teamMemberChoices(
   program: TeamProgram,
@@ -180,21 +169,66 @@ export function teamMemberChoices(
     .filter((member) => !named.includes(member.userId))
     .map((member) => ({
       id: member.userId,
-      label: member.membershipStatus === "PENDING" ? `${member.name} (pending)` : member.name,
+      label: member.membershipStatus === "PENDING" ? `${member.name} (membership pending)` : member.name,
       pending: member.membershipStatus === "PENDING",
     }));
 }
 
+/** "A, B and C". */
+function listed(words: readonly string[]): string {
+  if (words.length <= 1) return words.join("");
+  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
+/**
+ * What a phase's requirements line says (proposal-swu-create, phase_requirements): that its team
+ * meets them, with the capabilities it holds, or that it is incomplete and why — nobody named, a
+ * member still pending, a required capability not yet held.
+ */
+export function phaseRequirementsSentence(shortfall: {
+  readonly complete: boolean;
+  readonly empty: boolean;
+  readonly pending: boolean;
+  readonly missing: readonly string[];
+  readonly required: readonly string[];
+}): string {
+  if (shortfall.complete) {
+    return shortfall.required.length > 0
+      ? `This phase’s team meets its requirements. ${listed(shortfall.required)}: held.`
+      : "This phase’s team meets its requirements.";
+  }
+  const reasons = [
+    shortfall.empty ? "Name at least one team member." : "",
+    shortfall.pending ? "Every member must be a confirmed member of the organization, not pending." : "",
+    shortfall.missing.length > 0 ? `Not yet held: ${shortfall.missing.join(", ")}.` : "",
+  ].filter((reason) => reason !== "");
+  return ["This phase’s team is incomplete.", ...reasons].join(" ");
+}
+
+/** The opportunity as the form's summary gives it: program, the proposal's status, title, closing date, budget. */
+export function teamSummary(program: TeamProgram, opportunity: OtherProgramOpportunity, status?: string): SummaryFacts {
+  return {
+    program,
+    title: opportunity.title || "Untitled opportunity",
+    closes: deadlineLabel(opportunity.proposalDeadline),
+    facts: opportunity.value.amount > 0 ? [`Maximum budget ${dollars(opportunity.value.amount)}`] : [],
+    ...(status ? { status } : {}),
+  };
+}
+
 const dollars = (amount: number) => `$${Math.round(amount).toLocaleString("en-CA")}`;
-const areaName = (key: string | null) => {
+export const areaName = (key: string | null) => {
   const name = SERVICE_AREAS.find((area) => area.key === key)?.name ?? key ?? "Unknown service area";
   return name.charAt(0) + name.slice(1).toLowerCase();
 };
 const phaseLower = (phase: SwuPhase) => SWU_PHASE_NAMES[phase].toLowerCase();
+const RATE_FORMAT = { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 } as const;
+const COST_FORMAT = { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 } as const;
+const NOT_ACTIVE = "User is not an active member of the organization.";
 
 /** The element each refusal links to, and the words its line in the summary starts with. */
 function placeOf(program: TeamProgram, field: string): { readonly id: string; readonly label: string; readonly rank: number } {
-  const [head = "", second, third] = field.split(".");
+  const [head = "", second] = field.split(".");
   if (head === "organization") return { id: "proposal-organization", label: "Organization", rank: 0 };
   const phase = SWU_PHASES.find((each) => PHASE_KEYS[each] === head);
   if (phase) {
@@ -213,27 +247,19 @@ function placeOf(program: TeamProgram, field: string): { readonly id: string; re
   }
   if (head === "references" && second) return { id: `proposal-reference-${second}`, label: `Reference ${second}`, rank: 500 + Number(second) };
   if (head === "attachments") return { id: "form-attachments", label: "Attachments", rank: 600 };
-  void third;
   return { id: "form-organization", label: "Proposal", rank: 700 };
 }
 
-/** The error summary: every problem, each a link to where it is (`field-error`). */
-export function TeamProblemSummary({
-  program,
-  problems,
-  title,
-  summaryRef,
-}: {
-  program: TeamProgram;
-  problems: readonly TeamProblem[];
-  title: string;
-  summaryRef?: RefObject<HTMLDivElement>;
-}) {
+/**
+ * The error summary, focused when it appears (`proposal-error-summary`): every problem, each a link
+ * to where it is (`field-error`) naming the place and its message.
+ */
+export function TeamProblemSummary({ program, problems, title }: { program: TeamProgram; problems: readonly TeamProblem[]; title: string }) {
   const ordered = [...problems].sort((a, b) => placeOf(program, a.field).rank - placeOf(program, b.field).rank);
   return (
-    <div tabIndex={-1} ref={summaryRef}>
+    <Focused id="proposal-error-summary">
       <TitledAlert variant="danger" role="alert" title={`${title} ${ordered.length} ${ordered.length === 1 ? "problem" : "problems"}`}>
-        <ul>
+        <ul className="pp-errors">
           {ordered.map((problem, index) => {
             const place = placeOf(program, problem.field);
             return (
@@ -244,27 +270,7 @@ export function TeamProblemSummary({
           })}
         </ul>
       </TitledAlert>
-    </div>
-  );
-}
-
-/** The opportunity being proposed on (`proposal-opportunity-summary`). */
-export function TeamOpportunitySummary({ program, opportunity }: { program: TeamProgram; opportunity: OtherProgramOpportunity }) {
-  return (
-    <section aria-labelledby="create-opportunity" style={card} data-testid="proposal-opportunity-summary">
-      <Stack gap="medium">
-        <Heading level={2} id="create-opportunity">
-          The opportunity
-        </Heading>
-        <Stack as="dl" direction="row" gap="medium">
-          <Fact label="Opportunity">
-            <Link href={`/opportunities/${program}/${opportunity.id}`}>{opportunity.title || "Untitled opportunity"}</Link>
-          </Fact>
-          <Fact label="Maximum budget">{opportunity.value.amount > 0 ? dollars(opportunity.value.amount) : "Not entered"}</Fact>
-          <Fact label="Proposal deadline">{deadlineLabel(opportunity.proposalDeadline)}</Fact>
-        </Stack>
-      </Stack>
-    </section>
+    </Focused>
   );
 }
 
@@ -276,21 +282,6 @@ type Chosen =
   | { readonly kind: "loading"; readonly id: string }
   | { readonly kind: "loaded"; readonly id: string; readonly organization: OrganizationForProposal | null; readonly team: readonly TeamMember[] };
 
-const item = {
-  padding: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-
-const group = {
-  margin: "var(--layout-margin-none)",
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
-
 export function TeamProposalForm({
   program,
   purpose,
@@ -300,7 +291,10 @@ export function TeamProposalForm({
   initialAttachments = [],
   initialNames = {},
   organizationLocked = false,
-  headingLevel,
+  offerSubmit = true,
+  head,
+  intro,
+  summary,
   refusalTitle,
   onSend,
   onSaved,
@@ -317,18 +311,26 @@ export function TeamProposalForm({
   readonly initialNames?: Readonly<Record<string, string>>;
   /** Whether the proposal has been put forward, so its organization stays (R-2.22). */
   readonly organizationLocked?: boolean;
-  readonly headingLevel: 2 | 3;
+  /** On the manage page, whether Save changes and submit is offered: not on a proposal already submitted. */
+  readonly offerSubmit?: boolean;
+  /** The H1 and what sits with it. */
+  readonly head: ReactNode;
+  /** The sentences that introduce the form. */
+  readonly intro?: ReactNode;
+  /** The opportunity beside the form, which holds the actions on a wide screen. */
+  readonly summary: SummaryFacts;
   readonly refusalTitle: string;
   readonly onSend: (action: TeamFormAction, content: Record<string, unknown>) => Promise<TeamProposalSaveAnswer>;
   readonly onSaved: (proposal: TeamProposal, action: TeamFormAction) => void;
   readonly onCancel: () => void;
 }) {
   const sprint = program === "sprint-with-us";
-  const H = headingLevel;
   const [values, setValues] = useState<TeamFormValues>(initial);
   const [chosen, setChosen] = useState<Chosen>(initial.organization ? { kind: "loading", id: initial.organization } : { kind: "none" });
   const [problems, setProblems] = useState<readonly TeamProblem[]>([]);
   const [refusal, setRefusal] = useState<readonly string[] | null>(null);
+  // Each new set of problems or refusal is a new message, focused as it appears.
+  const [messageVersion, setMessageVersion] = useState(0);
   const [existingNamed, setExistingNamed] = useState<string | null>(null);
   const [existingHeld, setExistingHeld] = useState<string | null>(null);
   const [attempted, setAttempted] = useState(false);
@@ -336,15 +338,6 @@ export function TeamProposalForm({
   const [sending, setSending] = useState(false);
   const [adding, setAdding] = useState<Readonly<Record<string, string>>>({});
   const attachments = useAttachments(initialAttachments);
-  const summaryRef = useRef<HTMLDivElement>(null);
-  const refusalRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (problems.length > 0) summaryRef.current?.focus();
-  }, [problems]);
-  useEffect(() => {
-    if (refusal) refusalRef.current?.focus();
-  }, [refusal]);
 
   // The chosen organization's qualification and people, read whenever another is chosen.
   const chosenId = values.organization;
@@ -381,11 +374,7 @@ export function TeamProposalForm({
   const twu = useMemo(() => twuOpportunityOf(opportunity), [opportunity]);
   const organizationName = organizations.find((organization) => organization.id === values.organization)?.legalName ?? "This organization";
   const qualified =
-    chosen.kind !== "loaded" || !chosen.organization
-      ? true
-      : sprint
-        ? chosen.organization.swuQualified
-        : chosen.organization.twuQualified;
+    chosen.kind !== "loaded" || !chosen.organization ? true : sprint ? chosen.organization.swuQualified : chosen.organization.twuQualified;
   const neededAreas = [...new Set(opportunity.resources.map((resource) => resource.serviceArea))];
   const missingAreas =
     !sprint && chosen.kind === "loaded" && chosen.organization ? neededAreas.filter((area) => !chosen.organization!.serviceAreas.includes(area)) : [];
@@ -409,6 +398,7 @@ export function TeamProposalForm({
   // Sprint With Us may not be submitted while a phase is incomplete or a cost is over its budget.
   const submitUnavailable = sprint && (shortfalls.some((shortfall) => !shortfall.complete) || costProblems.length > 0);
   const contractCost = sprint ? null : twuContractCost(twuInputOf(values, []).team, twu);
+  const overContract = contractCost !== null && contractCost > twu.maxBudget;
 
   const problemFor = (field: string) => problems.find((problem) => problem.field === field)?.message;
   const problemsUnder = (prefix: string) => problems.filter((problem) => problem.field === prefix || problem.field.startsWith(`${prefix}.`));
@@ -454,6 +444,7 @@ export function TeamProposalForm({
       onSaved(answer.proposal, action);
       return;
     }
+    setMessageVersion((version) => version + 1);
     if (answer.kind === "failed") {
       setRefusal(["The service could not save it. Nothing you entered has been lost. Try again."]);
       return;
@@ -479,587 +470,555 @@ export function TeamProposalForm({
       ? swuProposalProblems(swuInputOf(values, []), swu, organization, standings)
       : twuProposalProblems(twuInputOf(values, []), twu, organization, standings, new Set(opportunity.resources.map((resource) => resource.id)));
     setProblems(found);
+    setMessageVersion((version) => version + 1);
     setRefusal(null);
     if (found.length === 0) setAsking(true);
   }
 
+  const submitting = purpose === "create" || offerSubmit;
   const organizationChoices = organizations.map((organization) => ({ id: organization.id, label: organization.legalName }));
   const organizationProblem = problemFor("organization");
+  const submitDescription = problems.length > 0 ? "proposal-error-summary" : submitUnavailable ? "proposal-submit-unavailable" : undefined;
 
-  return (
+  const messages = (
     <>
       {problems.length > 0 ? (
-        <TeamProblemSummary program={program} problems={problems} title={purpose === "edit" ? "Your changes have" : "This proposal has"} summaryRef={summaryRef} />
+        <TeamProblemSummary
+          key={`problems-${messageVersion}`}
+          program={program}
+          problems={problems}
+          title={purpose === "edit" ? "Your changes have" : "This proposal has"}
+        />
       ) : null}
       {refusal ? (
-        <div tabIndex={-1} ref={refusalRef} data-testid="proposal-refused-message">
+        <Focused key={`refusal-${messageVersion}`} testId="proposal-refused-message">
           <TitledAlert variant="danger" role="alert" title={refusalTitle}>
             {(refusal.length > 0 ? refusal : ["The service refused it."]).map((reason) => (
               <Text elementType="p" key={reason}>
                 {reason}
               </Text>
             ))}
-            {existingHeld ? (
-              <Link href={`/opportunities/${program}/${opportunity.id}/proposals/${existingHeld}/edit`}>Open your proposal</Link>
-            ) : null}
+            {existingHeld ? <Link href={`/opportunities/${program}/${opportunity.id}/proposals/${existingHeld}/edit`}>Open your proposal</Link> : null}
           </TitledAlert>
-        </div>
+        </Focused>
       ) : null}
-      <Form
-        validationBehavior="aria"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!submitUnavailable) attempt("submit");
-        }}
-      >
-        <Stack gap="medium">
-          <section aria-labelledby="form-organization" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-organization">
-                Organization
-              </Heading>
-              <Select
-                id="proposal-organization"
-                label="Organization"
-                isRequired
-                description={
-                  organizationLocked
-                    ? "It cannot be changed while the proposal is submitted. Withdraw the proposal first to change it."
-                    : sprint
-                      ? "Organizations you own or administer. It must be a qualified supplier for Sprint With Us before you submit."
-                      : "Organizations you own or administer. It must be a qualified supplier for Team With Us, and provide every service area this opportunity needs, before you submit."
-                }
-                items={organizationChoices}
-                value={values.organization === "" ? null : values.organization}
-                onChange={(key) => chooseOrganization(key === null ? "" : String(key))}
-                isInvalid={organizationProblem !== undefined}
-                errorMessage={organizationProblem}
-                data-testid="proposal-organization-field"
-              />
-              {organizations.length === 0 ? (
-                <Text elementType="p" size="small">
-                  You do not own or administer an organization. <Link href="/organizations/create">Register one</Link> to propose.
-                </Text>
-              ) : null}
-              {existingNamed ? (
-                <Text elementType="p" size="small">
-                  {`${organizationName} already has a proposal for this opportunity. `}
-                  <Link href={`/opportunities/${program}/${opportunity.id}/proposals/${existingNamed}/edit`}>Open the existing proposal</Link>
-                </Text>
-              ) : null}
-              {values.organization !== "" && chosen.kind === "loaded" && !qualified ? (
-                <div data-testid="proposal-unqualified-organization-notice">
-                  <TitledAlert variant="warning" title={`${organizationName} is not qualified for ${TEAM_PROGRAM_NAMES[program]}`}>
-                    <Text elementType="p">
-                      {`You can save this proposal as a draft, but it cannot be submitted for this organization until it is a qualified supplier for ${TEAM_PROGRAM_NAMES[program]}. Qualification is checked again when you submit.`}
-                    </Text>
-                    <Link href={`/organizations/${values.organization}/${program}-terms-and-conditions`}>Review the organization's qualification</Link>
-                  </TitledAlert>
-                </div>
-              ) : null}
-              {missingAreas.length > 0 ? (
-                <div id="proposal-service-area-message" data-testid="proposal-service-area-error">
-                  <Text elementType="p" color="danger">
-                    {`${organizationName} does not provide ${missingAreas.map(areaName).join(", ")}, which this opportunity needs.`}
-                  </Text>
-                </div>
-              ) : null}
-            </Stack>
-          </section>
+      {values.organization !== "" && chosen.kind === "loaded" && !qualified ? (
+        <Focused key={`unqualified-${values.organization}`} testId="proposal-unqualified-organization-notice">
+          <TitledAlert variant="warning" title={`${organizationName} is not qualified for ${TEAM_PROGRAM_NAMES[program]}`}>
+            <Text elementType="p">
+              {`You can save this proposal as a draft, but it cannot be submitted for this organization until it is a qualified supplier for ${TEAM_PROGRAM_NAMES[program]}. Qualification is checked again when you submit.`}
+            </Text>
+            <Link href={`/organizations/${values.organization}/${program}-terms-and-conditions`}>Review the organization's qualification</Link>
+          </TitledAlert>
+        </Focused>
+      ) : null}
+    </>
+  );
 
-          {sprint ? (
-            <section aria-labelledby="form-team" style={card}>
-              <Stack gap="medium">
-                <Heading level={H} id="form-team">
-                  Team
-                </Heading>
-                <Text elementType="p">
-                  Name a team for each phase this opportunity has, and one scrum master in each. Everyone you name must be an
-                  active member of the organization.
-                </Text>
-                {values.organization === "" ? <Text elementType="p">Choose an organization to name its people.</Text> : null}
-                {shortfalls.map(({ phase, complete, empty, pending, missing }) => {
-                  const team = values.phases[phase.phase] ?? { members: [], proposedCost: Number.NaN };
-                  const lower = phaseLower(phase.phase);
-                  const name = SWU_PHASE_NAMES[phase.phase];
-                  const choices = teamMemberChoices(program, people, team.members.map((member) => member.member));
-                  const phaseProblems = problemsUnder(PHASE_KEYS[phase.phase]).filter((problem) => !problem.field.endsWith(".proposedCost"));
-                  const costMessage = costFor(`${PHASE_KEYS[phase.phase]}.proposedCost`) ?? problemFor(`${PHASE_KEYS[phase.phase]}.proposedCost`);
-                  const scrumMaster = team.members.find((member) => member.scrumMaster)?.member ?? null;
-                  return (
-                    <fieldset key={phase.phase} id={`proposal-${lower}-team`} style={group} data-testid="proposal-phase-team">
-                      <legend style={legend}>{`${name} phase`}</legend>
-                      <Stack gap="medium">
-                        <Text elementType="p" size="small" color="secondary">
-                          {`${dayLabel(phase.startDate)} to ${dayLabel(phase.completionDate)}.${phase.maxBudget > 0 ? ` Maximum budget ${dollars(phase.maxBudget)}.` : ""}`}
-                        </Text>
-                        <div data-testid="proposal-phase-requirements">
-                          <Text elementType="p" color={complete ? undefined : "danger"}>
-                            {complete
-                              ? `The ${lower} phase's team meets its requirements.`
-                              : empty
-                                ? `Incomplete: name at least one team member for the ${lower} phase.`
-                                : pending
-                                  ? `Incomplete: the ${lower} phase's team must be confirmed (not pending) members of the organization.`
-                                  : `Incomplete: the ${lower} phase's team does not yet hold ${missing.join(", ")}.`}
-                          </Text>
-                          {phase.requiredCapabilities.length > 0 ? (
-                            <ul aria-label={`Capabilities the ${lower} phase requires`}>
-                              {phase.requiredCapabilities.map((capability) => (
-                                <li key={capability}>{`${capability}: ${missing.includes(capability) ? "not held" : "held"}`}</li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </div>
-                        {team.members.length > 0 ? (
-                          <RadioGroup
-                            label={`Scrum master for the ${lower} phase`}
-                            value={scrumMaster}
-                            onChange={(value) =>
-                              setPhase(phase.phase, (current) => ({
-                                ...current,
-                                members: current.members.map((member) => ({ ...member, scrumMaster: member.member === value })),
-                              }))
-                            }
-                          >
-                            <Stack as="ul" gap="medium">
-                              {team.members.map((member) => {
-                                const standing = standings.get(member.member);
-                                const notActive = standing !== undefined && standing.membershipStatus !== "ACTIVE";
-                                return (
-                                  <li key={member.member} style={item}>
-                                    <Stack gap="small">
-                                      <Stack direction="row" align="center" gap="medium">
-                                        {/* Plain text: inside the radio group a design-system Text would be read as its description. */}
-                                        <span>{nameOf(member.member)}</span>
-                                        {notActive ? (
-                                          <span style={badge} data-testid="proposal-pending-team-member">
-                                            {standing.membershipStatus === "PENDING" ? "Membership pending" : "Not a member"}
-                                          </span>
-                                        ) : null}
-                                      </Stack>
-                                      <Radio
-                                        value={member.member}
-                                        aria-label={`Scrum master: ${nameOf(member.member)}, ${lower} phase`}
-                                        data-testid="proposal-scrum-master"
-                                      >
-                                        Scrum master
-                                      </Radio>
-                                      <div>
-                                        <Button
-                                          variant="tertiary"
-                                          size="small"
-                                          aria-label={`Remove ${nameOf(member.member)} from the ${lower} phase`}
-                                          onPress={() =>
-                                            setPhase(phase.phase, (current) => ({
-                                              ...current,
-                                              members: current.members.filter((each) => each.member !== member.member),
-                                            }))
-                                          }
-                                        >
-                                          Remove
-                                        </Button>
-                                      </div>
-                                    </Stack>
-                                  </li>
-                                );
-                              })}
-                            </Stack>
-                          </RadioGroup>
-                        ) : null}
-                        {phaseProblems.map((problem) => (
-                          <Text key={problem.message} elementType="p" color="danger">
-                            {problem.message}
-                          </Text>
-                        ))}
-                        <Stack direction="row" align="end" gap="medium">
-                          <Select
-                            label={`Team member to add to the ${lower} phase`}
-                            items={choices.map((choice) => ({ id: choice.id, label: choice.label }))}
-                            value={adding[phase.phase] ?? null}
-                            onChange={(key) => setAdding((current) => ({ ...current, [phase.phase]: key === null ? "" : String(key) }))}
-                          />
-                          <Button
-                            variant="secondary"
-                            aria-label={`Add team member to the ${lower} phase`}
-                            isDisabled={!adding[phase.phase] || !choices.some((choice) => choice.id === adding[phase.phase])}
-                            onPress={() => {
-                              const member = adding[phase.phase];
-                              if (!member) return;
-                              setPhase(phase.phase, (current) => ({
-                                ...current,
-                                members: [...current.members, { member, scrumMaster: false }],
-                              }));
-                              setAdding((current) => ({ ...current, [phase.phase]: "" }));
-                            }}
-                            data-testid="proposal-add-team-member"
-                          >
-                            Add team member
-                          </Button>
-                        </Stack>
-                        <NumberField
-                          id={`proposal-${lower}-cost`}
-                          label={`Proposed cost for the ${lower} phase`}
-                          isRequired
-                          description={phase.maxBudget > 0 ? `Up to the phase's maximum budget of ${dollars(phase.maxBudget)}.` : "Within the opportunity's maximum budget."}
-                          formatOptions={{ style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 }}
-                          value={team.proposedCost}
-                          onChange={(value) => setPhase(phase.phase, (current) => ({ ...current, proposedCost: value }))}
-                          isInvalid={costMessage !== undefined}
-                          errorMessage={costMessage}
-                          data-testid="proposal-phase-cost-field"
-                        />
-                      </Stack>
-                    </fieldset>
-                  );
-                })}
-              </Stack>
-            </section>
-          ) : (
-            <section aria-labelledby="form-team" id="form-team" style={card}>
-              <Stack gap="medium">
-                <Heading level={H} id="form-team-heading">
-                  Team
-                </Heading>
-                <Text elementType="p">
-                  Name at least one team member against this opportunity's resources, with an hourly rate for each. Everyone you
-                  name must be an active member of the organization, and no one may be named twice.
-                </Text>
-                {values.organization === "" ? <Text elementType="p">Choose an organization to name its people.</Text> : null}
-                {problemFor("team") ? (
-                  <Text elementType="p" color="danger">
-                    {problemFor("team")}
-                  </Text>
-                ) : null}
-                {opportunity.resources.map((resource, resourceIndex) => {
-                  const number = resourceIndex + 1;
-                  const named = values.team.map((member, index) => ({ member, index })).filter(({ member }) => member.resource === resource.id);
-                  const choices = teamMemberChoices(program, people, values.team.map((member) => member.member));
-                  const key = `resource-${resource.id}`;
-                  return (
-                    <fieldset key={resource.id || resourceIndex} style={group}>
-                      <legend style={legend}>{`Resource ${number}: ${areaName(resource.serviceArea)}, ${resource.targetAllocation}% of full time`}</legend>
-                      <Stack gap="medium">
-                        {named.length > 0 ? (
-                          <Stack as="ul" gap="medium">
-                            {named.map(({ member, index }) => {
-                              const rateProblem = problemFor(`team.${index + 1}.hourlyRate`);
-                              const otherProblems = problemsUnder(`team.${index + 1}`).filter((problem) => !problem.field.endsWith(".hourlyRate"));
-                              return (
-                                <li key={member.member} style={item} id={`proposal-team-member-${index + 1}`}>
-                                  <Stack gap="small">
-                                    <Text elementType="p">{nameOf(member.member)}</Text>
-                                    {otherProblems.map((problem) => (
-                                      <Text key={problem.message} elementType="p" color="danger">
-                                        {problem.message}
-                                      </Text>
-                                    ))}
-                                    <NumberField
-                                      id={`proposal-resource-${number}-rate-${index + 1}`}
-                                      label={`Hourly rate for ${nameOf(member.member)}`}
-                                      isRequired
-                                      description="At least $1."
-                                      formatOptions={{ style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", minimumFractionDigits: 0, maximumFractionDigits: 2 }}
-                                      value={member.hourlyRate}
-                                      onChange={(value) =>
-                                        setValues((current) => ({
-                                          ...current,
-                                          team: current.team.map((each, at) => (at === index ? { ...each, hourlyRate: value } : each)),
-                                        }))
-                                      }
-                                      isInvalid={rateProblem !== undefined}
-                                      errorMessage={rateProblem}
-                                      aria-describedby={contractCost !== null && contractCost > twu.maxBudget ? "proposal-cost-error" : undefined}
-                                      data-testid="proposal-hourly-rate-field"
-                                    />
-                                    <div>
-                                      <Button
-                                        variant="tertiary"
-                                        size="small"
-                                        aria-label={`Remove ${nameOf(member.member)} from resource ${number}`}
-                                        onPress={() => setValues((current) => ({ ...current, team: current.team.filter((_each, at) => at !== index) }))}
-                                      >
-                                        Remove
-                                      </Button>
-                                    </div>
-                                  </Stack>
-                                </li>
-                              );
-                            })}
-                          </Stack>
-                        ) : null}
-                        <Stack direction="row" align="end" gap="medium">
-                          <Select
-                            label={`Team member to add to resource ${number}`}
-                            items={choices.map((choice) => ({ id: choice.id, label: choice.label }))}
-                            value={adding[key] ?? null}
-                            onChange={(value) => setAdding((current) => ({ ...current, [key]: value === null ? "" : String(value) }))}
-                          />
-                          <Button
-                            variant="secondary"
-                            aria-label={`Add team member to resource ${number}`}
-                            isDisabled={!adding[key] || !choices.some((choice) => choice.id === adding[key])}
-                            onPress={() => {
-                              const member = adding[key];
-                              if (!member) return;
-                              setValues((current) => ({ ...current, team: [...current.team, { member, resource: resource.id, hourlyRate: Number.NaN }] }));
-                              setAdding((current) => ({ ...current, [key]: "" }));
-                            }}
-                            data-testid="proposal-add-team-member"
-                          >
-                            Add team member
-                          </Button>
-                        </Stack>
-                      </Stack>
-                    </fieldset>
-                  );
-                })}
-              </Stack>
-            </section>
-          )}
+  const actions =
+    purpose === "create" ? (
+      <>
+        <Button
+          variant="primary"
+          size="medium"
+          isDisabled={sending || submitUnavailable}
+          aria-describedby={submitDescription}
+          onPress={() => attempt("submit")}
+          data-testid="proposal-submit"
+        >
+          Submit proposal
+        </Button>
+        <Button variant="secondary" size="medium" isDisabled={sending} onPress={() => attempt("save")} data-testid="proposal-save-draft">
+          Save draft
+        </Button>
+        <Button variant="tertiary" size="medium" onPress={onCancel} data-testid="proposal-cancel">
+          Cancel
+        </Button>
+      </>
+    ) : (
+      <>
+        {offerSubmit ? (
+          <Button
+            variant="primary"
+            size="medium"
+            isDisabled={sending || submitUnavailable}
+            aria-describedby={submitDescription}
+            onPress={() => attempt("submit")}
+            data-testid="proposal-save-and-submit"
+          >
+            Save changes and submit
+          </Button>
+        ) : null}
+        <Button
+          variant={offerSubmit ? "secondary" : "primary"}
+          size="medium"
+          isDisabled={sending}
+          onPress={() => attempt("save")}
+          data-testid="proposal-save-changes"
+        >
+          Save changes
+        </Button>
+        <Button variant="tertiary" size="medium" onPress={onCancel} data-testid="proposal-cancel-edit">
+          Cancel
+        </Button>
+      </>
+    );
 
-          {sprint ? (
-            <section aria-labelledby="form-capabilities" style={card}>
-              <Stack gap="medium">
-                <Heading level={H} id="form-capabilities">
-                  Capabilities
-                </Heading>
-                <Text elementType="p">Between them, your phase teams must cover every capability this opportunity requires.</Text>
-                {requiredCapabilities.length > 0 ? (
-                  <ul>
-                    {requiredCapabilities.map((capability) => (
-                      <li key={capability}>{`${capability}: ${heldCapabilities.has(capability) ? "covered" : "not covered"}`}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <Text elementType="p">This opportunity names no capabilities its phases require.</Text>
-                )}
-                {uncovered.length > 0 && (anyoneNamed || attempted) ? (
-                  <div id="proposal-capabilities-error" data-testid="proposal-capability-gap-error">
-                    <Text elementType="p" color="danger">
-                      {problemFor("team") ?? capabilityGapMessage(uncovered)}
-                    </Text>
-                  </div>
-                ) : null}
-              </Stack>
-            </section>
-          ) : null}
+  const part = (number: number, title: string) => `${number}. ${title}`;
+  let parts = 0;
+  const next = (title: string) => part(++parts, title);
 
-          <section aria-labelledby="form-cost" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-cost">
-                Cost
-              </Heading>
-              {sprint ? (
-                <>
-                  <div role="status">
-                    <Text elementType="p">{`Total proposed cost: ${dollars(swuTotalCost(swuInputOf(values, [])))} of the ${dollars(opportunity.value.amount)} maximum budget.`}</Text>
-                  </div>
-                  {costFor("totalProposedCost") ?? problemFor("totalProposedCost") ? (
-                    <div id="proposal-cost-error" data-testid="proposal-budget-exceeded-error">
-                      <Text elementType="p" color="danger">
-                        {costFor("totalProposedCost") ?? problemFor("totalProposedCost")}
-                      </Text>
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <Text elementType="p">
-                    {opportunity.completionDate
-                      ? `Each hourly rate is applied at its resource's target allocation across the contract, from ${dayLabel(opportunity.startDate)} to ${dayLabel(opportunity.completionDate)}. The total must not be more than the opportunity's maximum budget.`
-                      : "Each hourly rate is applied at its resource's target allocation across the contract. The total must not be more than the opportunity's maximum budget."}
-                  </Text>
-                  <div role="status">
-                    <Text elementType="p">
-                      {contractCost === null
-                        ? "The contract has no completion date, so its cost cannot be estimated."
-                        : `Estimated cost over the contract: ${dollars(contractCost)} of the ${dollars(opportunity.value.amount)} maximum budget.`}
-                    </Text>
-                  </div>
-                  {(contractCost !== null && contractCost > twu.maxBudget) || problemFor("totalProposedCost") ? (
-                    <div id="proposal-cost-error" data-testid="proposal-budget-exceeded-error">
-                      <Text elementType="p" color="danger">
-                        {contractCost !== null && contractCost > twu.maxBudget
-                          ? `At these rates the contract would cost ${dollars(contractCost)}, which is more than the opportunity's maximum budget of ${dollars(twu.maxBudget)}. Lower one or more hourly rates.`
-                          : problemFor("totalProposedCost")}
-                      </Text>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </Stack>
-          </section>
+  return (
+    <ProposalFormPage
+      head={head}
+      messages={messages}
+      intro={intro}
+      summary={summary}
+      actions={actions}
+      onSubmit={() => {
+        if (!submitting) attempt("save");
+        else if (!submitUnavailable) attempt("submit");
+      }}
+      dialogs={
+        <TermsDialog
+          isOpen={asking}
+          isSending={sending}
+          onCancel={() => setAsking(false)}
+          onConfirm={() => void send("submit")}
+          programName={TEAM_PROGRAM_NAMES[program]}
+          programTerms={`/content/${program}-terms-and-conditions`}
+        />
+      }
+    >
+      <FormPart id="form-organization" title={next("Organization")}>
+        <Select
+          id="proposal-organization"
+          label="Organization"
+          isRequired
+          description={
+            organizationLocked
+              ? "It cannot be changed while the proposal is submitted. Withdraw the proposal first to change it."
+              : sprint
+                ? "Organizations you own or administer. It must be a qualified supplier for Sprint With Us before you submit."
+                : "Organizations you own or administer. It must be a qualified supplier for Team With Us, and provide every service area this opportunity needs, before you submit."
+          }
+          items={organizationChoices}
+          value={values.organization === "" ? null : values.organization}
+          onChange={(key) => chooseOrganization(key === null ? "" : String(key))}
+          isInvalid={organizationProblem !== undefined}
+          errorMessage={organizationProblem}
+          data-testid="proposal-organization-field"
+        />
+        {organizations.length === 0 ? (
+          <Text elementType="p" size="small">
+            You do not own or administer an organization. <Link href="/organizations/create">Register one</Link> to propose.
+          </Text>
+        ) : null}
+        {existingNamed ? (
+          <Text elementType="p" size="small">
+            {`${organizationName} already has a proposal for this opportunity. `}
+            <Link href={`/opportunities/${program}/${opportunity.id}/proposals/${existingNamed}/edit`}>Open the existing proposal</Link>
+          </Text>
+        ) : null}
+        {missingAreas.length > 0 ? (
+          <GroupError id="proposal-service-area-message" testId="proposal-service-area-error">
+            {`${organizationName} does not provide ${missingAreas.map(areaName).join(", ")}, which this opportunity needs.`}
+          </GroupError>
+        ) : null}
+      </FormPart>
 
-          <section aria-labelledby="form-questions" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-questions">
-                {sprint ? "Team questions" : "Resource questions"}
-              </Heading>
-              {opportunity.questions.length === 0 ? <Text elementType="p">This opportunity asks no questions.</Text> : null}
-              {opportunity.questions.map((question, order) => {
-                const number = order + 1;
-                const response = values.responses[order] ?? "";
-                const key = sprint ? "teamQuestionResponses" : "resourceQuestionResponses";
-                const message = problemFor(`${key}.${order}.response`) ?? problemFor(`${key}.${order}.order`);
-                return (
-                  <fieldset key={order} style={group}>
-                    <legend style={legend}>{`Question ${number}`}</legend>
-                    <Stack gap="medium">
-                      <Text elementType="p">{question.question}</Text>
-                      {question.guideline ? (
-                        <Text elementType="p" size="small" color="secondary">
-                          {question.guideline}
-                        </Text>
-                      ) : null}
-                      <TextArea
-                        id={`proposal-question-${number}`}
-                        label={`Response to question ${number}`}
-                        isRequired
-                        description={`Up to ${question.wordLimit} words.`}
-                        value={response}
-                        onChange={(value) => setValues((current) => ({ ...current, responses: { ...current.responses, [order]: value } }))}
-                        isInvalid={message !== undefined}
-                        errorMessage={message}
-                        data-testid="proposal-question-response-field"
-                      />
-                      <div role="status">
-                        <Text elementType="p" size="small" color="secondary">{`${wordCount(response)} of ${question.wordLimit} words`}</Text>
-                      </div>
-                    </Stack>
-                  </fieldset>
-                );
-              })}
-            </Stack>
-          </section>
-
-          {sprint ? (
-            <section aria-labelledby="form-references" style={card}>
-              <Stack gap="medium">
-                <Heading level={H} id="form-references">
-                  References
-                </Heading>
-                {values.references.length === 0 ? <Text elementType="p">No references have been added.</Text> : null}
-                {values.references.map((reference, index) => {
-                  const number = index + 1;
-                  const set = (patch: Partial<ReferenceInput>) =>
-                    setValues((current) => ({ ...current, references: current.references.map((each, at) => (at === index ? { ...each, ...patch } : each)) }));
-                  const message = (part: string) => problemFor(`references.${number}.${part}`);
-                  return (
-                    <fieldset key={index} id={`proposal-reference-${number}`} style={group}>
-                      <legend style={legend}>{`Reference ${number}`}</legend>
-                      <Stack gap="medium">
-                        <TextField label="Name" value={reference.name} onChange={(name) => set({ name })} isInvalid={message("name") !== undefined} errorMessage={message("name")} />
-                        <TextField
-                          label="Company"
-                          value={reference.company}
-                          onChange={(company) => set({ company })}
-                          isInvalid={message("company") !== undefined}
-                          errorMessage={message("company")}
-                        />
-                        <TextField
-                          label="Email address"
-                          type="email"
-                          value={reference.email}
-                          onChange={(email) => set({ email })}
-                          isInvalid={message("email") !== undefined}
-                          errorMessage={message("email")}
-                        />
-                        <TextField
-                          label="Phone number (optional)"
-                          type="tel"
-                          value={reference.phone}
-                          onChange={(phone) => set({ phone })}
-                          isInvalid={message("phone") !== undefined}
-                          errorMessage={message("phone")}
-                        />
-                        <div>
+      {sprint ? (
+        <FormPart id="form-team" title={next("Team")}>
+          <p className="op-text">
+            Name a team for each phase this opportunity has, and choose one scrum master in each. Everyone you name must be an active
+            member of the organization.
+          </p>
+          {values.organization === "" ? <p className="op-text">Choose an organization to name its people.</p> : null}
+          {shortfalls.map((shortfall) => {
+            const { phase } = shortfall;
+            const team = values.phases[phase.phase] ?? { members: [], proposedCost: Number.NaN };
+            const lower = phaseLower(phase.phase);
+            const legend = `${SWU_PHASE_NAMES[phase.phase]} phase`;
+            const choices = teamMemberChoices(program, people, team.members.map((member) => member.member));
+            const phaseProblems = problemsUnder(PHASE_KEYS[phase.phase]).filter((problem) => !problem.field.endsWith(".proposedCost"));
+            const rowProblem = phaseProblems.some((problem) => problem.message === NOT_ACTIVE);
+            const groupProblems = phaseProblems.filter((problem) => problem.message !== NOT_ACTIVE);
+            const costMessage = costFor(`${PHASE_KEYS[phase.phase]}.proposedCost`) ?? problemFor(`${PHASE_KEYS[phase.phase]}.proposedCost`);
+            const scrumMaster = team.members.find((member) => member.scrumMaster)?.member ?? null;
+            const errorId = `proposal-${lower}-team-error`;
+            return (
+              <Fieldset key={phase.phase} legend={legend} testId="proposal-phase-team">
+                <p className="op-note">
+                  {`${dayLabel(phase.startDate)} to ${dayLabel(phase.completionDate)}.${phase.maxBudget > 0 ? ` Maximum budget ${dollars(phase.maxBudget)}.` : ""}`}
+                </p>
+                {team.members.length > 0 ? (
+                  <ul className="pp-rows" id={`proposal-${lower}-team`} aria-label={`${legend} team`}>
+                    {team.members.map((member) => {
+                      const standing = standings.get(member.member);
+                      const notActive = standing !== undefined && standing.membershipStatus !== "ACTIVE";
+                      return (
+                        <li key={member.member} className="pp-row">
+                          <span className="pp-row-name">
+                            {nameOf(member.member)}
+                            {notActive ? (
+                              <ProposalStatus testId="proposal-pending-team-member">
+                                {standing.membershipStatus === "PENDING" ? "Membership pending" : "Not a member"}
+                              </ProposalStatus>
+                            ) : null}
+                          </span>
                           <Button
                             variant="tertiary"
                             size="small"
-                            onPress={() => setValues((current) => ({ ...current, references: current.references.filter((_each, at) => at !== index) }))}
+                            aria-label={`Remove ${nameOf(member.member)} from the ${lower} phase`}
+                            onPress={() =>
+                              setPhase(phase.phase, (current) => ({ ...current, members: current.members.filter((each) => each.member !== member.member) }))
+                            }
                           >
-                            {`Remove reference ${number}`}
+                            Remove
                           </Button>
-                        </div>
-                      </Stack>
-                    </fieldset>
-                  );
-                })}
-                <div>
+                          {notActive && rowProblem ? (
+                            <div className="pp-row-error">
+                              <Text elementType="p" size="small" color="danger">
+                                {NOT_ACTIVE}
+                              </Text>
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="op-text" id={`proposal-${lower}-team`}>
+                    Nobody is named in this phase yet.
+                  </p>
+                )}
+                {team.members.length > 0 ? (
+                  <RadioGroup
+                    label={`Scrum master for the ${lower} phase`}
+                    isRequired
+                    orientation="vertical"
+                    value={scrumMaster}
+                    isInvalid={groupProblems.length > 0}
+                    aria-describedby={groupProblems.length > 0 ? errorId : undefined}
+                    onChange={(value) =>
+                      setPhase(phase.phase, (current) => ({
+                        ...current,
+                        members: current.members.map((member) => ({ ...member, scrumMaster: member.member === value })),
+                      }))
+                    }
+                  >
+                    {team.members.map((member) => (
+                      <Radio key={member.member} value={member.member} data-testid="proposal-scrum-master">
+                        {nameOf(member.member)}
+                      </Radio>
+                    ))}
+                  </RadioGroup>
+                ) : null}
+                {groupProblems.length > 0 ? (
+                  <GroupError id={errorId}>{groupProblems.map((problem) => problem.message).join(" ")}</GroupError>
+                ) : null}
+                <div className="pp-cluster">
+                  <Select
+                    label={`Team member to add to the ${lower} phase`}
+                    items={choices.map((choice) => ({ id: choice.id, label: choice.label }))}
+                    value={adding[phase.phase] ?? null}
+                    onChange={(key) => setAdding((current) => ({ ...current, [phase.phase]: key === null ? "" : String(key) }))}
+                    data-testid="proposal-team-member-choice"
+                  />
                   <Button
                     variant="secondary"
-                    onPress={() => setValues((current) => ({ ...current, references: [...current.references, { name: "", company: "", phone: "", email: "" }] }))}
-                    data-testid="proposal-add-reference"
+                    aria-label={`Add team member to the ${lower} phase`}
+                    isDisabled={!adding[phase.phase] || !choices.some((choice) => choice.id === adding[phase.phase])}
+                    onPress={() => {
+                      const member = adding[phase.phase];
+                      if (!member) return;
+                      setPhase(phase.phase, (current) => ({ ...current, members: [...current.members, { member, scrumMaster: false }] }));
+                      setAdding((current) => ({ ...current, [phase.phase]: "" }));
+                    }}
+                    data-testid="proposal-add-team-member"
                   >
-                    Add a reference
+                    Add team member
                   </Button>
                 </div>
-              </Stack>
-            </section>
-          ) : null}
+                <div data-testid="proposal-phase-requirements">
+                  <Text elementType="p" size="small">
+                    {phaseRequirementsSentence({ ...shortfall, required: phase.requiredCapabilities })}
+                  </Text>
+                </div>
+                <div data-testid="proposal-cost">
+                  <NumberField
+                    id={`proposal-${lower}-cost`}
+                    label={`Proposed cost for the ${lower} phase`}
+                    isRequired
+                    description={phase.maxBudget > 0 ? `Up to the phase's maximum budget of ${dollars(phase.maxBudget)}.` : "Within the opportunity's maximum budget."}
+                    formatOptions={COST_FORMAT}
+                    value={team.proposedCost}
+                    onChange={(value) => setPhase(phase.phase, (current) => ({ ...current, proposedCost: value }))}
+                    isInvalid={costMessage !== undefined}
+                    errorMessage={costMessage}
+                    data-testid="proposal-phase-cost-field"
+                  />
+                </div>
+              </Fieldset>
+            );
+          })}
+        </FormPart>
+      ) : (
+        <FormPart id="form-team" title={next("Team")}>
+          <p className="op-text">
+            Name at least one team member against this opportunity's resources, with an hourly rate for each. Everyone you name must
+            be an active member of the organization, and no one may be named twice.
+          </p>
+          {values.organization === "" ? <p className="op-text">Choose an organization to name its people.</p> : null}
+          {problemFor("team") ? <GroupError id="proposal-team-error">{problemFor("team")}</GroupError> : null}
+          {opportunity.resources.map((resource, resourceIndex) => {
+            const number = resourceIndex + 1;
+            const named = values.team.map((member, index) => ({ member, index })).filter(({ member }) => member.resource === resource.id);
+            const choices = teamMemberChoices(program, people, values.team.map((member) => member.member));
+            const key = `resource-${resource.id}`;
+            return (
+              <Fieldset key={resource.id || resourceIndex} legend={`Resource ${number}: ${areaName(resource.serviceArea)}, ${resource.targetAllocation}% of full time`}>
+                {named.length > 0 ? (
+                  <ul className="pp-rows" aria-label={`Resource ${number} team`}>
+                    {named.map(({ member, index }) => {
+                      const rateProblem = problemFor(`team.${index + 1}.hourlyRate`);
+                      const otherProblems = problemsUnder(`team.${index + 1}`).filter((problem) => !problem.field.endsWith(".hourlyRate"));
+                      const standing = standings.get(member.member);
+                      const notActive = standing !== undefined && standing.membershipStatus !== "ACTIVE";
+                      return (
+                        <li key={member.member} className="pp-row" id={`proposal-team-member-${index + 1}`}>
+                          <span className="pp-row-name">
+                            {nameOf(member.member)}
+                            {notActive ? (
+                              <ProposalStatus testId="proposal-pending-team-member">
+                                {standing.membershipStatus === "PENDING" ? "Membership pending" : "Not a member"}
+                              </ProposalStatus>
+                            ) : null}
+                          </span>
+                          <NumberField
+                            id={`proposal-resource-${number}-rate-${index + 1}`}
+                            label={`Hourly rate for ${nameOf(member.member)}`}
+                            isRequired
+                            description="At least $1."
+                            formatOptions={RATE_FORMAT}
+                            value={member.hourlyRate}
+                            onChange={(value) =>
+                              setValues((current) => ({
+                                ...current,
+                                team: current.team.map((each, at) => (at === index ? { ...each, hourlyRate: value } : each)),
+                              }))
+                            }
+                            isInvalid={rateProblem !== undefined}
+                            errorMessage={rateProblem}
+                            aria-describedby={overContract ? "proposal-cost-error" : undefined}
+                            data-testid="proposal-hourly-rate-field"
+                          />
+                          <Button
+                            variant="tertiary"
+                            size="small"
+                            aria-label={`Remove ${nameOf(member.member)} from resource ${number}`}
+                            onPress={() => setValues((current) => ({ ...current, team: current.team.filter((_each, at) => at !== index) }))}
+                          >
+                            Remove
+                          </Button>
+                          {otherProblems.length > 0 ? (
+                            <div className="pp-row-error">
+                              {otherProblems.map((problem) => (
+                                <Text key={problem.message} elementType="p" size="small" color="danger">
+                                  {problem.message}
+                                </Text>
+                              ))}
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : null}
+                <div className="pp-cluster">
+                  <Select
+                    label={`Team member to add to resource ${number}`}
+                    items={choices.map((choice) => ({ id: choice.id, label: choice.label }))}
+                    value={adding[key] ?? null}
+                    onChange={(value) => setAdding((current) => ({ ...current, [key]: value === null ? "" : String(value) }))}
+                    data-testid="proposal-team-member-choice"
+                  />
+                  <Button
+                    variant="secondary"
+                    aria-label={`Add team member to resource ${number}`}
+                    isDisabled={!adding[key] || !choices.some((choice) => choice.id === adding[key])}
+                    onPress={() => {
+                      const member = adding[key];
+                      if (!member) return;
+                      setValues((current) => ({ ...current, team: [...current.team, { member, resource: resource.id, hourlyRate: Number.NaN }] }));
+                      setAdding((current) => ({ ...current, [key]: "" }));
+                    }}
+                    data-testid="proposal-add-team-member"
+                  >
+                    Add team member
+                  </Button>
+                </div>
+              </Fieldset>
+            );
+          })}
+        </FormPart>
+      )}
 
-          <AttachmentControl state={attachments} headingLevel={H} host="proposal" saved={purpose === "edit"} />
-          {purpose === "create" ? (
-            <Text elementType="p">
-              You will be asked to accept the terms and conditions when you submit. You can withdraw a submitted proposal at any
-              time.
-            </Text>
+      {sprint ? (
+        <FormPart id="form-capabilities" title={next("Capabilities")}>
+          <p className="op-text">Between them, your phase teams must cover every capability this opportunity requires.</p>
+          {requiredCapabilities.length > 0 ? (
+            <ul className="op-list">
+              {requiredCapabilities.map((capability) => (
+                <li key={capability}>{`${capability}: ${heldCapabilities.has(capability) ? "covered" : "not covered"}`}</li>
+              ))}
+            </ul>
           ) : (
-            <Text elementType="p">Save changes keeps this proposal as it is. Save changes and submit asks you to accept the terms and conditions.</Text>
+            <p className="op-text">This opportunity names no capabilities its phases require.</p>
           )}
-          {submitUnavailable ? (
-            <Text elementType="p" size="small" color="secondary" id="proposal-submit-unavailable">
-              Submitting is available once every phase's team meets its requirements and every cost is within its budget.
-            </Text>
+          {uncovered.length > 0 && (anyoneNamed || attempted) ? (
+            <GroupError id="proposal-capabilities-error" testId="proposal-capability-gap-error">
+              {problemFor("team") ?? capabilityGapMessage(uncovered)}
+            </GroupError>
           ) : null}
-          {purpose === "create" ? (
-            <ButtonGroup ariaLabel="Proposal actions">
-              <Button variant="tertiary" onPress={onCancel} data-testid="proposal-cancel">
-                Cancel
-              </Button>
-              <Button variant="secondary" isDisabled={sending} onPress={() => attempt("save")} data-testid="proposal-save-draft">
-                Save draft
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                isDisabled={sending || submitUnavailable}
-                aria-describedby={submitUnavailable ? "proposal-submit-unavailable" : undefined}
-                data-testid="proposal-submit"
-              >
-                Submit proposal
-              </Button>
-            </ButtonGroup>
-          ) : (
-            <ButtonGroup ariaLabel="Save choices">
-              <Button variant="tertiary" onPress={onCancel} data-testid="proposal-cancel-edit">
-                Cancel
-              </Button>
-              <Button variant="secondary" isDisabled={sending} onPress={() => attempt("save")} data-testid="proposal-save-changes">
-                Save changes
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                isDisabled={sending || submitUnavailable}
-                aria-describedby={submitUnavailable ? "proposal-submit-unavailable" : undefined}
-                data-testid="proposal-save-and-submit"
-              >
-                Save changes and submit
-              </Button>
-            </ButtonGroup>
-          )}
-        </Stack>
-      </Form>
-      <TermsDialog
-        isOpen={asking}
-        isSending={sending}
-        onCancel={() => setAsking(false)}
-        onConfirm={() => void send("submit")}
-        programName={TEAM_PROGRAM_NAMES[program]}
-        programTerms={`/content/${program}-terms-and-conditions`}
-      />
-    </>
+        </FormPart>
+      ) : null}
+
+      <FormPart id="form-cost" title={next("Cost")}>
+        {sprint ? (
+          <div role="status" data-testid="proposal-cost">
+            <p className="op-text">{`Total proposed cost: ${dollars(swuTotalCost(swuInputOf(values, [])))} of the ${dollars(opportunity.value.amount)} maximum budget.`}</p>
+            {costFor("totalProposedCost") ?? problemFor("totalProposedCost") ? (
+              <GroupError id="proposal-cost-error" testId="proposal-budget-exceeded-error">
+                {costFor("totalProposedCost") ?? problemFor("totalProposedCost")}
+              </GroupError>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <p className="op-text">
+              {opportunity.completionDate
+                ? `Each hourly rate is applied at its resource's target allocation across the contract, from ${dayLabel(opportunity.startDate)} to ${dayLabel(opportunity.completionDate)}. The total must not be more than the opportunity's maximum budget.`
+                : "Each hourly rate is applied at its resource's target allocation across the contract. The total must not be more than the opportunity's maximum budget."}
+            </p>
+            <div role="status">
+              <p className="op-text">
+                {contractCost === null
+                  ? "The contract has no completion date, so its cost cannot be estimated."
+                  : `Estimated cost over the contract: ${dollars(contractCost)} of the ${dollars(opportunity.value.amount)} maximum budget.`}
+              </p>
+            </div>
+            {overContract || problemFor("totalProposedCost") ? (
+              <GroupError id="proposal-cost-error" testId="proposal-budget-exceeded-error">
+                {overContract
+                  ? `At these rates the contract would cost ${dollars(contractCost ?? 0)}, which is more than the opportunity's maximum budget of ${dollars(twu.maxBudget)}. Lower one or more hourly rates.`
+                  : problemFor("totalProposedCost")}
+              </GroupError>
+            ) : null}
+          </>
+        )}
+      </FormPart>
+
+      <FormPart id="form-questions" title={next(sprint ? "Team questions" : "Resource questions")}>
+        {opportunity.questions.length === 0 ? <p className="op-text">This opportunity asks no questions.</p> : null}
+        {opportunity.questions.map((question, order) => {
+          const number = order + 1;
+          const response = values.responses[order] ?? "";
+          const key = sprint ? "teamQuestionResponses" : "resourceQuestionResponses";
+          const message = problemFor(`${key}.${order}.response`) ?? problemFor(`${key}.${order}.order`);
+          return (
+            <Fieldset key={order} legend={`Question ${number}`}>
+              <p className="op-text">{question.question}</p>
+              {question.guideline ? <p className="op-note">{question.guideline}</p> : null}
+              <TextArea
+                id={`proposal-question-${number}`}
+                label={`Response to question ${number}`}
+                isRequired
+                description={`Up to ${question.wordLimit} words.`}
+                value={response}
+                onChange={(value) => setValues((current) => ({ ...current, responses: { ...current.responses, [order]: value } }))}
+                isInvalid={message !== undefined}
+                errorMessage={message}
+                data-testid="proposal-question-response-field"
+              />
+              <div role="status">
+                <p className="op-note">{`${wordCount(response)} of ${question.wordLimit} words`}</p>
+              </div>
+            </Fieldset>
+          );
+        })}
+      </FormPart>
+
+      {sprint ? (
+        <FormPart id="form-references" title={next("References")}>
+          {values.references.length === 0 ? <p className="op-text">No references have been added.</p> : null}
+          {values.references.map((reference, index) => {
+            const number = index + 1;
+            const set = (patch: Partial<ReferenceInput>) =>
+              setValues((current) => ({ ...current, references: current.references.map((each, at) => (at === index ? { ...each, ...patch } : each)) }));
+            const message = (field: string) => problemFor(`references.${number}.${field}`);
+            return (
+              <Fieldset key={index} id={`proposal-reference-${number}`} legend={`Reference ${number}`}>
+                <TextField label="Name" value={reference.name} onChange={(name) => set({ name })} isInvalid={message("name") !== undefined} errorMessage={message("name")} />
+                <TextField
+                  label="Company"
+                  value={reference.company}
+                  onChange={(company) => set({ company })}
+                  isInvalid={message("company") !== undefined}
+                  errorMessage={message("company")}
+                />
+                <TextField
+                  label="Email address"
+                  type="email"
+                  value={reference.email}
+                  onChange={(email) => set({ email })}
+                  isInvalid={message("email") !== undefined}
+                  errorMessage={message("email")}
+                />
+                <TextField
+                  label="Phone number (optional)"
+                  type="tel"
+                  value={reference.phone}
+                  onChange={(phone) => set({ phone })}
+                  isInvalid={message("phone") !== undefined}
+                  errorMessage={message("phone")}
+                />
+                <div>
+                  <Button
+                    variant="tertiary"
+                    size="small"
+                    onPress={() => setValues((current) => ({ ...current, references: current.references.filter((_each, at) => at !== index) }))}
+                  >
+                    {`Remove reference ${number}`}
+                  </Button>
+                </div>
+              </Fieldset>
+            );
+          })}
+          <div className="pf-attach">
+            <Button
+              variant="secondary"
+              onPress={() => setValues((current) => ({ ...current, references: [...current.references, { name: "", company: "", phone: "", email: "" }] }))}
+              data-testid="proposal-add-reference"
+            >
+              Add a reference
+            </Button>
+          </div>
+        </FormPart>
+      ) : null}
+
+      <AttachmentControl state={attachments} headingLevel={2} host="proposal" saved={purpose === "edit"} part={next("Attachments")} />
+
+      {purpose === "create" ? (
+        <p className="op-text">You will be asked to accept the terms and conditions when you submit. You can withdraw a submitted proposal at any time.</p>
+      ) : offerSubmit ? (
+        <p className="op-text">Save changes keeps this proposal as it is. Save changes and submit asks you to accept the terms and conditions.</p>
+      ) : null}
+      {submitUnavailable && submitting ? (
+        <p className="op-note" id="proposal-submit-unavailable">
+          Submitting is available once every phase's team meets its requirements and every cost is within its budget.
+        </p>
+      ) : null}
+    </ProposalFormPage>
   );
 }
