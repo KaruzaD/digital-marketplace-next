@@ -133,6 +133,11 @@
 - 23:19:35 propose bind-adapter-new-101 at G3
 - 23:19:59 drive: step 1: `sdlc rule bind-adapter-new-101 --by agent:reviewer` — bind-adapter-new-101 is open at G3, held by agent:reviewer
 - 23:20:12 rule bind-adapter-new-101 approve at G3 by runner:checks (agent)
+- 23:20:16 drive: stopped after 1 step — nothing left to run
+- 23:20:17 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 1`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 23:24:35 drive: step 1: `sdlc run verify --slice 1` — build-slice-1-10 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 23:55:48 verify slice 1: R-1.43 (slice 10), R-5.16 (slice 17), R-1.40 (slice 20) fail (3 that an earlier slice passed). R-5.16 stopped where the adapter raised an error of its own, which can be the adapter's as easily as the application's, so build-slice-1-10 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 23:55:50 run verify: regenerated 3 files in .sdlc, site
 
 # Run record 2026-10-17
 
