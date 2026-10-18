@@ -1,7 +1,14 @@
 // criterion: @R-3.28 v1
-// provenance: blind, spec@05e88fb7765c5d6327f910e43f990e6c321b63fa, derived 2026-09-25
+// provenance: blind, spec@05e88fb7765c5d6327f910e43f990e6c321b63fa, derived 2026-10-17
 import { test, expect, persona, seed } from "../../fixtures";
 import type { Surface } from "../../fixtures";
+
+// Both cases change the approvals of the same organization, the only one the seed approves
+// for two service areas, so neither may run while the other does: they run one after the
+// other, in one worker, whatever parallelism the run is started with. Each still puts the two
+// approvals in place itself rather than relying on the other to leave them there, and the
+// second still runs when the first fails.
+test.describe.configure({ mode: "default" });
 
 // The given is an organization approved for two service areas: the seed's qualified
 // organization, whose seed record names two. That the two approvals are in place is
