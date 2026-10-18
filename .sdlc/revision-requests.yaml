@@ -2050,6 +2050,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
   - stage: bind-adapter
     target: new
     why: "R-5.18: evaluationPanelSwu.panelMemberRow() never read non-empty on
@@ -2065,6 +2067,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
   - stage: bind-adapter
     target: new
     why: "R-1.55: after a fresh draft is saved, evaluationPanelSwu.open then
@@ -2077,6 +2081,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
   - stage: bind-adapter
     target: new
     why: "R-5.1: evaluationPanelSwu.panelMemberRow() times out reading \"\"
@@ -2088,6 +2094,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
   - stage: bind-adapter
     target: new
     why: "R-5.17: evaluationPanelSwu.panelMemberRow() times out reading \"\"
@@ -2100,3 +2108,5 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
