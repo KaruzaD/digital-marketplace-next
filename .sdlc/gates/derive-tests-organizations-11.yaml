@@ -1,0 +1,17 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: do the revised R-3.28 organizations tests follow from their criterion and from nothing else, and do they answer the request to stop the two cases changing each other's state? Approve. The only change is a file-level `test.describe.configure({ mode: "default" })` plus an explanatory comment. It makes the file's two cases run in order in one worker, which takes the file out of fully parallel scheduling. That removes the interleaving the build-slice-14-7 ruling saw, where each case's poll observed the other's write to the shared qualified organization. 'default' is correctly preferred over 'serial': serial would skip the second case whenever the first fails and hide its result. The writer's reason for not giving each case its own organization holds: the seed has only one organization approved for two areas, and the owner clause needs that organization's own owner. Each case still sets up the two-area starting state as the administrator and does not depend on the other or on order, as the ruling asked. No assertion changed, so the test still checks the criterion's given/when/then, including the owner-has-no-editing-control clause, and nothing about the implementation was added. The typecheck passed with no diagnostics. The revision request this answers is not open in the project, so no condition-met is recorded. What would change the ruling: the next verify run showing the two cases still interfering, or a cross-file collision on this organization from instances sharing one target. That would be a runner-configuration question, not this stage's.
+reprompt: |2-
+  You ruled approve. "build-slice-14-7#1" is not an open condition. No condition is open in this project, so there is nothing here to close.
+conditions: []
+cost: 1.0729618
+turns: 16
+session: "4f94b0c0-e1d3-481a-9cf3-f85a214acec3"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T04:29:40.975Z
