@@ -37,3 +37,22 @@ The new branch should therefore make R-3.28 pass on the restyled build. This rea
 - The old binding returns the ticked areas as stored codes ("FULL_STACK_DEVELOPER"). The new binding returns display names ("Full stack developer"), and I kept that because changing the form is outside this fix.
 - `tests/adapters/new/bindings.yaml` still lists `service_area_checkbox` as bound, and nothing else in it changed.
 - No other member or file was edited, and every route I visited loaded.
+
+## Ruling
+
+**Verdict:** approve
+**By:** runner:checks
+
+Approved by the runner's checks, which policy.gates.G3.auto_approve lets settle bind-adapter proposals: the acceptance typecheck of b3f26dbda5 is clean; no condition is open against it; no escalation stands on it; nothing outside tests/adapters changed.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `b3f26dbda55af043ea0b16d71c9bdc810c92d366`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
