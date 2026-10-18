@@ -1,0 +1,19 @@
+gate: G3
+verdict: return
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: does slice 10 do what its criteria say? Return. The build's one owed fix is done: the Summary tab of a Sprint With Us / Team With Us draft now lists the assignment date (and Team With Us start date) in summaryDetails, and R-1.9 passes on tree 407d7d3, so build-slice-10-6#1 is met. All three remaining failures (R-1.55, R-5.1, R-5.17) are the adapter's: every captured outline shows the Evaluation panel section read-only, with the members listed and an "Edit evaluation panel" button. The adapter's addPanelMember and markMemberAsChair never press that button (only startEditing does), and they look for a person chooser on each member row, where the tab now has a single "Public sector employee to add" chooser and seated members show as a name with a Chair box. Nothing in the evidence points at the application, so nothing is returned to build. Exposing candidate email addresses to active staff follows decision record 0075 and the panel tab that shows them; R-4.21 and R-5.18 still hold, and R-5.18 passes. This would become an approval on a current verify result with no failures once bind-adapter re-binds these members; if the re-bound adapter, after pressing Edit evaluation panel, still cannot add a member or mark a chair, those failures become the application's.
+conditions:
+  - "condition-met build-slice-10-6#1: summaryDetails in app/frontend/src/screens/opportunity-other-manage.tsx lists Assignment date after the proposal deadline (and Start date for Team With Us) on the draft's Summary tab, covered by the new case in app/frontend/tests/other-program-drafts.test.tsx; R-1.9 passes in the verify result for tree 407d7d3."
+  - "addressed-to bind-adapter: R-1.55: evaluation-panel-swu.add_panel_member clicked \"Add an evaluator\" and timed out because the Evaluation panel section was still read-only: the page shows the members list and an \"Edit evaluation panel\" button (data-testid evaluation-panel-edit) that has to be pressed first, as start_editing already does. Once editing, the person is picked in one \"Public sector employee to add\" chooser (evaluation-panel-member-choice), with entries reading \"Name (email)\", and then \"Add an evaluator\" (evaluation-panel-add-member) seats them as a new evaluator row; member rows no longer have their own chooser. Seen in .sdlc/evidence/slice-10/R-1.55.txt and R-1.55-2.txt at /opportunities/sprint-with-us/<id>/edit?tab=evaluationPanel."
+  - "addressed-to bind-adapter: R-5.1: same cause as R-1.55. add_panel_member was called on the read-only Evaluation panel section (members listed, \"Edit evaluation panel\" button shown) without pressing that button, then waited for \"Add an evaluator\" until it timed out. It must enter editing first, then add through the single \"Public sector employee to add\" chooser and \"Add an evaluator\". Seen in .sdlc/evidence/slice-10/R-5.1.txt and R-5.1-2.txt."
+  - "addressed-to bind-adapter: R-5.17: in the published case, chair_field read \"\" and mark_member_as_chair reported no evaluator named \"Emery Placeholder\" (\"nobody chosen, nobody chosen\") although the read-only section lists \"Casey Placeholder, Role: Evaluator\" and \"Emery Placeholder, Role: Evaluator and chair\" above an \"Edit evaluation panel\" button. The adapter looked for per-row choosers and the Chair chooser without entering editing. Once editing, each seated member is a fieldset whose paragraph reads \"Name (email)\" beside a Chair checkbox (evaluation-panel-member-chair). In the draft case, add_panel_member timed out on \"Add an evaluator\" for the same reason as R-1.55. Seen in .sdlc/evidence/slice-10/R-5.17.txt and R-5.17-2.txt."
+cost: 0.9124864
+turns: 6
+session: "54a9cfe4-66fe-4cb4-9419-890055569c8c"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T09:09:46.722Z
