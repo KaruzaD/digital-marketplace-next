@@ -44,3 +44,14 @@ The remaining states of this slice already matched their catalogue entries from 
 The reasons for these choices are in `docs/decisions/0082-the-code-with-us-evaluate-page-and-service-status-follow-the-chosen-direction.md`.
 
 **Nothing left out.** No criterion in this slice needed a change outside `app/` or `docs/decisions/`, and none went unbuilt. For the next slice: the Sprint With Us and Team With Us proposal pages that staff evaluate from (`proposal-team-view.tsx`) still use the old layout. They will be restyled with those programs' scoring stages, and once they use the shared page component, the score dialog's own copy of the styles becomes redundant.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+Question: does slice 16 do what its 12 criteria say, with nothing beyond them? The verify result was recorded against this proposal's application tree (27e810c), and every claimed criterion passes: R-1.1, R-1.19, R-1.26, R-1.27, R-2.26, R-2.27, R-2.32, R-2.33, R-2.34, R-2.36, R-5.20 and R-6.25. So the only question left is the rest of what a merge answers for, and the diff answers it. It touches three screens and changes only how they look. proposal-cwu-view.tsx moves onto the shared proposal and opportunity components in the catalogue's order. proposal-evaluation-actions.tsx gets the catalogue's button bar and dialog markup, and a refused field now takes focus. service-status.tsx becomes the shared opportunity page. No rule, service call, state change or notice is altered, and every test ID is kept, which is why the acceptance suite still passes unchanged. The components it imports (ProposalActions, ProposalStyles, Focused) already exist in app/frontend/src/app/proposal-kit.tsx. No secret, credential or personal data appears in the code. Unit tests cover the new seams: the order of the page's sections, the empty button bar when nothing can be done, focus moving to a refused score and to a missing disqualification reason, the loading state, and the /status layout. One change reaches outside this slice's screens: the Sprint With Us and Team With Us evaluate pages share the button bar and score dialog, so they also lose the sentence 'There is nothing to do with this proposal now.' Decision record 0082 states this. It matches the earlier removal of the same sentence from the manage page (decision record 0072). No acceptance test or adapter reads that sentence. The score dialog loading its own copy of the proposal styles is a stopgap until those two pages are restyled, and 0082 explains why the alternative was rejected. I would return this if verify were re-run on a changed tree and anything failed, or if a criterion turned out to depend on the removed sentence or on the old layout.
+
+**Conditions:**
+none
