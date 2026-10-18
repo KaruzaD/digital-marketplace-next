@@ -2751,8 +2751,8 @@ stories already compile with.
 | `TextArea` | Proposal text and comments (`maxLength={10000}`), question responses, and the disqualification reason (`maxLength={5000}`). |
 | `NumberField` | Phase cost (`formatOptions` currency CAD, no decimals), hourly rate (currency, two decimals), and each score. There is no `minValue` or `maxValue`, as in the opportunities domain. The limit is stated and checked on submit, so the refusals the criteria describe can be shown and nothing is silently changed. |
 | `Select` | The organization, and the team member to add to a phase or resource. |
-| `RadioGroup` + `Radio` | Code With Us "Who is submitting this proposal?" (An individual / An organization). |
-| `Checkbox` | Scrum master (one per team member per phase), the two terms acceptances, and "Name proponents anonymously" on export-all. |
+| `RadioGroup` + `Radio` | Code With Us "Will you be submitting a proposal for this opportunity as an Individual or Organization?" (Individual / Organization), the same words on create and edit; and each Sprint With Us phase's "Scrum master for the <phase> phase", one `Radio` per member named by the person. |
+| `Checkbox` | The two terms acceptances, and "Name proponents anonymously" on export-all. |
 | `Form` | Always `validationBehavior="aria"`. |
 | `InlineAlert` | Error summaries (`danger`), service refusals (`danger`, `role="alert"`), the wrong-stage refusal (`danger`) and the unqualified-organization notice (`warning`). Each is wrapped in a `div` that carries the test ID, because `InlineAlert` does not pass `data-*` through. |
 | `Modal` + `Dialog` | The terms dialog and the score dialog. These are small forms, not yes/no decisions. |
@@ -3014,10 +3014,16 @@ domain adds the following.
 - **Status is words.** Every status, membership and capability-coverage value is written out
   ("Membership pending", "Security engineering: not covered"). Scores are numbers with their
   unit. Nothing is conveyed by colour alone.
-- **Controls with the same visible text are told apart.** "Add team member", "Remove" and "Scrum
-  master" repeat once per phase, resource or person. Each has an `aria-label` that begins with its
-  visible text and names its target ("Add team member to the prototype phase", "Scrum master: Test
-  Designer, implementation phase"), meeting WCAG 2.5.3.
+- **Controls with the same visible text are told apart.** "Add team member" and "Remove" repeat
+  once per phase, resource or person. Each has an `aria-label` that begins with its visible text and
+  names its target ("Add team member to the prototype phase", "Remove Test Designer from the
+  implementation phase"), meeting WCAG 2.5.3.
+- **The scrum master is one radio group per phase.** Each Sprint With Us phase has a required
+  `RadioGroup` whose label names the phase ("Scrum master for the implementation phase"). Each `Radio`
+  in it (`proposal-scrum-master`) is named by the person alone, its visible text ("Test Designer"),
+  with no `aria-label`; the group's label supplies the phase. So the radio's accessible name is
+  "Test Designer" inside the group "Scrum master for the implementation phase (required)", and a
+  test or adapter finds it by that group and that name.
 - **Long forms are navigable.** Each form part is a labelled section with a heading. Each
   repeated item is a fieldset with a legend. The error summary links to every problem.
 - **Announcements.** Word counts and live cost totals use `role="status"`. Refusals and error
@@ -3905,7 +3911,9 @@ original site did not have, such as a way to clear a search that matched nothing
   design system to each required label. Choosing Organization replaces the individual's details with the
   Organization select and the original site's guidance on adding an organization. Proposal Evaluation
   Criteria is the design system's `Accordion` inside a light-blue `Callout`: closed until opened, as on the
-  original site.
+  original site. One label is not the original's: the original names both street lines "Street Address",
+  which leaves two fields with the same name (WCAG 2.2 success criterion 2.4.6), so the second line is
+  labelled "Street Address line 2" (`proposal-street-2-field`, unchanged).
 - **Messages.** Each message is the original site's and takes keyboard focus when it appears, so it is
   read out and a keyboard user starts from it:
   - `draft-saved`: "Draft Proposal Saved" with its explanation, a success `InlineAlert` that stays until it
@@ -4416,6 +4424,23 @@ older section's gap L4.
 40. **Tables on phones.** Rule 7 turns rows into stacked cards; the dashboard, team, question and
     history tables keep the opportunity screens' `DataTable`, which scrolls inside its own region
     instead. A table that becomes stacked cards would be a new component for both domains at once.
+
+### Corrections after the build
+
+- **Scrum master names.** The older section's accessibility list said each scrum master radio carried
+  an `aria-label` "Scrum master: <name>, <phase> phase". No story ever drew that. The prose now says
+  what every Sprint With Us create and edit story draws: one required `RadioGroup` per phase labelled
+  "Scrum master for the <phase> phase", whose radios (`proposal-scrum-master`) are named by the person
+  alone. The components table no longer lists the scrum master under `Checkbox`.
+- **Code With Us proponent question on edit.** `proposal-cwu-edit.editing` now asks the create page's
+  question, the original site's, "Will you be submitting a proposal for this opportunity as an
+  Individual or Organization?", with "Individual" and "Organization". The test IDs
+  `proposal-proponent-individual` and `proposal-proponent-organization` are unchanged.
+- **Second street line.** On the Code With Us create page the second street line is "Street Address
+  line 2", not the original's repeated "Street Address" (WCAG 2.2 success criterion 2.4.6). Its test ID
+  `proposal-street-2-field` is unchanged.
+
+No page, state or test ID was added or changed by these corrections.
 
 ## User screens in the chosen direction
 

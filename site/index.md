@@ -667,6 +667,7 @@ Profile: rebuild
 - [design-proposals](proposals/design-proposals.md)
 - [design-proposals-2](proposals/design-proposals-2.md)
 - [design-proposals-3](proposals/design-proposals-3.md)
+- [design-proposals-4](proposals/design-proposals-4.md)
 - [design-users](proposals/design-users.md)
 - [design-users-2](proposals/design-users-2.md)
 - [design-users-3](proposals/design-users-3.md)
@@ -735,10 +736,10 @@ Profile: rebuild
 
 ## Totals
 
-- Journal cost: $1138.796369
-- Rulings cost: $569.02101
-- Total cost: $1707.817379
-- Agent-held rulings: 640
+- Journal cost: $1139.410263
+- Rulings cost: $569.373296
+- Total cost: $1708.783559
+- Agent-held rulings: 641
 - Runner rulings (automatic, no seat held): 37
 - Human rulings: 28
 - Rulings whose seat this page does not recognise: 0
