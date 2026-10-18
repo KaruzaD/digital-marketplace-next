@@ -4306,13 +4306,14 @@ export default function create(
   // opportunities. The list changes as you choose."). Each card is a link: title, program,
   // status badge, "Closes <date> at <time>" (or "Closed …"), summary, value, location.
   // The list draws each group as a section of its own under a level-2 heading, "Unpublished",
-  // "Open" or "Closed" (a line of description, then the group's list of cards). Whatever
+  // "Open" or "Closed", its name sometimes followed by the group's count ("Open Opportunities
+  // 3"), then a line of description and the group's list of cards. Whatever
   // follows the last group on the page, such as a panel describing the programs, is no part
   // of it.
   const OPPORTUNITY_GROUPS = [
-    /^unpublished(?: opportunities)?$/i,
-    /^open(?: opportunities)?$/i,
-    /^closed(?: opportunities)?$/i,
+    /^unpublished(?: opportunities)?(?:\s+\d+)?$/i,
+    /^open(?: opportunities)?(?:\s+\d+)?$/i,
+    /^closed(?: opportunities)?(?:\s+\d+)?$/i,
   ];
 
   // The group's own section: the region, group or disclosure holding that group's heading
