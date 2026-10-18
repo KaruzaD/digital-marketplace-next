@@ -3653,3 +3653,12 @@ conditions:
     stage: build
     by: agent:reviewer
     at: 2026-10-18T08:44:31.033Z
+    closed:
+      outcome: met
+      why: summaryDetails in app/frontend/src/screens/opportunity-other-manage.tsx
+        lists Assignment date after the proposal deadline (and Start date for
+        Team With Us) on the draft's Summary tab, covered by the new case in
+        app/frontend/tests/other-program-drafts.test.tsx; R-1.9 passes in the
+        verify result for tree 407d7d3.
+      by: agent:reviewer
+      at: 2026-10-18T09:09:47.223Z
