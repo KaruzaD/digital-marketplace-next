@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Does slice 12 (An organization can build its team) do what its criteria say? Approve. Verify recorded pass for this proposal against application tree febd809: all 19 criteria the slice claims were exercised and met, none failed or went unasserted. The two conditions from build-slice-12-6 were addressed to bind-adapter and asked nothing of build, so proposing the same application again was correct; this run passing is consistent with those fixes. The diff restyles slice 12's own screens (team and changelog tabs, a vendor's own organizations) using organization-kit pieces and a new organization-memberships module: a table on a wide screen, cards on a phone. Decision record 0080 gives the reason for each place it departs from the design stories (separate missing-capabilities region for R-3.34, Remove on the owner's row for R-3.11, two-step change owner, one combined field-error). No test ID, wording or behaviour changes beyond the added status announcements. Nothing belongs to another slice, no secret, credential or personal data appears (names in tests are placeholders), and the new seams have unit tests: membership words and colours, the status region, and phone-card rendering for the team, the changelog and both membership lists. The DialogText import resolves to an existing export in organization-kit.tsx. This would change on a verify result that fails against this tree or evidence that a test ID or wording the acceptance tests rely on changed.
+conditions: []
+cost: 0.5722188
+turns: 3
+session: "f686d9e3-ff72-4549-a6f0-02eda9e3af13"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T20:03:07.353Z
