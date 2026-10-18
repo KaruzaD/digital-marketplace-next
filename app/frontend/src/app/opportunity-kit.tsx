@@ -304,7 +304,12 @@ export function ActionBar({ children }: { children?: ReactNode }) {
   );
 }
 
-export type Tab = { key: string; label: string };
+/**
+ * One manage-page tab. Its test ID is `opportunity-tab-<key>` unless it says otherwise: several
+ * Sprint With Us and Team With Us tabs have addresses whose query value is not their test ID's
+ * suffix (`?tab=evaluationPanel` is `opportunity-tab-evaluation-panel`).
+ */
+export type Tab = { key: string; label: string; testId?: string };
 
 /**
  * The manage page's tabs. Each has its own address (`?tab=…`), so they are links in a navigation
@@ -319,7 +324,7 @@ export function ManageTabs({ base, current, tabs }: { base: string; current: str
             <Link
               href={`${base}?tab=${tab.key}`}
               aria-current={tab.key === current ? "page" : undefined}
-              data-testid={`opportunity-tab-${tab.key}`}
+              data-testid={tab.testId ?? `opportunity-tab-${tab.key}`}
             >
               {tab.label}
             </Link>
@@ -358,9 +363,23 @@ export function Panel({
 }
 
 /** One repeated item of a form: a legend, then its fields `medium` apart. */
-export function Fieldset({ legend, testId, children }: { legend: string; testId?: string; children: ReactNode }) {
+export function Fieldset({
+  legend,
+  id,
+  describedBy,
+  testId,
+  children,
+}: {
+  legend: string;
+  /** Where the error summary's link to a problem with this item leads. */
+  id?: string;
+  /** A group-level problem the item's fields share, said after the group. */
+  describedBy?: string;
+  testId?: string;
+  children: ReactNode;
+}) {
   return (
-    <fieldset className="op-fieldset" data-testid={testId}>
+    <fieldset className="op-fieldset" id={id} aria-describedby={describedBy} data-testid={testId}>
       <legend>{legend}</legend>
       <div className="op-fieldset-body">{children}</div>
     </fieldset>

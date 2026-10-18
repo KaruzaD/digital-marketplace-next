@@ -1,32 +1,28 @@
-import { useEffect, useRef, useState } from "react";
-import { Button, ButtonGroup, Checkbox, Form, InlineAlert, Link, Select, Text } from "@bcgov/design-system-react-components";
+import { useState } from "react";
+import { Button, ButtonGroup, Checkbox, Form, Select } from "@bcgov/design-system-react-components";
 import { PANEL_NO_CHAIR, PANEL_TOO_SMALL, otherProblemFromLine, panelMayChange, panelRoleLabel } from "@rules/other-program-content";
 import type { OtherProgram } from "@rules/other-program-drafts";
 import type { OpportunityStatus } from "@rules/opportunities";
-import { OtherProgramSaveAnswer, PanelCandidate, PanelEntry, PanelMember } from "../api/other-programs";
-import { card } from "../app/layout";
-import { Stack } from "../app/page-layout";
-import { TitledAlert } from "../app/titled-alert";
+import { OtherProgramSaveAnswer, PanelCandidate, PanelEntry, PanelMember, candidateChoiceLabel } from "../api/other-programs";
+import { ErrorSummary, EvaluationStyles, GroupError, Notice, Rows } from "../app/evaluation-kit";
+import { Actions } from "../app/opportunity-kit";
 
 /**
  * The Evaluation panel tab of a Sprint With Us or Team With Us opportunity's manage page
  * (evaluation-panel-swu, evaluation-panel-twu), offered to its author and administrators only
- * (R-5.18). Until the consensus stage it is a form: one row per evaluator with a Chair tick, then a
- * Chair field that may name someone who chairs without evaluating — one fact shown in two places,
- * so the panel never holds two chairs. Saving checks, in this order, that the panel has at least
- * two members, names nobody twice and has a chair (R-5.1, R-5.9); the service checks again,
+ * (R-5.18), drawn as the catalogue's `PanelTab` draws it.
+ *
+ * It opens read-only: the panel as it stands, one row per member with their role, and — while the
+ * panel may still change (R-1.43, R-5.16) — Edit evaluation panel. Editing shows one row per
+ * evaluator, named with their email address, each with a Chair tick and Remove; a person is chosen
+ * in "Public sector employee to add" and added with Add an evaluator, as an evaluator and not the
+ * chair. The Chair field may name someone who chairs without evaluating — one fact shown in two
+ * places, so the panel never holds two chairs. Saving checks, in this order, that the panel has at
+ * least two members, names nobody twice and has a chair (R-5.1, R-5.9); the service checks again,
  * including that everyone named is a public sector employee, and a panel it refuses is not saved
- * (R-5.37). From the consensus stage the panel is fixed and listed (R-1.43, R-5.16).
+ * (R-5.37). A saved panel returns the tab to read-only. From the consensus stage the panel is fixed
+ * and listed, with a notice and nothing to change it with.
  */
-
-const group = { ...card, margin: "var(--layout-margin-none)" } as const;
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
 
 const PROGRAM_STEPS: Readonly<Record<OtherProgram, string>> = {
   "sprint-with-us": "team questions",
@@ -162,96 +158,139 @@ export function EvaluationPanelTab({
   readonly candidates: readonly PanelCandidate[];
   readonly onSave: (panel: readonly PanelEntry[]) => Promise<OtherProgramSaveAnswer>;
 }) {
-  const intro = (
-    <>
-      <Text elementType="p">
-        {`Once the opportunity closes, each evaluator scores every proponent's ${PROGRAM_STEPS[program]} on their own. The chair then records one agreed score for each proponent.`}
-      </Text>
-    </>
-  );
-  if (!panelMayChange(status)) {
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const changeable = panelMayChange(status);
+  const people = peopleOf(candidates, panel);
+
+  if (!changeable) {
     return (
       <>
-        <div data-testid="evaluation-panel-locked-message">
-          <InlineAlert
-            variant="info"
-            title="The evaluation panel can no longer be changed"
-            description="The consensus stage has begun, so the panel is fixed."
-          />
-        </div>
-        <div role="region" aria-labelledby="panel-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
-            <caption id="panel-caption" style={{ textAlign: "start" }}>
-              <Text size="small" color="secondary">
-                Members of the evaluation panel
-              </Text>
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" style={cell}>
-                  Name
-                </th>
-                <th scope="col" style={cell}>
-                  Role
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {panel.map((member) => (
-                <tr key={member.user.id} data-testid="evaluation-panel-member-row">
-                  <td style={cell}>{member.user.name}</td>
-                  <td style={cell}>{panelRoleLabel(member)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <EvaluationStyles />
+        <Notice
+          testId="evaluation-panel-locked-message"
+          title="The evaluation panel can no longer be changed"
+          description="The consensus stage has begun, so the panel is fixed."
+        />
+        <PanelMembers panel={panel} />
       </>
     );
   }
   return (
     <>
-      {intro}
-      <Text elementType="p">
+      <EvaluationStyles />
+      <p className="op-text">
+        {`Once the opportunity closes, each evaluator scores every proponent's ${PROGRAM_STEPS[program]} on their own. The chair then records one agreed score for each proponent.`}
+      </p>
+      <p className="op-text">
         The panel needs at least two members, each a public sector employee named once, and one chair. The chair can be one of the
         evaluators, or someone who chairs without evaluating. The panel can be changed until the consensus stage begins. People you add
         are told when you save, unless the opportunity is still a draft.
-      </Text>
-      <PanelForm panel={panel} candidates={candidates} onSave={onSave} />
+      </p>
+      <div role="status">{saved ? <p className="op-text">{PANEL_SAVED}</p> : null}</div>
+      {editing ? (
+        <PanelForm
+          panel={panel}
+          people={people}
+          onSave={async (entries) => {
+            const answer = await onSave(entries);
+            if (answer.kind === "saved") {
+              setEditing(false);
+              setSaved(true);
+            }
+            return answer;
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        <>
+          <PanelMembers panel={panel} />
+          <Actions>
+            <Button
+              variant="secondary"
+              onPress={() => {
+                setSaved(false);
+                setEditing(true);
+              }}
+              data-testid="evaluation-panel-edit"
+            >
+              Edit evaluation panel
+            </Button>
+          </Actions>
+        </>
+      )}
     </>
+  );
+}
+
+/**
+ * What the tab says once a panel is saved. Saving publishes a new version of the opportunity, which
+ * the original screen confirmed in these words (evaluation-panel-swu's note; DESIGN.md gap 67).
+ */
+export const PANEL_SAVED = "Opportunity Changes Published. The evaluation panel has been saved.";
+
+/** Someone the tab can name: the person's name and, where known, their email address. */
+interface Named {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+}
+
+/**
+ * Everyone the tab may name, in the list's order: each candidate, then anybody on the panel the
+ * list no longer names, by the name the panel holds, so nobody already seated is lost.
+ */
+export function peopleOf(candidates: readonly PanelCandidate[], panel: readonly PanelMember[]): Named[] {
+  const listed = candidates.map((candidate) => ({ id: candidate.id, name: candidate.label, email: candidate.email }));
+  const missing = panel
+    .filter((member) => !candidates.some((candidate) => candidate.id === member.user.id))
+    .map((member) => ({ id: member.user.id, name: member.user.name, email: "" }));
+  return [...listed, ...missing];
+}
+
+/** The panel as it stands, read-only: one row per member with their role. */
+function PanelMembers({ panel }: { panel: readonly PanelMember[] }) {
+  return (
+    <Rows
+      captionId="panel-caption"
+      caption="Members of the evaluation panel"
+      columns={["Name", "Role"]}
+      layout="ev-cols-2"
+      rows={panel.map((member) => ({
+        key: member.user.id,
+        testId: "evaluation-panel-member-row",
+        cells: [{ content: member.user.name }, { content: panelRoleLabel(member) }],
+      }))}
+    />
   );
 }
 
 function PanelForm({
   panel,
-  candidates,
+  people,
   onSave,
+  onCancel,
 }: {
   readonly panel: readonly PanelMember[];
-  readonly candidates: readonly PanelCandidate[];
+  readonly people: readonly Named[];
   readonly onSave: (panel: readonly PanelEntry[]) => Promise<OtherProgramSaveAnswer>;
+  readonly onCancel: () => void;
 }) {
-  const [evaluators, setEvaluators] = useState<readonly string[]>(() => {
-    const listed = panel.filter((member) => member.evaluator).map((member) => member.user.id);
-    return listed.length > 0 ? listed : [""];
-  });
+  const [evaluators, setEvaluators] = useState<readonly string[]>(() =>
+    panel.filter((member) => member.evaluator).map((member) => member.user.id),
+  );
   const [chair, setChair] = useState(() => panel.find((member) => member.chair)?.user.id ?? "");
+  const [choice, setChoice] = useState("");
   const [problems, setProblems] = useState<readonly PanelProblem[]>([]);
   const [refusal, setRefusal] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [sending, setSending] = useState(false);
-  const summaryRef = useRef<HTMLDivElement>(null);
+  // Counts the attempts to save, so the summary is drawn afresh, and takes focus, after each one.
+  const [attempt, setAttempt] = useState(0);
 
-  useEffect(() => {
-    if (problems.length > 0 || refusal) summaryRef.current?.focus();
-  }, [problems, refusal]);
-
-  // Everyone on the panel is offered, even someone the list no longer names, so nothing is lost.
-  const items = [
-    ...candidates,
-    ...panel.filter((member) => !candidates.some((candidate) => candidate.id === member.user.id)).map((member) => ({ id: member.user.id, label: member.user.name })),
-  ];
-  const nameOf = (id: string) => items.find((item) => item.id === id)?.label ?? "This person";
+  // Everyone is offered by name and email address; a duplicate is refused on save (DESIGN.md gap 68).
+  const items = people.map((person) => ({ id: person.id, label: candidateChoiceLabel({ label: person.name, email: person.email }) }));
+  const personOf = (id: string) => people.find((person) => person.id === id);
+  const nameOf = (id: string) => personOf(id)?.name ?? "This person";
   const problemAt = (at: PanelProblem["at"]) =>
     problems
       .filter((problem) => problem.at === at)
@@ -260,7 +299,7 @@ function PanelForm({
 
   async function save() {
     if (sending) return;
-    setSaved(false);
+    setAttempt((count) => count + 1);
     setRefusal(null);
     const found = panelFormProblems(evaluators, chair, nameOf);
     setProblems(found);
@@ -268,10 +307,7 @@ function PanelForm({
     setSending(true);
     const answer = await onSave(panelEntriesOf(evaluators, chair));
     setSending(false);
-    if (answer.kind === "saved") {
-      setSaved(true);
-      return;
-    }
+    if (answer.kind === "saved") return;
     if (answer.kind === "refused") {
       const placed = panelRefusalProblems(answer.reasons, evaluators.length);
       setProblems(placed.problems);
@@ -281,120 +317,107 @@ function PanelForm({
     setRefusal("The service could not save the panel. Try again.");
   }
 
+  /** Seats the person chosen to add, as an evaluator and not the chair. */
+  function add() {
+    if (choice === "") return;
+    setEvaluators((current) => [...current, choice]);
+    setChoice("");
+  }
+
   const count = problems.length;
   return (
     <>
       {count > 0 || refusal ? (
-        <div tabIndex={-1} ref={summaryRef}>
-          <TitledAlert
-            variant="danger"
-            role="alert"
-            title={count > 0 ? `The evaluation panel has ${count} ${count === 1 ? "problem" : "problems"}` : "The evaluation panel was not saved"}
-          >
-            <Text elementType="p">The panel was not saved. It is still the panel it was before.</Text>
-            {refusal ? <Text elementType="p">{refusal}</Text> : null}
-            {count > 0 ? (
-              <ul>
-                {problems.map((problem, index) => (
-                  <li key={`${problem.target}-${index}`} data-testid="field-error">
-                    <Link href={`#${problem.target}`} data-testid={problem.testId}>
-                      {problem.text}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </TitledAlert>
-        </div>
+        <ErrorSummary
+          key={attempt}
+          title={count > 0 ? `The evaluation panel has ${count} ${count === 1 ? "problem" : "problems"}` : "The evaluation panel was not saved"}
+          lead={
+            <>
+              <p>The panel was not saved. It is still the panel it was before.</p>
+              {refusal ? <p>{refusal}</p> : null}
+            </>
+          }
+          problems={problems.map((problem) => ({ href: `#${problem.target}`, testId: problem.testId, text: problem.text }))}
+        />
       ) : null}
-      <div role="status">{saved ? <Text elementType="p">The evaluation panel has been saved.</Text> : null}</div>
       <Form
         validationBehavior="aria"
+        className="op-region"
         onSubmit={(event) => {
           event.preventDefault();
           void save();
         }}
       >
-        <Stack gap="medium">
-          {evaluators.map((user, index) => {
-            const number = index + 1;
-            const problem = problemAt(number);
-            return (
-              <fieldset key={index} style={group} id={`panel-member-${number}`} data-testid="evaluation-panel-member-row">
-                <legend style={legend}>{`Evaluator ${number}`}</legend>
-                <Stack gap="medium">
-                  <Select
-                    label="Public sector employee"
-                    items={items}
-                    isRequired
-                    value={user === "" ? null : user}
-                    onChange={(key) => {
-                      const next = key === null ? "" : String(key);
-                      setEvaluators((current) => current.map((entry, at) => (at === index ? next : entry)));
-                      // The chair moves with the row it was ticked on.
-                      if (chair !== "" && chair === user) setChair(next);
-                    }}
-                    isInvalid={problem !== ""}
-                    errorMessage={problem || undefined}
-                    data-testid="evaluation-panel-member-field"
-                  />
-                  <Checkbox
-                    isSelected={user !== "" && user === chair}
-                    isDisabled={user === ""}
-                    onChange={(ticked) => setChair(ticked ? user : "")}
-                    aria-label={`Chair: evaluator ${number}`}
-                    data-testid="evaluation-panel-member-chair"
-                  >
-                    Chair
-                  </Checkbox>
-                  <div>
-                    <Button
-                      variant="tertiary"
-                      size="small"
-                      aria-label={`Remove evaluator ${number}`}
-                      onPress={() => {
-                        if (user !== "" && user === chair && evaluators.filter((entry) => entry === user).length === 1) setChair("");
-                        setEvaluators((current) => current.filter((_, at) => at !== index));
-                      }}
-                      data-testid="evaluation-panel-remove-member"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </Stack>
-              </fieldset>
-            );
-          })}
-          {problemAt("group") ? (
-            <div id="panel-minimum-error">
-              <Text elementType="p" color="danger">
-                {problemAt("group")}
-              </Text>
-            </div>
-          ) : null}
-          <div>
-            <Button variant="secondary" onPress={() => setEvaluators((current) => [...current, ""])} data-testid="evaluation-panel-add-member">
-              Add an evaluator
-            </Button>
-          </div>
+        {evaluators.map((user, index) => {
+          const number = index + 1;
+          const problem = problemAt(number);
+          const person = personOf(user);
+          return (
+            <fieldset key={index} className="ev-member" id={`panel-member-${number}`} data-testid="evaluation-panel-member-row">
+              <legend>{`Evaluator ${number}`}</legend>
+              <div className="ev-member-body">
+                <p className="ev-member-name">
+                  {person?.name ?? "This person"}
+                  {person?.email ? <span className="ev-member-email">{` (${person.email})`}</span> : null}
+                </p>
+                <Checkbox
+                  isSelected={user === chair}
+                  onChange={(ticked) => setChair(ticked ? user : "")}
+                  aria-label={`Chair: evaluator ${number}`}
+                  data-testid="evaluation-panel-member-chair"
+                >
+                  Chair
+                </Checkbox>
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  aria-label={`Remove evaluator ${number}`}
+                  onPress={() => {
+                    if (user === chair && evaluators.filter((entry) => entry === user).length === 1) setChair("");
+                    setEvaluators((current) => current.filter((_, at) => at !== index));
+                  }}
+                  data-testid="evaluation-panel-remove-member"
+                >
+                  Remove
+                </Button>
+              </div>
+              {problem ? <GroupError>{problem}</GroupError> : null}
+            </fieldset>
+          );
+        })}
+        {problemAt("group") ? <GroupError id="panel-minimum-error">{problemAt("group")}</GroupError> : null}
+        <div className="ev-cluster">
           <Select
-            id="panel-chair"
-            label="Chair"
+            label="Public sector employee to add"
             items={items}
-            isRequired
-            description="Choose one of the evaluators above, or a public sector employee who will chair without evaluating. Ticking Chair against an evaluator chooses them here too."
-            value={chair === "" ? null : chair}
-            onChange={(key) => setChair(key === null ? "" : String(key))}
-            isInvalid={problemAt("chair") !== ""}
-            errorMessage={problemAt("chair") || undefined}
-            data-testid="evaluation-panel-chair-field"
+            value={choice === "" ? null : choice}
+            onChange={(key) => setChoice(key === null ? "" : String(key))}
+            data-testid="evaluation-panel-member-choice"
           />
-          <ButtonGroup ariaLabel="Evaluation panel actions">
-            <Button type="submit" variant="primary" isDisabled={sending} data-testid="evaluation-panel-save">
-              Save evaluation panel
-            </Button>
-          </ButtonGroup>
-        </Stack>
+          <Button variant="secondary" onPress={add} data-testid="evaluation-panel-add-member">
+            Add an evaluator
+          </Button>
+        </div>
+        <Select
+          id="panel-chair"
+          label="Chair"
+          items={items}
+          isRequired
+          description="Choose one of the evaluators above, or a public sector employee who will chair without evaluating. Ticking Chair against an evaluator chooses them here too."
+          value={chair === "" ? null : chair}
+          onChange={(key) => setChair(key === null ? "" : String(key))}
+          isInvalid={problemAt("chair") !== ""}
+          errorMessage={problemAt("chair") || undefined}
+          data-testid="evaluation-panel-chair-field"
+        />
+        <ButtonGroup ariaLabel="Evaluation panel actions">
+          <Button type="submit" variant="primary" isDisabled={sending} data-testid="evaluation-panel-save">
+            Save evaluation panel
+          </Button>
+          <Button variant="secondary" isDisabled={sending} onPress={onCancel} data-testid="evaluation-panel-cancel">
+            Cancel
+          </Button>
+        </ButtonGroup>
       </Form>
     </>
   );
