@@ -113,9 +113,16 @@ export default function create(
   // A section of a screen by its name. The running build draws its forms' and pages'
   // sections as regions that carry no accessible name of their own, each under a level-2
   // heading ("Resources", "Evaluation panel", "Scope"), so a region is found by its name or,
-  // failing that, by the heading it holds.
-  const regionNamed = (scope: Page | Locator, name: RegExp): Locator =>
-    scope.getByRole("region", { name }).or(scope.getByRole("region").filter({ has: page.getByRole("heading", { name }) }));
+  // failing that, by the heading it holds. Some screens number the parts of a form
+  // ("1. Proponent", "3. Attachments") and others do not, so a name looked for from its start
+  // also matches after a leading part number. Only the anchor is widened: an unanchored name
+  // already matches anywhere, and the rest of the name is left exactly as it was.
+  const partNumbered = (name: RegExp): RegExp =>
+    name.source.startsWith("^") ? new RegExp(`^(?:\\s*\\d+[.)]\\s*)?${name.source.slice(1)}`, name.flags) : name;
+  const regionNamed = (scope: Page | Locator, wanted: RegExp): Locator => {
+    const name = partNumbered(wanted);
+    return scope.getByRole("region", { name }).or(scope.getByRole("region").filter({ has: page.getByRole("heading", { name }) }));
+  };
 
   async function settle(): Promise<void> {
     await page.waitForLoadState("domcontentloaded").catch(() => undefined);
