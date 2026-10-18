@@ -1,0 +1,6 @@
+gate: G3
+verdict: approve
+by: tech-lead
+held_by: human
+note: "Ruled by the operator agent under Alex's standing delegation (2026-09-30) to rule application questions on his behalf. Every criterion slice 2 claims that this environment can test passes on build-slice-2-17 (R-4.1, R-4.2, R-4.3, R-4.17, R-4.24), and the 237 criteria earlier slices passed still pass. R-6.1 is written for the notifications_disabled configuration, which verify cannot start the new target in (docs/decisions/0071); it stays unverified on new, as at build-slice-2-16. The restyle changes only the sign-in, sign-out, sign-up and notice screens and a shared user kit, and nothing it changes is read when notifications are switched off."
+at: 2026-10-18T08:14:04.447Z
