@@ -13942,10 +13942,11 @@ export default function create(
         .catch(() => "");
       if (said) found.push(`${phaseTitle(word)}: ${said}`);
     }
-    const region = seen(proposalMain().getByRole("region", { name: /^\s*cost\s*$/i })).first();
+    // The section is named "Cost" or, numbered among the form's parts, "4. Cost".
+    const region = seen(proposalMain().getByRole("region", { name: /^\s*(?:\d+\.\s*)?cost\s*$/i })).first();
     if (await region.count()) {
       for (const line of lined(await region.innerText())) {
-        if (/^cost$|^total proposed cost:|^each hourly rate|^estimated cost/i.test(line)) continue;
+        if (/^(?:\d+\.\s*)?cost$|^total proposed cost:|^each hourly rate|^estimated cost/i.test(line)) continue;
         found.push(`total: ${line}`);
       }
     }
@@ -14008,24 +14009,41 @@ export default function create(
   }
 
   // "<Phase> | complete|incomplete | <required capabilities the team does not hold>".
+  // A phase is incomplete when its requirements say it "is incomplete" (or "Incomplete: …") and
+  // complete when they say it "meets its requirements"; what it lacks is the comma-separated
+  // list after "Not yet held:", or each capability marked ": not held".
+  function phaseRequirementState(said: string[]): { incomplete: boolean; missing: string[] } {
+    const text = said.join("\n");
+    const incomplete =
+      !/\bmeets its requirements\b/i.test(text) && (/\bis incomplete\b/i.test(text) || said.some((one) => /^\s*incomplete:/i.test(one)));
+    const missing: string[] = [];
+    for (const match of text.matchAll(/not yet held:\s*([^\n]*?)\s*(?:\.(?=\s|$)|\n|$)/gi)) {
+      for (const name of match[1].split(",").map((one) => one.trim()).filter(Boolean)) if (!missing.includes(name)) missing.push(name);
+    }
+    for (const one of said) {
+      if (!/:\s*not held$/i.test(one)) continue;
+      const name = one.replace(/:\s*not held$/i, "").trim();
+      if (name && !missing.includes(name)) missing.push(name);
+    }
+    return { incomplete, missing };
+  }
+
   async function phaseRequirementLines(): Promise<string> {
     if (!(await proposalShown())) return "";
     const lines: string[] = [];
     for (const word of await phasesShown()) {
       const group = seen(proposalMain().getByRole("group", { name: new RegExp(`^\\s*${word} phase\\s*$`, "i") })).first();
-      // The phase's requirements carry "proposal-phase-requirements": its "Incomplete: …"
-      // and its capabilities, held or not.
+      // The phase's requirements carry "proposal-phase-requirements": whether its team is
+      // incomplete and the capabilities it does not yet hold.
       const marked = byTestId("proposal-phase-requirements", group);
       if (await marked.count()) {
-        const said = lined(await marked.first().innerText());
-        const incomplete = said.some((one) => /^\s*incomplete:/i.test(one));
-        const missing = said.filter((one) => /:\s*not held$/i.test(one)).map((one) => one.replace(/:\s*not held$/i, "").trim());
+        // The phase group's own sentences are read beside it, wherever "Not yet held:" sits.
+        const { incomplete, missing } = phaseRequirementState([...lined(await marked.first().innerText()), ...(await paragraphs(group))]);
         lines.push(`${phaseTitle(word)} | ${incomplete ? "incomplete" : "complete"} | ${missing.join(", ")}`);
         continue;
       }
-      const incomplete = (await paragraphs(group)).some((one) => /^\s*incomplete:/i.test(one));
       const items = await seen(group.getByRole("list", { name: /^\s*capabilities the .* phase requires/i }).getByRole("listitem")).allInnerTexts();
-      const missing = items.map((one) => one.trim()).filter((one) => /:\s*not held$/i.test(one)).map((one) => one.replace(/:\s*not held$/i, "").trim());
+      const { incomplete, missing } = phaseRequirementState([...(await paragraphs(group)), ...items.map((one) => one.trim())]);
       lines.push(`${phaseTitle(word)} | ${incomplete ? "incomplete" : "complete"} | ${missing.join(", ")}`);
     }
     return lines.join("\n");
