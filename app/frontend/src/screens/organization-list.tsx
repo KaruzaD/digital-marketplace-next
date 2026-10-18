@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { Heading, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
+import { InlineAlert, Link } from "@bcgov/design-system-react-components";
 import {
   OrganizationViewer,
   compareByLegalName,
@@ -8,13 +8,12 @@ import {
   listOffersRegistration,
   pageOf,
 } from "@rules/organizations";
-import { fileAddress } from "../api/files";
 import { ListedOrganization, fetchOrganizations } from "../api/organizations";
 import { useSession } from "../auth/session";
-import { Loading, useLoadingShown } from "../app/loading";
-import { Stack } from "../app/page-layout";
+import { useLoadingShown } from "../app/loading";
+import { Actions, PageTitle, Waiting } from "../app/opportunity-kit";
+import { OrganizationPage, OrganizationRows, Pagination } from "../app/organization-kit";
 import { useScreenTitle } from "../app/screen-title";
-import { TitledAlert } from "../app/titled-alert";
 
 /**
  * The organization list, at `/organizations` (organization-list).
@@ -29,18 +28,6 @@ import { TitledAlert } from "../app/titled-alert";
  */
 
 const TITLE = "Digital Marketplace Organizations";
-
-// Owner, team size and the two qualification marks.
-const DETAIL_COLUMNS = 4;
-
-const cell = {
-  textAlign: "start",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-
-// Keeps a logo inside its column. Not spacing: the files domain's image rule.
-const image = { maxWidth: "100%", height: "auto" } as const;
 
 export function OrganizationListScreen() {
   useScreenTitle(TITLE);
@@ -70,30 +57,33 @@ export function OrganizationListScreen() {
   if (loading) {
     if (!loadingShown) return null;
     return (
-      <Stack gap="large">
-        <Heading level={1}>{TITLE}</Heading>
-        <Loading label="Loading organizations…" />
-      </Stack>
+      <OrganizationPage>
+        <PageTitle>{TITLE}</PageTitle>
+        <Waiting label="Loading organizations" />
+      </OrganizationPage>
     );
   }
   if (answer === "refused") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{TITLE}</Heading>
+      <OrganizationPage>
+        <PageTitle>{TITLE}</PageTitle>
         <div data-testid="organization-list-refused">
-          <TitledAlert variant="danger" role="alert" title="You are not permitted to see these organizations">
-            <Text elementType="p">Only a signed-in vendor can see the organizations they act for.</Text>
-          </TitledAlert>
+          <InlineAlert
+            variant="danger"
+            role="alert"
+            title="You are not permitted to see these organizations"
+            description="Only a signed-in vendor can see the organizations they act for."
+          />
         </div>
-      </Stack>
+      </OrganizationPage>
     );
   }
   if (answer === "failed") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{TITLE}</Heading>
+      <OrganizationPage>
+        <PageTitle>{TITLE}</PageTitle>
         <InlineAlert variant="danger" role="alert" title="The organizations could not be loaded" description="Try again in a moment." />
-      </Stack>
+      </OrganizationPage>
     );
   }
 
@@ -106,143 +96,20 @@ export function OrganizationListScreen() {
       : "Registered organizations by legal name. Owner, team size and qualification are shown only for organizations you own or administer.";
 
   return (
-    <Stack gap="large">
-      <Heading level={1}>{TITLE}</Heading>
+    <OrganizationPage>
+      <PageTitle>{TITLE}</PageTitle>
       {listOffersRegistration(viewer) ? (
-        <Stack direction="row" align="center" gap="medium">
+        <Actions>
           <Link href="/organizations/create" isButton buttonVariant="primary" data-testid="organization-create-link">
             Create organization
           </Link>
           <Link href="/users/me?tab=organizations" isButton buttonVariant="secondary" data-testid="organization-list-my-organizations">
             My organizations
           </Link>
-        </Stack>
+        </Actions>
       ) : null}
-      <div role="region" aria-labelledby="organization-list-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <caption id="organization-list-caption" style={{ textAlign: "start" }}>
-            <Text size="small" color="secondary">
-              {caption}
-            </Text>
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col" style={cell}>
-                Organization
-              </th>
-              {detailed ? (
-                <>
-                  <th scope="col" style={cell}>
-                    Owner
-                  </th>
-                  <th scope="col" style={cell}>
-                    Team size
-                  </th>
-                  <th scope="col" style={cell}>
-                    Sprint With Us qualified
-                  </th>
-                  <th scope="col" style={cell}>
-                    Team With Us qualified
-                  </th>
-                </>
-              ) : null}
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((organization) => (
-              <Row key={organization.id} organization={organization} detailed={detailed} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Pagination page={page} pageCount={pageCount} />
-    </Stack>
-  );
-}
-
-/**
- * One organization. A row whose owner, team size and qualification the viewer is not told holds
- * its name alone, in one cell across the table, so it carries no empty cells to be read as a
- * blank owner or mark (R-3.21; decision record 0048). It looks the same as empty cells would.
- */
-function Row({ organization, detailed }: { organization: ListedOrganization; detailed: boolean }) {
-  const details = organization.details;
-  const name = <span data-testid="organization-list-name">{organization.legalName}</span>;
-  const named = details ? (
-    <Link href={`/organizations/${organization.id}/edit`} data-testid="organization-list-name-link">
-      {name}
-    </Link>
-  ) : (
-    name
-  );
-  return (
-    <tr data-testid="organization-list-row">
-      <td style={cell} colSpan={detailed && !details ? DETAIL_COLUMNS + 1 : undefined}>
-        {organization.logoImageFile ? (
-          <Stack gap="small" align="start">
-            <img src={fileAddress(organization.logoImageFile)} alt={`${organization.legalName} logo`} style={image} />
-            {named}
-          </Stack>
-        ) : (
-          named
-        )}
-      </td>
-      {detailed && details ? (
-        <>
-          <td style={cell}>
-            <span data-testid="organization-list-owner">{details.ownerName}</span>
-          </td>
-          <td style={cell}>
-            <span data-testid="organization-list-team-size">{details.numTeamMembers}</span>
-          </td>
-          <td style={cell}>
-            <span data-testid="organization-swu-qualified-mark">{details.swuQualified ? "Yes" : "No"}</span>
-          </td>
-          <td style={cell}>
-            <span data-testid="organization-twu-qualified-mark">{details.twuQualified ? "Yes" : "No"}</span>
-          </td>
-        </>
-      ) : null}
-    </tr>
-  );
-}
-
-/** Links, not buttons, because each page has its own address (design/DESIGN.md, "Pagination"). */
-function Pagination({ page, pageCount }: { page: number; pageCount: number }) {
-  const pages = Array.from({ length: pageCount }, (_, index) => index + 1);
-  return (
-    <nav aria-label="Pages of organizations" data-testid="organization-list-pagination">
-      <Stack as="ul" direction="row" gap="medium" align="center">
-        <li>
-          <Text>{`Page ${page} of ${pageCount}`}</Text>
-        </li>
-        {page > 1 ? (
-          <li>
-            <Link href={`/organizations?page=${page - 1}`} data-testid="organization-list-page-link">
-              Previous page
-            </Link>
-          </li>
-        ) : null}
-        {pages.map((number) => (
-          <li key={number}>
-            <Link
-              href={`/organizations?page=${number}`}
-              aria-current={number === page ? "page" : undefined}
-              aria-label={`Page ${number}`}
-              data-testid="organization-list-page-link"
-            >
-              {String(number)}
-            </Link>
-          </li>
-        ))}
-        {page < pageCount ? (
-          <li>
-            <Link href={`/organizations?page=${page + 1}`} data-testid="organization-list-page-link">
-              Next page
-            </Link>
-          </li>
-        ) : null}
-      </Stack>
-    </nav>
+      <OrganizationRows organizations={items} full={detailed} caption={caption} />
+      <Pagination page={page} pages={pageCount} />
+    </OrganizationPage>
   );
 }
