@@ -10135,7 +10135,21 @@ export default function create(
   const proposalMain = (): Locator => page.getByRole("main");
   const proposalBox = (label: RegExp): Locator => seen(proposalMain().getByRole("textbox", { name: label })).first();
   const proposalActions = (): Locator => seen(proposalMain().getByRole("group", { name: /^\s*proposal actions\s*$/i })).first();
-  const saveChoices = (): Locator => seen(proposalMain().getByRole("group", { name: /^\s*save choices\s*$/i })).first();
+  // The edit screen's save buttons: once the "Save choices" group, now "Save changes and
+  // submit", "Save changes" and "Cancel" under "The opportunity" in the unnamed-group side
+  // panel "Opportunity and actions" (walked 2026-10-18 as a vendor on a draft and a submitted
+  // Code With Us proposal). The panel counts only while it offers "Save changes", so the
+  // closed screen, which has no such panel, still reads as no save choices.
+  const saveChoices = (): Locator =>
+    seen(
+      proposalMain()
+        .getByRole("group", { name: /^\s*save choices\s*$/i })
+        .or(
+          proposalMain()
+            .getByRole("complementary", { name: /opportunity and actions/i })
+            .filter({ has: page.getByRole("button", { name: /^\s*save changes\s*$/i }) }),
+        ),
+    ).first();
 
   // The form's fields are on screen and can be typed in: the create form, or the proposal's
   // screen once "Edit" is pressed.
