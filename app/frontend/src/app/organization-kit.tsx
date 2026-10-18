@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { Heading, Link } from "@bcgov/design-system-react-components";
+import { Heading, InlineAlert, Link } from "@bcgov/design-system-react-components";
 import { fileAddress } from "../api/files";
 import type { ListedOrganization } from "../api/organizations";
-import { Label, look } from "./marketplace";
+import { Label, look, type LabelColour } from "./marketplace";
 import { DataTable, Details, OpportunityPage, PageTitle } from "./opportunity-kit";
+import { AlertTitle } from "./proposal-kit";
 import { useNarrow } from "./site-header";
 
 /**
@@ -11,11 +12,12 @@ import { useNarrow } from "./site-header";
  * `design/catalogue/organization-kit.tsx` draws them (design/DESIGN.md, "Organization screens in
  * the chosen direction"): the page frame, the management page's head and tabs, the profile
  * read-only and the form's field grid, the archive region, and the list's rows and pages (a table
- * on a wide screen, stacked cards on a phone). This project's own compositions of design-system
- * components and tokens; none of them is a design-system component (decision record 0079).
+ * on a wide screen, stacked cards on a phone), the membership labels, the team and changelog rows,
+ * the page alert, the small dialogs' body and the status an immediate change reports into. This
+ * project's own compositions of design-system components and tokens; none of them is a
+ * design-system component (decision records 0079 and 0080).
  *
- * The team, changelog, requirement and membership pieces are added when the screens of slices 12
- * and 13 are restyled.
+ * The requirement pieces are added when the screens of slice 13 are restyled.
  */
 
 const css = `
@@ -36,8 +38,8 @@ const css = `
   color: var(--typography-color-primary);
   overflow-wrap: anywhere;
 }
-.og-form, .og-body, .og-group, .og-card { display: flex; flex-direction: column; }
-.og-form > *, .og-body > *, .og-group > *, .og-card > * { margin: var(--layout-margin-none); }
+.og-form, .og-body, .og-group, .og-card, .og-dialog { display: flex; flex-direction: column; }
+.og-form > *, .og-body > *, .og-group > *, .og-card > *, .og-dialog > * { margin: var(--layout-margin-none); }
 .og-form, .og-body { gap: var(--layout-margin-medium); }
 .og-group { gap: var(--layout-margin-small); align-items: flex-start; }
 .og-group-label { font: var(--typography-regular-label); color: var(--typography-color-primary); }
@@ -57,15 +59,15 @@ const css = `
   border: var(--layout-border-width-small) solid var(--surface-color-border-default);
   border-radius: var(--layout-border-radius-medium);
 }
+.og-card-name { font: var(--typography-bold-body); color: var(--typography-color-primary); }
 .og-card-name > a.bcds-react-aria-Link { font: inherit; }
-.og-card-facts {
+.og-card-facts, .og-commands {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--layout-margin-small);
-  font: var(--typography-regular-small-body);
-  color: var(--typography-color-secondary);
 }
+.og-card-facts { font: var(--typography-regular-small-body); color: var(--typography-color-secondary); }
 .og-pages ul {
   list-style: none;
   margin: var(--layout-margin-none);
@@ -80,11 +82,25 @@ const css = `
 .og-pages a.bcds-react-aria-Link { font: inherit; }
 .og-pages a[aria-current="page"] { font-weight: var(--typography-font-weights-bold); }
 .og-errors { margin: var(--layout-margin-none); padding-inline-start: var(--layout-padding-large); }
+.og-dialog { gap: var(--layout-margin-medium); padding: var(--layout-padding-large); }
+.og-saved { margin: var(--layout-margin-none); font: var(--typography-regular-small-body); color: var(--typography-color-secondary); }
+.og-saved:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .og-focus:focus {
   outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
   outline-offset: var(--layout-margin-hair);
 }
+@media (max-width: 767.98px) {
+  .og-dialog { padding: var(--layout-padding-medium); }
+}
 `;
+
+/**
+ * This kit's style sheet alone, for a section of another domain's page drawn with its pieces: a
+ * vendor's own organizations, inside the profile.
+ */
+export function OrganizationStyles() {
+  return <style>{css}</style>;
+}
 
 /**
  * A whole screen of this domain: the opportunity page frame (the direction's style sheets, the
@@ -94,7 +110,7 @@ const css = `
 export function OrganizationPage({ testId, children }: { testId?: string; children: ReactNode }) {
   return (
     <OpportunityPage testId={testId}>
-      <style>{css}</style>
+      <OrganizationStyles />
       {children}
     </OpportunityPage>
   );
@@ -395,5 +411,185 @@ export function Pagination({ page, pages }: { page: number; pages: number }) {
         ) : null}
       </ul>
     </nav>
+  );
+}
+
+// ——— Memberships ———
+
+export type MembershipWords = "Owner" | "Administrator" | "Member" | "Pending";
+
+/**
+ * A membership in words. Owner, Administrator and Member are kinds of membership, not states, so
+ * they are grey, the direction's neutral; Pending is a state that waits on someone, and is yellow.
+ */
+export function membershipColour(membership: string): LabelColour {
+  return membership.toLowerCase().startsWith("pending") ? "yellow" : "grey";
+}
+
+/** The membership label, carrying the owner's and the pending badge's test IDs. */
+export function Membership({ children }: { children: MembershipWords }) {
+  const testId = children === "Owner" ? "organization-owner-badge" : children === "Pending" ? "organization-pending-badge" : undefined;
+  return (
+    <Label colour={membershipColour(children)} testId={testId}>
+      {children}
+    </Label>
+  );
+}
+
+/** The commands a row offers, in a row that wraps. */
+export function Commands({ children }: { children: ReactNode }) {
+  return <div className="og-commands">{children}</div>;
+}
+
+// ——— The team ———
+
+export type TeamRow = {
+  readonly key: string;
+  readonly name: string;
+  readonly membership: MembershipWords;
+  readonly capabilities: number;
+  /** What the viewer may do on the row; nothing where they may do nothing. */
+  readonly commands: ReactNode;
+};
+
+const TEAM_CAPTION = "Everyone who belongs to or has been invited to this organization";
+
+/**
+ * The team: a table on a wide screen, one stacked card per person on a phone, the name in bold
+ * body text, the membership label and "Capabilities: N" on one line, the commands beneath (rule 7).
+ * The switch is read in script, as the header's is, so each row and its test IDs appear once.
+ */
+export function TeamRows({ rows }: { rows: readonly TeamRow[] }) {
+  const narrow = useNarrow();
+  if (narrow) {
+    return (
+      <>
+        <p id="team-caption" className="op-note">
+          {TEAM_CAPTION}
+        </p>
+        <ul className="og-cards" aria-labelledby="team-caption">
+          {rows.map((row) => (
+            <li key={row.key} className="og-card" data-testid="organization-team-member-row">
+              <p className="og-card-name">{row.name}</p>
+              <div className="og-card-facts">
+                <Membership>{row.membership}</Membership>
+                <span>{`Capabilities: ${row.capabilities}`}</span>
+              </div>
+              {row.commands}
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+  return (
+    <DataTable captionId="team-caption" caption={TEAM_CAPTION} columns={["Name", "Membership", "Capabilities", "Actions"]}>
+      {rows.map((row) => (
+        <tr key={row.key} data-testid="organization-team-member-row">
+          <td>{row.name}</td>
+          <td>
+            <Membership>{row.membership}</Membership>
+          </td>
+          <td>{row.capabilities}</td>
+          <td>{row.commands}</td>
+        </tr>
+      ))}
+    </DataTable>
+  );
+}
+
+/**
+ * An alert that carries a test ID: the design system's InlineAlert passes no `data-*`, so a
+ * wrapper holds it. With content of its own, the title is in the alert's own title markup.
+ */
+export function PageAlert({
+  testId,
+  variant,
+  title,
+  role,
+  children,
+}: {
+  testId?: string;
+  variant: "info" | "warning" | "danger";
+  title: string;
+  role?: "alert";
+  children?: ReactNode;
+}) {
+  return (
+    <div data-testid={testId}>
+      <InlineAlert variant={variant} role={role}>
+        <AlertTitle>{title}</AlertTitle>
+        {children}
+      </InlineAlert>
+    </div>
+  );
+}
+
+/** The body of the two small dialogs (Add team members, Change owner): `large` inside, `medium` on a phone. */
+export function DialogBody({ children }: { children: ReactNode }) {
+  return <div className="og-dialog">{children}</div>;
+}
+
+/**
+ * The status region an immediate change reports into (withdrawing rights, approving). It is on the
+ * page before anything is saved, so the outcome is announced; while empty it takes no room.
+ */
+export function SaveStatus({ children }: { children?: ReactNode }) {
+  return (
+    <p role="status" className="og-saved">
+      {children}
+    </p>
+  );
+}
+
+// ——— The changelog ———
+
+export type ChangelogRow = {
+  readonly key: string;
+  readonly when: ReactNode;
+  readonly event: string;
+  readonly member: string;
+  readonly by: string;
+};
+
+const CHANGELOG_CAPTION = "Changes to administrator rights and ownership, newest first";
+
+/**
+ * The changelog: a table on a wide screen, one card per entry on a phone, the change and whom it
+ * concerned first, then when and who made it.
+ */
+export function ChangelogRows({ entries }: { entries: readonly ChangelogRow[] }) {
+  const narrow = useNarrow();
+  if (narrow) {
+    return (
+      <>
+        <p id="changelog-caption" className="op-note">
+          {CHANGELOG_CAPTION}
+        </p>
+        <ul className="og-cards" aria-labelledby="changelog-caption">
+          {entries.map((e) => (
+            <li key={e.key} className="og-card" data-testid="organization-changelog-entry">
+              <p className="og-card-name">{`${e.event}: ${e.member}`}</p>
+              <div className="og-card-facts">
+                <span>{e.when}</span>
+                <span>{`Made by ${e.by}`}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+  return (
+    <DataTable captionId="changelog-caption" caption={CHANGELOG_CAPTION} columns={["Date", "Change", "Member", "Made by"]}>
+      {entries.map((e) => (
+        <tr key={e.key} data-testid="organization-changelog-entry">
+          <td>{e.when}</td>
+          <td>{e.event}</td>
+          <td>{e.member}</td>
+          <td>{e.by}</td>
+        </tr>
+      ))}
+    </DataTable>
   );
 }
