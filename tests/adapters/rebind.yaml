@@ -14165,6 +14165,11 @@ rebind:
     app_tree: 6f06aaab8c1634887833b248539582fed3240825
     by: runner:verify
     at: 2026-10-18T02:53:33.634Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T03:13:15.225Z
   - id: R-1.35
     target: new
     why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
@@ -14183,6 +14188,11 @@ rebind:
     app_tree: 6f06aaab8c1634887833b248539582fed3240825
     by: runner:verify
     at: 2026-10-18T02:53:33.634Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T03:13:15.225Z
   - id: R-1.36
     target: new
     why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
@@ -14201,6 +14211,11 @@ rebind:
     app_tree: 6f06aaab8c1634887833b248539582fed3240825
     by: runner:verify
     at: 2026-10-18T02:53:33.634Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T03:13:15.225Z
   - id: R-2.2
     target: new
     why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
@@ -14228,6 +14243,11 @@ rebind:
     app_tree: 6f06aaab8c1634887833b248539582fed3240825
     by: runner:verify
     at: 2026-10-18T02:53:33.634Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T03:13:15.225Z
   - id: R-2.3
     target: new
     why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
@@ -14256,6 +14276,11 @@ rebind:
     app_tree: 6f06aaab8c1634887833b248539582fed3240825
     by: runner:verify
     at: 2026-10-18T02:53:33.634Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T03:13:15.225Z
   - id: R-2.4
     target: new
     why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
@@ -14283,6 +14308,11 @@ rebind:
     app_tree: 6f06aaab8c1634887833b248539582fed3240825
     by: runner:verify
     at: 2026-10-18T02:53:33.634Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T03:13:15.225Z
   - id: R-2.13
     target: new
     why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
@@ -14328,6 +14358,11 @@ rebind:
     app_tree: 6f06aaab8c1634887833b248539582fed3240825
     by: runner:verify
     at: 2026-10-18T02:53:33.634Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T03:13:15.225Z
   - id: R-2.23
     target: new
     why: 'unbound: proposal-cwu-create.choose_proponent_individual — no "An
@@ -14355,3 +14390,8 @@ rebind:
     app_tree: 6f06aaab8c1634887833b248539582fed3240825
     by: runner:verify
     at: 2026-10-18T02:53:33.634Z
+    closed:
+      outcome: met
+      why: tests/adapters/new has changed since this was found
+      by: runner:verify
+      at: 2026-10-18T03:13:15.225Z
