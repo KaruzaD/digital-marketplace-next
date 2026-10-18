@@ -1,5 +1,11 @@
 # Run log
 
+# Run record 2026-10-18
+
+- 2026-10-17 16:58:07 drive: step 3: `sdlc run verify --slice 8` — build-slice-8-12 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 17:29:03 verify slice 8 verified: every claimed criterion passes against the application in build-slice-8-12. Ready for G3.
+- 17:29:04 run verify: regenerated 682 files in .sdlc, site
+
 # Run record 2026-10-17
 
 - 12:34:12 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain opportunities --hand-in design-directions`; reason: Hand in the redesign drawn outside the pipeline on the design-directions branch: the shared site header and footer, the home page, the opportunity list and the Code With Us proposal form, with the chosen direction's rules in DESIGN.md
