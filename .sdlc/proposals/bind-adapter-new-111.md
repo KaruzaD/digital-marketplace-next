@@ -43,3 +43,22 @@ What each method hands back is unchanged: the actions still return nothing, and 
 **`bindings.yaml`** needed no change: all five members were already `bound`, and every route I visited resolved.
 
 **Other.** Once, while inviting as the owner, an email typed into the "Add team members" dialog was lost before "Send invitations", and the dialog said "Enter an email address". It worked when retried with the box clicked first. That points to a possible timing weakness in `organizationEdit.addTeamMembers`, which I left alone because it is outside this run's scope. Nothing outside `tests/adapters/new/` was changed.
+
+## Ruling
+
+**Verdict:** approve
+**By:** runner:checks
+
+Approved by the runner's checks, which policy.gates.G3.auto_approve lets settle bind-adapter proposals: the acceptance typecheck of 549b46bf9f is clean; no condition is open against it; no escalation stands on it; nothing outside tests/adapters changed.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `549b46bf9f8ce7008ae5863e696bb102e1ba82fc`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
