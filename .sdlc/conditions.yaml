@@ -3627,3 +3627,29 @@ conditions:
         (attachment-name-field) and its download link.
       by: agent:tech-lead
       at: 2026-10-18T04:24:57.875Z
+  - ref: build-slice-10-6#1
+    text: "R-1.9, in the cases \"Sprint With Us: a draft whose dates are missing is
+      accepted, its proposal deadline, assignment date and start date are set to
+      fourteen days from the day of saving, and its completion date is left
+      emp…\", \"Sprint With Us: a draft whose dates are invalid is accepted, its
+      proposal deadline, assignment date and start date are set to fourteen days
+      from the day of saving, and its completion date is left emp…\", \"Team
+      With Us: a draft whose dates are missing is accepted, its proposal
+      deadline, assignment date and start date are set to fourteen days from the
+      day of saving, and its completion date is left empty\" and \"Team With Us:
+      a draft whose dates are invalid is accepted, its proposal deadline,
+      assignment date and start date are set to fourteen days from the day of
+      saving, and its completion date is left empty\": Error: assignment date
+      should be set — Received: \"\" — at
+      tests/acceptance/opportunities/R-1.9.spec.ts:52 — on the draft's manage
+      page the opportunity-assignment-date-field held no date while the proposal
+      deadline field held 2026-11-01, and the Summary tab no longer lists an
+      assignment date; a draft saved with missing or invalid dates must hold,
+      and show, an assignment date and start date fourteen days from the day of
+      saving."
+    from: build-slice-10-6
+    family: build-slice-10
+    gate: G3
+    stage: build
+    by: agent:reviewer
+    at: 2026-10-18T08:44:31.033Z
