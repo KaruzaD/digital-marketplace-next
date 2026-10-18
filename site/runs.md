@@ -192,6 +192,11 @@
 - 02:49:58 verify slice 10: 1 criteria still fail after 3 builds; escalated to tech-lead.
 - 02:50:00 run verify: regenerated 712 files in .sdlc, site
 - 02:51:27 drive: stopped after 12 steps — waiting on a person: tech-lead: build-slice-10-8
+- 02:53:27 deviation: next named `nothing: every open item waits on a person`; ran `sdlc run derive-tests --domain organizations --revise`; reason: Takes up the revision request the G3 ruling of build-slice-10-8 filed to derive-tests about tests/acceptance/organizations/R-3.28.spec.ts, which is in the organizations domain: give it an organization of its own that no other test reads or changes.
+- 02:55:15 run derive-tests: ok, cost 0.5055516000000001, turns 13, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 02:55:15 propose derive-tests-organizations-12 at G3
+- 02:55:22 drive: step 1: `sdlc rule derive-tests-organizations-12 --by agent:reviewer` — derive-tests-organizations-12 is open at G3, held by agent:reviewer
+- 02:56:00 rule derive-tests-organizations-12 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
 
 # Run record 2026-10-17
 
