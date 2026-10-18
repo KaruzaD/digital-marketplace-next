@@ -3478,6 +3478,15 @@ conditions:
     stage: bind-adapter
     by: agent:tech-lead
     at: 2026-10-18T01:45:57.633Z
+    closed:
+      outcome: met
+      why: opportunityCwuView.reward() in tests/adapters/new/index.ts now tries
+        definitionOf(/^reward$/i), then labelledValue(['Reward']), then
+        cwuHeadReward(), which takes the figure from a head line matching
+        /^reward\s+(.+)$/i ('Reward $5,000' gives '$5,000'); see the reward
+        member and cwuHeadReward in the diff.
+      by: agent:reviewer
+      at: 2026-10-18T01:49:10.353Z
   - ref: bind-adapter-new-94#2
     text: "opportunityCwuView.status() in tests/adapters/new/index.ts can return a
       term label as the status. On the restyled view verify captured for R-1.21,
@@ -3499,3 +3508,14 @@ conditions:
     stage: bind-adapter
     by: agent:tech-lead
     at: 2026-10-18T01:45:57.633Z
+    closed:
+      outcome: met
+      why: cwuHeadLines() in tests/adapters/new/index.ts now ends the head at the
+        first line equal to a dt's text (termLabels()), at an 'Opportunity ID:'
+        line, or at the Description heading, whichever comes first.
+        cwuHeadStatus() skips any line that is a term label and accepts either a
+        bare status word or a 'Code With Us <status>' line, read as the status
+        word; status() tries the 'Status' term first and falls back to
+        cwuHeadStatus().
+      by: agent:reviewer
+      at: 2026-10-18T01:49:10.403Z
