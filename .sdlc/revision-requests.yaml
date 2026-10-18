@@ -2035,3 +2035,68 @@ requests:
     at: 2026-10-18T06:57:02.334Z
     taken: 2026-10-18T07:00:45.879Z
     taken_by: bind-adapter-new-102
+  - stage: bind-adapter
+    target: new
+    why: "R-1.43: evaluationPanelSwu.panelMemberRow() read \"\" on
+      /opportunities/sprint-with-us/00000000-0000-4000-a011-000000000001/edit?t\
+      ab=evaluationPanel at the consensus stage. The page shows the lock note
+      and, in the 'Evaluation panel' region, a list 'Members of the evaluation
+      panel' whose items (data-testid evaluation-panel-member-row) read 'Casey
+      Placeholder Role : Evaluator' and 'Robin Placeholder Role : Evaluator and
+      chair'. rows() passes these list items to rowsText(), which reads only
+      role=cell children, and list items have none; read each row's own text
+      (name, then the role after the visually hidden 'Role:')."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+  - stage: bind-adapter
+    target: new
+    why: "R-5.18: evaluationPanelSwu.panelMemberRow() never read non-empty on
+      /opportunities/sprint-with-us/00000000-0000-4000-a023-000000000001/edit?t\
+      ab=evaluationPanel as the administrator. The panel now opens read-only:
+      the list 'Members of the evaluation panel' shows 'Robin Placeholder Role :
+      Evaluator and chair' and 'Devon Placeholder Role : Evaluator', followed by
+      the 'Edit evaluation panel' button (evaluation-panel-edit). For a panel
+      without a lock note, rows() reads each name from a chooser inside the row,
+      which a read-only row lacks, so every row is skipped. Read the read-only
+      rows' text, and use the chooser only once editing has started."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+  - stage: bind-adapter
+    target: new
+    why: "R-1.55: after a fresh draft is saved, evaluationPanelSwu.open then
+      panelMemberRow() times out reading \"\"
+      (tests/acceptance/opportunities/R-1.55.spec.ts:131), while the page shows
+      the read-only list item 'Robin Placeholder Role : Evaluator and chair' and
+      'Edit evaluation panel'. Same cause as R-5.18: rows() needs a member
+      chooser, and the read-only panel has none."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+  - stage: bind-adapter
+    target: new
+    why: "R-5.1: evaluationPanelSwu.panelMemberRow() times out reading \"\"
+      (tests/acceptance/evaluation/R-5.1.spec.ts:94) on a fresh Sprint With Us
+      draft's panel tab, which shows the read-only item 'Casey Placeholder Role
+      : Evaluator and chair' and 'Edit evaluation panel'. Same cause as R-5.18:
+      rows() reads names only from choosers."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+  - stage: bind-adapter
+    target: new
+    why: "R-5.17: evaluationPanelSwu.panelMemberRow() times out reading \"\"
+      (tests/acceptance/evaluation/R-5.17.spec.ts:91) on a published
+      opportunity's panel tab, which shows the read-only items 'Casey
+      Placeholder Role : Evaluator' and 'Emery Placeholder Role : Evaluator and
+      chair' and 'Edit evaluation panel'. Same cause as R-5.18: rows() reads
+      names only from choosers."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
