@@ -8292,24 +8292,47 @@ export default function create(
     }
     return "";
   }
-  // The texts of the page's terms ("Status", "Published", "Opportunity ID", ...).
-  async function termLabels(): Promise<string[]> {
-    return page
-      .getByRole("main")
-      .evaluate((main) => Array.from(main.querySelectorAll("dt")).map((dt) => (dt as HTMLElement).innerText.trim()))
-      .catch(() => [] as string[]);
-  }
   // The page's head: its lines up to the first term, "Opportunity ID: <id>" or the
   // Description section, whichever comes first, so no term label below it is ever read as
   // part of the head. A later build restyles the head, drawing the program and status as one
   // label ("Code With Us Draft"), the deadline as a fact of its own ("Closes <date> at 4:00
   // p.m. Pacific time", or "Closed" once it has passed) and the reward as "Reward $5,000",
   // instead of under terms of their own.
+  //
+  // Where the terms begin is read from the page's structure, not by matching a line against
+  // the terms' texts: a published opportunity's head shows its status "Published", which is
+  // also the text of the "Published" date's term, and matching text cut the head off at the
+  // status, dropping the "Closes ..." line after it.
   async function cwuHeadLines(): Promise<string[]> {
-    const lines = await textLines();
-    const terms = new Set(await termLabels());
+    await ready();
+    const lines = await page
+      .getByRole("main")
+      .evaluate((main) => {
+        const firstTerm = main.querySelector("dt");
+        const shown: string[] = [];
+        let lastBlock: Element | null = null;
+        const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (firstTerm && (firstTerm.contains(node) || firstTerm.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+          const parent = node.parentElement;
+          if (!parent) continue;
+          const parentStyle = getComputedStyle(parent);
+          if (parentStyle.display === "none" || parentStyle.visibility === "hidden") continue;
+          if (parent.closest("[hidden], [aria-hidden='true']")) continue;
+          const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+          if (!text) continue;
+          let block: Element = parent;
+          while (block !== main && block.parentElement && getComputedStyle(block).display.startsWith("inline")) block = block.parentElement;
+          if (block === lastBlock) shown[shown.length - 1] += ` ${text}`;
+          else {
+            shown.push(text);
+            lastBlock = block;
+          }
+        }
+        return shown.map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+      })
+      .catch(() => [] as string[]);
     const ends = [
-      lines.findIndex((line) => terms.has(line)),
       lines.findIndex((line) => /^opportunity id:/i.test(line)),
       lines.findIndex((line) => /^description$/i.test(line)),
     ].filter((index) => index >= 0);
@@ -8321,9 +8344,7 @@ export default function create(
   // The status alone ("Draft"), or trailing the program's name ("Code With Us Draft").
   const CWU_STATUS_AFTER_PROGRAM = new RegExp(`^code with us\\s+(${CWU_STATUS_WORDS})$`, "i");
   async function cwuHeadStatus(): Promise<string> {
-    const terms = new Set(await termLabels());
     for (const line of await cwuHeadLines()) {
-      if (terms.has(line)) continue;
       const status = CWU_STATUS_SHOWN.test(line) ? line : (CWU_STATUS_AFTER_PROGRAM.exec(line)?.[1] ?? "");
       if (status && !/^closed$/i.test(status)) return status;
     }
@@ -8337,7 +8358,13 @@ export default function create(
     return "";
   }
   async function cwuHeadDeadline(): Promise<string> {
-    return (await cwuHeadLines()).find((line) => /^close[sd]\b/i.test(line)) ?? "";
+    return (
+      (await cwuHeadLines()).find((line) => /^close[sd]\b/i.test(line)) ??
+      // Drawn below the terms instead: the first line of the page that opens with it, as the
+      // old binding reads its own.
+      (await textLines()).find((line) => /^close[sd]\b/i.test(line)) ??
+      ""
+    );
   }
   const CWU_VIEW_WALKED =
     "walked as the administrator, a public sector employee and a vendor on the seeded published, draft and awarded Code With Us opportunities";
