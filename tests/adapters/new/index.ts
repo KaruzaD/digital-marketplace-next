@@ -7748,8 +7748,9 @@ export default function create(
       ),
     // The approved service areas only, one per line: with the editor open (the service
     // administrator's "Edit service areas"), the areas whose boxes are ticked; with it closed,
-    // the items under "Approved service areas". Where the editor is offered it is opened to read
-    // the ticked boxes, then cancelled. An unticked area is never named. Whether the section is
+    // the items under "Approved service areas", even where "Edit service areas" is offered
+    // beneath them. Only a section drawn with no such list has its editor opened to read the
+    // ticked boxes, then cancelled. An unticked area is never named. Whether the section is
     // being edited is decided once it is open: a section drawn with its boxes showing at once
     // (an administrator's "Service areas this organization is approved for" over "Save service
     // areas") is read as it stands. Boxes already showing — an earlier step's unsaved ticks —
@@ -7762,15 +7763,19 @@ export default function create(
         await orgTabOpen("service_area_checkbox", ORG_TAB.twu);
         editing = await boxesShown();
       }
-      const edit = await editServiceAreasControl();
-      if (!editing && !(await edit.count())) {
-        // Each approved area carries "organization-service-area".
+      if (!editing) {
+        // With the form closed the approvals are the "Approved service areas" list, whether or
+        // not an "Edit service areas" is offered beneath it. Each approved area carries
+        // "organization-service-area".
         const areas = await carried("organization-service-area");
         if (areas) return (await areas.allInnerTexts()).map((one) => one.trim()).filter(Boolean).join("\n");
         const section = seen(regionNamed(page.getByRole("main"), /^\s*approved service areas\s*$/i)).last();
-        if (!(await section.count())) return "";
-        const items = (await seen(section.getByRole("listitem")).allInnerTexts()).map((one) => one.trim()).filter(Boolean);
-        return items.join("\n");
+        if (await section.count()) {
+          const items = (await seen(section.getByRole("listitem")).allInnerTexts()).map((one) => one.trim()).filter(Boolean);
+          return items.join("\n");
+        }
+        // No list drawn at all: the ticked boxes of the editor, where one is offered.
+        if (!(await (await editServiceAreasControl()).count())) return "";
       }
       const boxes = await serviceAreaBoxes("service_area_checkbox");
       if (!boxes) return "";
@@ -10427,13 +10432,30 @@ export default function create(
       await press(where, /^\s*cancel opportunity\s*$/i, dialog());
       await ready();
     },
-    deleteOpportunity: () =>
-      manageAction(
-        "delete_opportunity",
-        /^\s*delete( opportunity)?\s*$/i,
-        /^\s*delete( opportunity)?\s*$/i,
-        "opportunity-delete-button",
-      ),
+    // Confirmed, the delete runs with the screen's actions disabled and ends on the Dashboard;
+    // it is waited out until the management screen has been left, or, where the service
+    // refuses it, until the actions are offered again on the same screen.
+    deleteOpportunity: async () => {
+      const member = "delete_opportunity";
+      const DELETE = /^\s*delete( opportunity)?\s*$/i;
+      await manageAction(member, DELETE, DELETE, "opportunity-delete-button");
+      const managing = (): boolean => /\/opportunities\/code-with-us\/[^/?#]+\/edit(?:[?#]|$)/.test(new URL(page.url()).pathname + "?");
+      const deadline = Date.now() + 30000;
+      let offered = 0;
+      while (managing() && Date.now() < deadline) {
+        const control = await actionControl(DELETE, "opportunity-delete-button").catch(() => null);
+        const enabled = !!control && !(await isDisabled(control).catch(() => true));
+        // Offered again, and still offered 3s on, without the screen being left: the service
+        // did not delete it, and the test's own reading decides.
+        offered = enabled ? offered + 1 : 0;
+        if (offered >= 12) return;
+        await page.waitForTimeout(250);
+      }
+      if (managing()) {
+        throw new Error(`${cwuManage.where(member)} — the delete was confirmed but ${page.url()} was still the management screen, its actions disabled, after 30s`);
+      }
+      await ready();
+    },
     // The Addenda section (?tab=addenda) of a published, lapsed or awarded opportunity lists
     // the addenda ("No addenda have been added." when none) over a "New addendum (required)"
     // box and an "Add addendum" button that sends it. A draft has no Addenda section at all
