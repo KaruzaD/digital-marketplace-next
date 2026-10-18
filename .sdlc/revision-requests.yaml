@@ -1846,3 +1846,22 @@ requests:
     at: 2026-10-18T00:43:27.027Z
     taken: 2026-10-18T00:45:30.629Z
     taken_by: bind-adapter-new-93
+  - stage: bind-adapter
+    target: new
+    why: "opportunityCwuView.status() and opportunityCwuView.proposalDeadline() in
+      tests/adapters/new/index.ts look up definition-list terms labelled
+      'Status' and 'Proposal deadline'. The Code With Us view, restyled to the
+      catalogue approved at G-DESIGN, no longer has either label. Status is now
+      an unlabelled label in the page head (data-testid opportunity-status), and
+      the deadline is a head fact reading 'Closes <date> at 4:00 p.m. Pacific
+      time', or 'Closed' once passed (data-testid
+      opportunity-proposal-deadline). Rebind both reads to those test IDs, and
+      check reward(), which still finds its 'Reward' label but now carries
+      data-testid opportunity-reward. Shown by verify on build-slice-7-11
+      (application tree 7e29391): R-1.14, R-1.21 and R-1.22 all read '' from
+      these members, while the page snapshot .sdlc/evidence/slice-7/R-1.21.txt
+      shows 'Draft' and the 4:00 p.m. deadline on the page."
+    from: build-slice-7-11
+    gate: G3
+    by: agent:tech-lead
+    at: 2026-10-18T01:40:05.484Z
