@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bind-adapter-new-102 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">692</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">686</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">553</span></a></li><li><a href="../runs.html">Run log <span class="count">26</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>bind-adapter-new-102</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 07:00</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does this adapter bind every surface action and observation on new, and nothing else?</h2>
+<p><strong>Recommendation.</strong> I fixed all three conditions in <code>tests/adapters/new/index.ts</code> and checked them against the running target.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I fixed all three conditions in <code>tests/adapters/new/index.ts</code> and checked them against the running target. The project type-check (<code>tsc</code>) needed approval this session never got, so it was not run. I checked the new lines by hand against the helpers they call. <code>bindings.yaml</code> is unchanged: every member these conditions touch was already <code>bound</code>, and that stays true.</p>
+<p><strong>Conditions 1 and 2: evaluation panel lock (R-1.43, R-5.16).</strong> Both Sprint With Us and Team With Us use one shared helper, <code>evaluationPanelPage</code>, so one change covers both.</p>
+<ul><li><strong>What the page has.</strong> I signed in as the administrator through the identity provider. On a locked panel (<code>…/sprint-with-us/00000000-0000-4000-a011-000000000001/edit?tab=evaluationPanel</code>) there are two regions. The outer one, named &quot;Evaluation panel&quot;, holds the lock note (<code>evaluation-panel-locked-message</code>). Inside it is a second region, &quot;Members of the evaluation panel&quot;, which holds the member rows but not the note. An editable panel (the seeded opportunity <code>…-a024-000000000001</code>) has only the one &quot;Evaluation panel&quot; region.</li><li><strong>The fix.</strong> <code>section()</code> ended in <code>.last()</code>, which picked the inner table region on the locked page. It now ends in <code>.first()</code>. Regions come in page order, so that is always the outermost &quot;Evaluation panel&quot; region.</li><li><strong>Checked live.</strong> On the locked page the section now finds the lock note and both member rows, so <code>lockNote()</code> counts it, <code>editable()</code> returns false and <code>addPanelMember</code> notes the refusal instead of timing out on a member chooser. On the editable page the section still finds &quot;Save evaluation panel&quot; and no lock note, so editing works as before. <code>lockNote()</code> itself is unchanged.</li><li><strong>The 701 opportunity.</strong> On this instance, <code>…-8000-000000000701</code> is still at &quot;Team questions: individual evaluation&quot;. Its panel is editable, because only the reviewer&#39;s run had moved it on to consensus. I could not see its locked state here. The locked page it would show is the one I checked on the a011 opportunity, so the same fix applies.</li></ul>
+<p><strong>Condition 3: full report heading (R-1.40).</strong> On <code>…/code-with-us/00000000-0000-4000-a008-000000000001/complete</code>, signed in as administrator, the report article carrying <code>opportunity-full-report</code> is labelled by a level-1 heading drawn just above it. That heading is the opportunity&#39;s title, &quot;Seeded awarded Code With Us opportunity&quot;, and it is the only one on the page. The article has no heading of its own inside it.</p>
+<ul><li><strong>The fix.</strong> When the page carries <code>opportunity-full-report</code>, <code>documentText()</code> now puts the main area&#39;s level-1 heading on the first line, then the article&#39;s text as before. It skips this if the article ever holds its own level-1 heading, so the title is never read twice.</li><li><strong>Scope.</strong> The same change applies to the Sprint With Us and Team With Us reports, which use the same reader. It does not change the printable proposal copies (<code>proposal-export-document</code>), which no condition named. A reader refused the page still gets an empty reading.</li></ul>
+<p>No route failed to resolve in this run. I wrote nothing outside <code>tests/adapters/new/</code>, and no condition is deferred.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-18 07:01.</p>
+<div class="body"><p>Question: does this bind-adapter revision fix the three faults the build-slice-1-10 ruling sent back, staying navigation and locators only? Ruling: approve. The only code change is in tests/adapters/new/index.ts. evaluationPanelPage&#39;s section() now ends in .first() instead of .last(), so on a locked Sprint With Us or Team With Us panel it resolves to the outer &#39;Evaluation panel&#39; region, which holds the lock note, rather than the nested &#39;Members of the evaluation panel&#39; table region. lockNote() then sees the refusal, editable() returns false, and addPanelMember notes the refusal instead of timing out. The authoring agent checked this live on the locked a011 page and the editable a024 page. Not seeing 701 in its locked state is acceptable because it renders the same locked page. documentText() now puts the main area&#39;s level-1 heading (the title that labels the report article) at the start of the full-report reading, and skips it when the article has its own level-1 heading. That widens what is observed for R-1.40 without deciding the outcome. Neither change asserts anything or carries business logic. Nothing under tests/acceptance changed, bindings.yaml is unchanged, and the runner&#39;s typecheck passed with no diagnostics under adapters/new. What would change this: a verify run showing that .first() now resolves to a larger enclosing region on another evaluation-panel page.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

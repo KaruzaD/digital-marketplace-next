@@ -138,6 +138,14 @@
 - 23:24:35 drive: step 1: `sdlc run verify --slice 1` — build-slice-1-10 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
 - 23:55:48 verify slice 1: R-1.43 (slice 10), R-5.16 (slice 17), R-1.40 (slice 20) fail (3 that an earlier slice passed). R-5.16 stopped where the adapter raised an error of its own, which can be the adapter's as easily as the application's, so build-slice-1-10 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
 - 23:55:50 run verify: regenerated 3 files in .sdlc, site
+- 23:57:11 drive: step 3: `sdlc run bind-adapter --target new --revise` — 3 revision requests for target new owed by bind-adapter; requests request/build-slice-1-10#1, request/build-slice-1-10#2, request/build-slice-1-10#3
+- 23:57:12 run bind-adapter: pre-checks failed
+- 23:57:12 drive: step 3 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-1-10 (sdlc sandbox up --target new --from proposal/build-slice-1-10), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-1-10)
+- 00:00:45 run bind-adapter: ok, cost 0.8857403999999999, turns 30, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 00:00:45 propose bind-adapter-new-102 at G3
+- 00:00:45 drive: step 3 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-1-10)
+- 00:01:06 drive: step 4: `sdlc rule bind-adapter-new-102 --by agent:reviewer` — bind-adapter-new-102 is open at G3, held by agent:reviewer
+- 00:01:40 rule bind-adapter-new-102 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
 
 # Run record 2026-10-17
 

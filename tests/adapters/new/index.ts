@@ -434,13 +434,21 @@ export default function create(
   // report or copy: the reading is empty, as the old target's is.
   // The report carries "opportunity-full-report" and a copy "proposal-export-document": read
   // where the page carries them (the document alone, without the screen's "Back to …" and
-  // "Print" controls), as the screen's own text otherwise.
+  // "Print" controls), as the screen's own text otherwise. The report's article is named by
+  // the opportunity's title, an H1 drawn just above it, so the report begins with that title.
   async function documentText(): Promise<string> {
     await ready();
     if (await whyNotHere().catch(() => "")) return "";
-    const marked = (await carried("opportunity-full-report")) ?? (await carried("proposal-export-document"));
+    const report = await carried("opportunity-full-report");
+    const marked = report ?? (await carried("proposal-export-document"));
     if (marked) {
       const lines: string[] = [];
+      if (report) {
+        const title = seen(page.getByRole("main").getByRole("heading", { level: 1 })).first();
+        const words = (await title.count()) ? (await title.innerText()).replace(/\s+/g, " ").trim() : "";
+        const inside = (await report.getByRole("heading", { level: 1 }).count()) > 0;
+        if (words && !inside) lines.push(words);
+      }
       for (const words of await marked.allInnerTexts()) lines.push(...lined(words));
       return lines.join("\n");
     }
@@ -5757,14 +5765,16 @@ export default function create(
     // message"), or the region so named. Each member is an "evaluation-panel-member-row" (a
     // group to edit, a table row once locked), its chooser in "evaluation-panel-member-field"
     // and its Chair box in "evaluation-panel-member-chair"; the chair chooser sits in
-    // "evaluation-panel-chair-field".
+    // "evaluation-panel-chair-field". Once locked, the "Evaluation panel" region holds the
+    // lock note over a nested "Members of the evaluation panel" region holding the rows, so
+    // the section is the outermost such region (the first in page order), which holds both.
     const section = (): Locator => {
       const main = page.getByRole("main");
       const held = page
         .getByTestId("evaluation-panel-save")
         .or(page.getByTestId("evaluation-panel-member-row"))
         .or(page.getByTestId("evaluation-panel-locked-message"));
-      return seen(main.getByRole("region").filter({ has: held }).or(regionNamed(main, /^evaluation panel$/i))).last();
+      return seen(main.getByRole("region").filter({ has: held }).or(regionNamed(main, /^evaluation panel$/i))).first();
     };
     const members = (): Locator =>
       seen(
