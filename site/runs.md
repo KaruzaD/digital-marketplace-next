@@ -48,6 +48,9 @@
 - 18:48:00 drive: step 5 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-21-3)
 - 18:48:19 drive: step 6: `sdlc rule bind-adapter-new-95 --by agent:reviewer` — bind-adapter-new-95 is open at G3, held by agent:reviewer
 - 18:49:10 rule bind-adapter-new-95 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 18:50:26 drive: step 8: `sdlc run verify --slice 7` — build-slice-7-12 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 18:54:55 verify slice 7: 2 criteria still fail after 3 builds; escalated to tech-lead.
+- 18:54:57 run verify: regenerated 690 files in .sdlc, site
 
 # Run record 2026-10-17
 
