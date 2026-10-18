@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bind-adapter-new-105 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">705</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">699</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">562</span></a></li><li><a href="../runs.html">Run log <span class="count">26</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>bind-adapter-new-105</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 15:44</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does this adapter bind every surface action and observation on new, and nothing else?</h2>
+<p><strong>Recommendation.</strong> All seven conditions are answered, and nothing is deferred.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>All seven conditions are answered, and nothing is deferred. I couldn&#39;t run the TypeScript type check: the session needed approval for <code>npx tsc</code> and none was available. So the edited file has not been compiled. I checked the changed lines by reading them and by running the same locator on the live target.</p>
+<p><strong>Conditions 1–4, 6 and 7 (the scrum master radio on R-2.7, R-2.9, R-2.11, R-2.16, R-2.19 and R-2.22).</strong> The adapter found the radio only under the old name &quot;Scrum master: &lt;name&gt;, &lt;phase&gt; phase&quot;. I opened the running target as the seeded vendor, went to the create form of the seeded open Sprint With Us opportunity (<code>…a025…</code>), chose the organization and added a member to the implementation phase. The page shows a radio group &quot;Scrum master for the implementation phase (required)&quot;. Each member&#39;s radio is named by the member alone (&quot;Alex Placeholder&quot;) and sits inside a label carrying the test ID <code>proposal-scrum-master</code>. The radio passes the adapter&#39;s visibility filter.</p>
+<p>I added one shared locator, <code>scrumMasterRadio</code>, and both <code>onPhase</code> and <code>tickScrumMaster</code> now use it. It looks for the radio by test ID <code>proposal-scrum-master</code> first. It falls back to the &quot;Scrum master for the &lt;phase&gt; phase&quot; radio group and matches the member&#39;s name, optionally followed by &quot;Membership pending&quot; or &quot;(pending)&quot;. The old &quot;Scrum master: &lt;name&gt;, …&quot; name is still accepted as a last resort. Run against the live form, this locator found the radio and checked it. When it fails, the error now lists the names the radio group does offer.</p>
+<p><code>proposalSwuEdit.setScrumMaster</code> goes through the same function, so this also covers the edit-form half of condition 7. <code>onPhase</code> now takes the phase word, and I updated its one caller in <code>addPhaseMembers</code>.</p>
+<p><strong>Condition 5 (R-2.18, the pending member).</strong> <code>pickListed</code> now also accepts an option worded &quot;&lt;Name&gt; (membership pending)&quot;, alongside &quot;&lt;Name&gt;&quot; and &quot;&lt;Name&gt; (pending)&quot;. The member-choices reader (<code>choicesOffered</code>) had the same wording problem: it stripped only &quot; (pending)&quot; when reading names. I widened it to strip &quot; (membership pending)&quot; too, so it still returns names alone, the way the old binding does. That goes slightly beyond the literal request, but it is the same wording fix applied where the adapter reads the chooser. The second R-2.18 case failed on the scrum master radio, which the fix above covers.</p>
+<p><strong>What I did not check.</strong> I did not see a pending member&#39;s option on the live target: the only person the seeded organization offered was a member who is not pending. That wording comes from the ruling and the design catalogue it cites. I also did not re-run the three R-2.19 cases the condition asks to re-check (missing phase capability, phase cost over budget, total cost over budget). They go through the same scrum master step and now reach it, but whether they pass is for the next calibration run.</p>
+<p>The only file changed is <code>tests/adapters/new/index.ts</code>, plus some comments in it describing the new wording. <code>bindings.yaml</code> is unchanged: <code>set_scrum_master</code>, <code>add_phase_team_member</code> and <code>pending_team_member</code> were already listed as bound. Every route I opened resolved on the target.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:tech-lead (persona agent · claude claude-opus-5-5) on 2026-10-18 15:45.</p>
+<div class="body"><p>The question is whether this adapter revision binds the scrum master radio and the pending-member option on the Sprint With Us proposal forms as the running target draws them, and nothing beyond that. I approve. It reached me because bind-adapter was sent work back more times than policy.loops.request allows, not because the pipeline cannot do what the proposal needs, so it is ruled here rather than escalated. The diff matches the evidence it cites: .sdlc/evidence/slice-15/R-2.7.txt lines 44-51 show a radiogroup &#39;Scrum master for the implementation phase (required)&#39; holding a radio named only &#39;Charlie Placeholder&#39;, and the new shared scrumMasterRadio locator finds the radio by the member&#39;s name inside that group or the proposal-scrum-master test ID, keeping the old name only as a fallback. onPhase, tickScrumMaster and so proposalSwuEdit.setScrumMaster all use it. The approved catalogue (design/catalogue/proposal-swu-create.default.stories.tsx:21) uses the wording &#39;(membership pending)&#39;, and pickListed and choicesOffered now accept it, which is the same fix applied where the chooser is read. Only tests/adapters/new/index.ts changes, bindings.yaml is untouched, and the runner&#39;s typecheck on this revision passed with no diagnostics. The DESIGN.md mismatch that caused these failures stays with the design stage under its own open request, build-slice-15-6#8, and the three R-2.19 cases nobody has re-run are left to the next calibration run. I would return this if that run showed the scrum master radio still unfound, or a pending member still not added, on the create or edit form.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

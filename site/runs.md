@@ -231,6 +231,15 @@
 - 08:30:32 drive: step 1: `sdlc run verify --slice 15` — build-slice-15-6 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
 - 08:38:23 verify slice 15: R-2.7, R-2.9, R-2.11, R-2.16, R-2.18, R-2.19, R-2.22 fail. R-2.18 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's; R-2.7, R-2.9, R-2.11, R-2.16, R-2.19, R-2.22 stopped where the adapter raised an error of its own, which can be the adapter's as easily as the application's, so build-slice-15-6 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
 - 08:38:25 run verify: regenerated 3 files in .sdlc, site
+- 08:40:23 drive: step 3: `sdlc run bind-adapter --target new --revise` — 7 revision requests for target new owed by bind-adapter; requests request/build-slice-15-6#1, request/build-slice-15-6#2, request/build-slice-15-6#3, request/build-slice-15-6#4, request/build-slice-15-6#5, request/build-slice-15-6#6, request/build-slice-15-6#7
+- 08:40:25 run bind-adapter: pre-checks failed
+- 08:40:25 drive: step 3 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-15-6 (sdlc sandbox up --target new --from proposal/build-slice-15-6), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-15-6)
+- 08:44:19 run bind-adapter: ok, cost 1.0284884000000003, turns 32, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 08:44:19 propose bind-adapter-new-105 at G3
+- 08:44:19 rule bind-adapter-new-105 escalated at G3 to tech-lead by runner:bind-adapter
+- 08:44:19 drive: step 3 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-15-6)
+- 08:44:40 drive: step 4: `sdlc rule bind-adapter-new-105 --by agent:tech-lead` — bind-adapter-new-105 was escalated at G3 by runner:bind-adapter to tech-lead, a role an agent plays in this project
+- 08:45:34 rule bind-adapter-new-105 approve at G3 by agent:tech-lead (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
 
 # Run record 2026-10-17
 
