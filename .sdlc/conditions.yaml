@@ -3451,3 +3451,14 @@ conditions:
     stage: build
     by: agent:reviewer
     at: 2026-10-18T00:30:29.524Z
+    closed:
+      outcome: met
+      why: app/frontend/src/screens/opportunity-list.tsx renders the Closed
+        Opportunities Disclosure without defaultOpen, so it starts collapsed
+        like Unpublished.
+        docs/decisions/0071-the-closed-opportunities-group-starts-open.md is
+        withdrawn. app/frontend/tests/finding-opportunities.test.tsx opens the
+        closed group with openGroup (aria-expanded false to true) before reading
+        its rows, and checks that the button hides and shows them again.
+      by: agent:reviewer
+      at: 2026-10-18T00:43:27.438Z
