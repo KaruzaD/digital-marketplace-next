@@ -36,3 +36,23 @@ The reader in `tests/adapters/new/index.ts` now works like this:
 **One limitation.** The pattern for a group's header is unchanged: it must read exactly "Unpublished", "Open" or "Closed", optionally followed by "Opportunities". A collapsed header that puts a count inside its name, such as "Closed Opportunities 12", would not be recognized. I left the pattern alone because other readers use it and the ruling didn't name them.
 
 Nothing else in the adapter was touched. `bindings.yaml` is unchanged, since all three groups were already listed as bound. Every page route I opened during this run resolved.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Does the new adapter bind the opportunity list's group readers as the build-slice-8-12 ruling asked, and nothing else? Approve. The diff touches only tests/adapters/new/index.ts and nothing under tests/acceptance. opportunityGroup now opens a header button marked collapsed before reading. The new groupSection finds the region or group holding this group's heading and no other group's. Rows are read from inside that section only, with the heading and any count beside it dropped, so whatever follows the last group (the program descriptions panel) can no longer be read as Closed's rows. That is the fault the ruling named. The bindings are navigation and locators only: they return text and assert nothing. A heading with no section of its own reports unbound with a specific reason. The runner's tsc on this revision passed with no diagnostics under adapters/new. The author's live check found one section per group, with the seeded closed Sprint With Us opportunity read under Closed. The residual risk is that the opening step has not yet met a real collapsed group. build-slice-8-12#2 will collapse Closed again, and the next verify run will exercise that path. If it fails there, the adapter goes back with that evidence. build-slice-8-12#2 is the build stage's work and is not settled here, so it stays open. What would change this ruling: a verify run against the collapsed Closed group showing the reader still cannot open it or read its cards.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `a8b8c25e8cb0384282382e89a3bb6797def24a92`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
