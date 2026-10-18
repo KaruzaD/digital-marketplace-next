@@ -37,3 +37,26 @@ Choosing "Organization" shows a chooser button that reads "Organization" until o
 **The unbound reasons quoted from calibration** ("no 'An individual' choice under 'Who is submitting this proposal?'", "no 'Submit proposal'") come from an older adapter's wording. The current one already accepted "Individual" / "Organization", and I confirmed that its way of clicking the radio ticks "Individual" on the live page. With the submit pattern now accepting "Submit", nothing should stop those tests on these members any more. `bindings.yaml` already lists every `proposal-cwu-create` member as bound, so I left it unchanged.
 
 I didn't change anything outside `tests/adapters/new/`, and every route I visited resolved. As the ruling says, the earlier walk left a saved draft by test-vendor-2 on the seeded published Code With Us opportunity. Resetting the target's seed isn't this stage's work, but it should be done before the next verify run.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Question: does this adapter bind every surface action and observation on new, and nothing else? Ruling: approve. All four owed instructions from bind-adapter-new-97 are carried out in tests/adapters/new/index.ts. (1) The submit pattern accepts a bare 'Submit' only as a button's whole name, and the proposal screen's actions check accepts it too. (2) Shared PROVINCE_LABEL and POSTAL_LABEL patterns take both the old and new wordings for every alias in the organization field map and in the proposal field list. (3) CHOOSER_EMPTY treats 'Select an item', 'Organization' or an empty chooser as nothing picked. (4) Both street lines are picked by position among the boxes matching STREET_ANY. The two extra fixes, for the terms checkbox wording and the Cancel fallback to the 'Opportunity and actions' panel, are locators only. Nothing decides whether a test passes, nothing under tests/acceptance or bindings.yaml changed, and the runner's typecheck passed on f7b26f4 with no diagnostics. One change is missing from the proposal page: a proposalHeadStatus fallback for the status observation on the restyled manage page. It only reads text and runs only when no 'Status' term is shown, so it is within an adapter's remit, but the next revision's page should list it. Tier is STANDARD and no residual risk is unaccepted, so nothing escalates. What would change this ruling: a verify run showing that bare 'Submit' matches a button other than the form's own submit, or that the header status fallback reads a status the page does not show.
+
+**Conditions:**
+- condition-met bind-adapter-new-97#1: the proposal-cwu-create submit pattern now accepts a button named exactly 'Submit' as well as 'Submit proposal' and 'Save changes and submit', in tests/adapters/new/index.ts (ask() in the submit flow); the proposal-cwu-edit submit_proposal check accepts '^submit( proposal)?$' inside 'Proposal actions'; the terms-dialog confirm already accepted 'Submit Proposal'
+- condition-met bind-adapter-new-97#2: PROVINCE_LABEL (/^\s*province\s*(or|\/)\s*state/i) and POSTAL_LABEL (/^\s*postal\s*(code|\/\s*zip)/i) replace the old patterns for every alias in ORG_FIELDS and in PROPOSAL_FIELDS, in tests/adapters/new/index.ts
+- condition-met bind-adapter-new-97#3: completeProposal treats the organization chooser as empty when it reads 'Select an item', 'Organization' or nothing (CHOOSER_EMPTY), so a test naming no organization gets the first one offered, in tests/adapters/new/index.ts
+- condition-met bind-adapter-new-97#4: street line one and line two are filled by position (nth 0 and nth 1) among the textboxes matching STREET_ANY, through streetLine() in the proposal field fill loop, in tests/adapters/new/index.ts
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `f7b26f495755c0208a54bcbb7906149ca92e11ca`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
