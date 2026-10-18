@@ -8292,6 +8292,53 @@ export default function create(
     }
     return "";
   }
+  // The texts of the page's terms ("Status", "Published", "Opportunity ID", ...).
+  async function termLabels(): Promise<string[]> {
+    return page
+      .getByRole("main")
+      .evaluate((main) => Array.from(main.querySelectorAll("dt")).map((dt) => (dt as HTMLElement).innerText.trim()))
+      .catch(() => [] as string[]);
+  }
+  // The page's head: its lines up to the first term, "Opportunity ID: <id>" or the
+  // Description section, whichever comes first, so no term label below it is ever read as
+  // part of the head. A later build restyles the head, drawing the program and status as one
+  // label ("Code With Us Draft"), the deadline as a fact of its own ("Closes <date> at 4:00
+  // p.m. Pacific time", or "Closed" once it has passed) and the reward as "Reward $5,000",
+  // instead of under terms of their own.
+  async function cwuHeadLines(): Promise<string[]> {
+    const lines = await textLines();
+    const terms = new Set(await termLabels());
+    const ends = [
+      lines.findIndex((line) => terms.has(line)),
+      lines.findIndex((line) => /^opportunity id:/i.test(line)),
+      lines.findIndex((line) => /^description$/i.test(line)),
+    ].filter((index) => index >= 0);
+    return ends.length ? lines.slice(0, Math.min(...ends)) : lines;
+  }
+  const CWU_STATUS_WORDS =
+    "draft|under review|published|closed|evaluation|processing|awarded|not awarded|cancell?ed|suspended|code challenge|team scenario";
+  const CWU_STATUS_SHOWN = new RegExp(`^(${CWU_STATUS_WORDS})$`, "i");
+  // The status alone ("Draft"), or trailing the program's name ("Code With Us Draft").
+  const CWU_STATUS_AFTER_PROGRAM = new RegExp(`^code with us\\s+(${CWU_STATUS_WORDS})$`, "i");
+  async function cwuHeadStatus(): Promise<string> {
+    const terms = new Set(await termLabels());
+    for (const line of await cwuHeadLines()) {
+      if (terms.has(line)) continue;
+      const status = CWU_STATUS_SHOWN.test(line) ? line : (CWU_STATUS_AFTER_PROGRAM.exec(line)?.[1] ?? "");
+      if (status && !/^closed$/i.test(status)) return status;
+    }
+    return "";
+  }
+  async function cwuHeadReward(): Promise<string> {
+    for (const line of await cwuHeadLines()) {
+      const found = /^reward\s+(.+)$/i.exec(line);
+      if (found) return found[1].trim();
+    }
+    return "";
+  }
+  async function cwuHeadDeadline(): Promise<string> {
+    return (await cwuHeadLines()).find((line) => /^close[sd]\b/i.test(line)) ?? "";
+  }
   const CWU_VIEW_WALKED =
     "walked as the administrator, a public sector employee and a vendor on the seeded published, draft and awarded Code With Us opportunities";
   const opportunityCwuView: S.OpportunityCwuViewPage = {
@@ -8310,17 +8357,33 @@ export default function create(
       if (!(await onCwuView("opportunity_identifier"))) return "";
       return shownIdentifier();
     },
-    status: () => cwuViewTerm("status", /^status$/i),
+    // Under its "Status" term, or, on the restyled head that labels it no longer, the
+    // head's unlabelled status ("Draft", or "Code With Us Draft" read as "Draft"), never a
+    // term label.
+    status: async () => {
+      if (!(await onCwuView("status"))) return "";
+      return (await definitionOf(/^status$/i)) || cwuHeadStatus();
+    },
     publishedDate: async () => {
       const shown = await cwuViewTerm("published_date", /^published$/i);
       return /^not yet published$/i.test(shown) ? "" : shown;
     },
     createdByName: () => cwuViewTerm("created_by_name", /^created by$/i),
     lastChangedByName: () => cwuViewTerm("last_changed_by_name", /^last changed by$/i),
-    proposalDeadline: () => cwuViewTerm("proposal_deadline", /^proposal deadline$/i),
+    // Under its "Proposal deadline" term, or, on the restyled head, the whole "Closes <date>
+    // at 4:00 p.m. Pacific time" (or "Closed") line, as the old binding reads its own head.
+    proposalDeadline: async () => {
+      if (!(await onCwuView("proposal_deadline"))) return "";
+      return (await definitionOf(/^proposal deadline$/i)) || cwuHeadDeadline();
+    },
     assignmentDate: () => cwuKeyDate("assignment_date", /^assignment date\b/i),
     startDate: () => cwuKeyDate("start_date", /^start date\b/i),
-    reward: () => cwuViewTerm("reward", /^reward$/i),
+    // Under its "Reward" term, or a "Reward" label drawn some other way ("Reward: $5,000",
+    // the label over its figure, or the restyled head's "Reward $5,000").
+    reward: async () => {
+      if (!(await onCwuView("reward"))) return "";
+      return (await definitionOf(/^reward$/i)) || (await labelledValue(["Reward"])) || cwuHeadReward();
+    },
     // The Addenda section's entries; "No addenda have been added." is none.
     addenda: async () => {
       if (!(await onCwuView("addenda"))) return "";
