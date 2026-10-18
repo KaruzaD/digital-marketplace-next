@@ -2127,6 +2127,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T09:09:46.746Z
+    taken: 2026-10-18T09:14:05.551Z
+    taken_by: bind-adapter-new-104
   - stage: bind-adapter
     target: new
     why: 'R-5.1: same cause as R-1.55. add_panel_member was called on the read-only
@@ -2139,6 +2141,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T09:09:46.746Z
+    taken: 2026-10-18T09:14:05.551Z
+    taken_by: bind-adapter-new-104
   - stage: bind-adapter
     target: new
     why: 'R-5.17: in the published case, chair_field read "" and
@@ -2156,3 +2160,5 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T09:09:46.746Z
+    taken: 2026-10-18T09:14:05.551Z
+    taken_by: bind-adapter-new-104
