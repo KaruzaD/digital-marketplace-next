@@ -376,6 +376,11 @@
 - 16:17:30 propose bind-adapter-new-111 at G3
 - 16:17:54 drive: step 1: `sdlc rule bind-adapter-new-111 --by agent:reviewer` — bind-adapter-new-111 is open at G3, held by agent:reviewer
 - 16:18:04 rule bind-adapter-new-111 approve at G3 by runner:checks (agent)
+- 16:18:07 drive: stopped after 1 step — nothing left to run
+- 16:18:08 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 18 --revise`; reason: Takes up the return of build-slice-18-7, whose revision was interrupted before it ran. Its one condition, R-3.10 (slice 12), was the adapter's and not the application's: organizationUserMemberships.leaveOrganization returned before the affiliated organizations table was redrawn, while the page already showed "You have left Cormorant Bay Membership Ends Ltd." and a table without that organization, and the binding approved just before this run makes the action wait for the change. Nothing the application does needs to change for it: keep the restyle as it is and make no change for R-3.10.
+- 16:21:50 drive: step 1: `sdlc run verify --slice 18` — build-slice-18-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 16:56:40 verify slice 18: returned — R-4.14 (slice 4) fail. Next: sdlc run build --slice 18 --revise
+- 16:56:42 run verify: regenerated 3 files in .sdlc, site
 
 # Run record 2026-10-17
 
