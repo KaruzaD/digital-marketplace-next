@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: does this bind-adapter revision fix the three faults the build-slice-1-10 ruling sent back, staying navigation and locators only? Ruling: approve. The only code change is in tests/adapters/new/index.ts. evaluationPanelPage's section() now ends in .first() instead of .last(), so on a locked Sprint With Us or Team With Us panel it resolves to the outer 'Evaluation panel' region, which holds the lock note, rather than the nested 'Members of the evaluation panel' table region. lockNote() then sees the refusal, editable() returns false, and addPanelMember notes the refusal instead of timing out. The authoring agent checked this live on the locked a011 page and the editable a024 page. Not seeing 701 in its locked state is acceptable because it renders the same locked page. documentText() now puts the main area's level-1 heading (the title that labels the report article) at the start of the full-report reading, and skips it when the article has its own level-1 heading. That widens what is observed for R-1.40 without deciding the outcome. Neither change asserts anything or carries business logic. Nothing under tests/acceptance changed, bindings.yaml is unchanged, and the runner's typecheck passed with no diagnostics under adapters/new. What would change this: a verify run showing that .first() now resolves to a larger enclosing region on another evaluation-panel page.
+conditions: []
+cost: 0.2826714
+turns: 1
+session: "d8c27520-86da-40ca-8c6a-8a42e22ff5ad"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T07:01:40.767Z
