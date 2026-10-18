@@ -2199,6 +2199,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
   - stage: bind-adapter
     target: new
     why: "R-2.9: same failure as R-2.7. proposalSwuCreate.setScrumMaster looks for a
@@ -2210,6 +2212,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
   - stage: bind-adapter
     target: new
     why: "R-2.11: same failure as R-2.7. proposalSwuCreate.setScrumMaster looks for
@@ -2221,6 +2225,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
   - stage: bind-adapter
     target: new
     why: "R-2.16: same failure as R-2.7 for 'Blake Placeholder'.
@@ -2233,6 +2239,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
   - stage: bind-adapter
     target: new
     why: "R-2.18: proposalSwuCreate.pendingTeamMember read '' because
@@ -2249,6 +2257,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
   - stage: bind-adapter
     target: new
     why: "R-2.19: same failure as R-2.7. setScrumMaster looks for 'Scrum master:
@@ -2262,6 +2272,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
   - stage: bind-adapter
     target: new
     why: "R-2.22: same failure as R-2.7, on both proposalSwuEdit.setScrumMaster and
@@ -2274,6 +2286,8 @@ requests:
     gate: G3
     by: agent:reviewer
     at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
   - stage: design
     why: "DESIGN.md lines 3017-3020 say each scrum master radio carries an
       aria-label 'Scrum master: Test Designer, implementation phase', but the
