@@ -52,3 +52,14 @@ Both screens now use the shared page frame, regions and button rows, so they no 
 Before checking I had to install the app's dependencies with `npm ci`. I couldn't start the app or look at a page here, so nothing has been checked visually. The compose file is unchanged and still publishes the app at :4300 and the identity provider's realm at :8080.
 
 **Not done.** Nothing in the slice was outside what I'm allowed to change. I also updated `app/README.md` to describe where the qualification tabs and terms pages live. Every organizations-domain screen through slice 13 is now restyled, so the next slice inherits a complete organization kit.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Does slice 13 (organization qualification for Sprint With Us and Team With Us) do what R-3.25–R-3.28 say after this restyle pass? Approve. The verify result is pass for all four criteria and current: it was recorded against app tree 03ea186, which is this branch head's app/ tree. The diff only changes presentation, moving the qualification tabs and terms pages onto shared organization-kit pieces (Requirements, TermsPage, Region, PageAlert, SaveStatus). Requirement met/unmet states still come from the service's own answer, so R-3.25 and R-3.26 hold. Accept is still offered to the owner only through offersProgramTermsAcceptance. Service-area editing is still gated by mayQualifyServiceAreas, so the owner sees no editing control and saving replaces the earlier approvals (R-3.28). Test IDs and the wording the tests depend on are unchanged. The two additions, a 'Service areas saved.' role=status line and a reworded loading label, do not exceed any criterion. Where the code departs from the design stories, decision record 0081 gives the reasons, including keeping owner-only acceptance per record 0053. No secrets or personal data appear. New unit tests in app/frontend/tests/qualification.test.tsx cover the new kit pieces and the status line. The ruling would change if the verify result were recorded against a different app tree, or if the restyle had changed who is offered Accept or the service-area editing control.
+
+**Conditions:**
+none
