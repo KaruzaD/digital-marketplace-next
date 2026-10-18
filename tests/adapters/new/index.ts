@@ -2455,11 +2455,32 @@ export default function create(
   }
 
   // The proponent rows of a section's table, one line each, cells joined with " | "; each row
-  // carries "evaluation-proponent-row".
+  // carries "evaluation-proponent-row". The Evaluation section draws them as list items with
+  // no cell role ("Your evaluations, by anonymous proponent name": "Proponent 1", "Your
+  // evaluation: Submitted", "Start evaluation"); those read as the same line a table row
+  // would — "Proponent 1 | Submitted | Start evaluation" — from the name
+  // ("proposal-proponent-name"), the status ("evaluation-status") and the link
+  // ("evaluation-open-proponent"), or from the row's children where it carries none of them.
   async function proponentRows(scope: Locator): Promise<string[]> {
     const marked = byTestId("evaluation-proponent-row", scope);
-    if (await marked.count()) return rowsText(marked);
+    if (await marked.count()) return rowsText(marked, bareProponentRow);
     return tableRows(seen(scope.getByRole("table")).first());
+  }
+
+  async function bareProponentRow(row: Locator): Promise<string> {
+    const words: string[] = [];
+    for (const id of ["proposal-proponent-name", "evaluation-status", "evaluation-open-proponent"]) {
+      const found = seen(row.getByTestId(id));
+      for (let i = 0; i < (await found.count()); i++) {
+        const text = (await found.nth(i).innerText()).replace(/\s+/g, " ").trim();
+        if (text) words.push(text);
+      }
+    }
+    if (words.length) return words.join(" | ");
+    const parts = await row.evaluate((element) =>
+      Array.from(element.children).map((child) => ((child as HTMLElement).innerText ?? "").replace(/\s+/g, " ").trim()),
+    );
+    return parts.filter(Boolean).join(" | ");
   }
 
   // A row picked by the proposal's identifier (the address its link carries), by its place
@@ -5607,13 +5628,17 @@ export default function create(
   }
 
   // The same for rows found by their own test ID: one line per row, its cells joined with
-  // " | ".
-  async function rowsText(rows: Locator): Promise<string[]> {
+  // " | ". A row with no cell role is skipped, unless `bare` is given to read it.
+  async function rowsText(rows: Locator, bare?: (row: Locator) => Promise<string>): Promise<string[]> {
     const out: string[] = [];
     for (let i = 0; i < (await rows.count()); i++) {
       const cells = seen(rows.nth(i).getByRole("cell"));
       const count = await cells.count();
-      if (!count) continue;
+      if (!count) {
+        const words = bare ? await bare(rows.nth(i)) : "";
+        if (words) out.push(words);
+        continue;
+      }
       const words: string[] = [];
       for (let c = 0; c < count; c++) words.push((await cells.nth(c).innerText()).replace(/\s+/g, " ").trim());
       out.push(words.join(" | "));
