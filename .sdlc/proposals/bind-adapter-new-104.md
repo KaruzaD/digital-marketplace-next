@@ -36,3 +36,23 @@ I added, ticked a chair and pressed Cancel each time, so nothing was saved on th
 **Not changed.** `save_evaluation_panel` and the error readers are as they were; the conditions don't name them and a save always follows an edit. The Team With Us panel uses the same code, so it gets the same fixes; I didn't open it again. In `bindings.yaml`, every member on both panel pages stays `bound`; I only updated the comment on `evaluation-panel-swu`, which still described the panel opening ready to edit. No other page or member was touched, and every route I used loaded.
 
 None of the three conditions is deferred.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:tech-lead
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Question: does the new adapter bind every surface action and observation on new, and nothing else, now that it has answered the three open requests from build-slice-10-7? This reached tech-lead because bind-adapter was sent work more often than policy.loops.request allows. The pipeline is not at fault: each send in the account carried different faults that were fixed in their round (status reads, the top-level chair, the 'create' identifier, refusals on add, read-only rows), and only build-slice-10-7#1-#3 are still open. Those three exist because the new Evaluation panel opens read-only behind 'Edit evaluation panel'. The diff answers them where they are owed. A shared editing() step presses that button before start_editing, add_panel_member, remove_panel_member, choose_panel_chair and mark_member_as_chair, and a locked panel is still recorded as a refusal. add_panel_member adds through the single 'Public sector employee to add' chooser and 'Add an evaluator', waits for the new row, and throws refused: when the person is not offered. Names shown as 'Name (email)' are compared by name alone, which fixes 'nobody chosen, nobody chosen' in mark_member_as_chair. chair_field reads the chair from the read-only member list when no Chair chooser is drawn. The change stays inside the evaluation-panel binding and one bindings.yaml comment, every binding stays bound, and the runner's tsc on af73ecd5aa passed with no diagnostics under adapters/new/, which covers the check the authoring session could not run. Approved. If the next verify of R-1.55, R-5.1 or R-5.17 still fails on these panel steps, it returns to bind-adapter, or goes to build if the panel's markup turns out to be unstable.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `af73ecd5aa60d8f1111f95cd3029868afd06a051`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
