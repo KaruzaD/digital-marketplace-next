@@ -1,0 +1,17 @@
+gate: G3
+verdict: return
+by: agent:tech-lead
+held_by: agent
+rationale: |2-
+  The question is whether slice 14 (a vendor can propose on a Code With Us opportunity) does what its criteria say. It is returned. All 18 criteria the slice claims passed against tree 30edc73. The fail verdict comes only from R-3.28 regressing, and the evidence puts that on the test, not the application. This branch touches no organization screen and no backend file. In both failure snapshots (.sdlc/evidence/slice-14/R-3.28.txt and R-3.28-2.txt) the page shows exactly the service areas that case was polling for: Data professional + Full stack developer, and Agile coach + Full stack developer. Both cases in tests/acceptance/organizations/R-3.28.spec.ts rewrite the approvals of the same seeded organization (00000000-0000-4000-8000-000000000301). Verify runs seven parallel instances, so each case's poll sees the other's write and the outcome depends on timing, which is how it passed under slice 13. Another build cannot fix this, so the test is sent to derive-tests. The owed instruction build-slice-14-6#2 is satisfied: StoredNewRow and the proposal branch are gone from app/, decision record 0073 no longer exists, and the rename field is restored and asserted. This becomes an approval once a regenerated R-3.28 binds, passes alongside this slice's 18 criteria, and verify records a current pass. If R-3.28 still fails with its two cases isolated, the regression is the application's and the work goes back to build.
+conditions:
+  - "condition-met build-slice-14-6#2: StoredNewRow and the host === \"proposal\" branch are removed from app/frontend/src/app/attachments.tsx, docs/decisions/0073 no longer exists on the branch, and app/frontend/tests/proposal-attachments.test.tsx asserts that a stored file on the proposal create form keeps its rename field (attachment-name-field) and its download link."
+  - "addressed-to derive-tests: Rewrite tests/acceptance/organizations/R-3.28.spec.ts so its two cases cannot change each other's state. Both cases change the approved service areas of the same seeded organization (seed.organizations.qualified, 00000000-0000-4000-8000-000000000301), and verify runs seven instances in parallel. In slice 14's run, case 1 failed at line 74 while the page showed exactly Data professional + Full stack developer, which is what it was waiting for. Case 2 failed at line 51 while the page showed exactly Agile coach + Full stack developer, which is what it was waiting for. Each poll saw the other case's write. Run the two cases serially, or give each case an organization the other does not change. Do not let either rely on another case leaving the seed's approvals in place."
+cost: 0.8745985999999999
+turns: 9
+session: "db875268-0988-437d-b7ae-76ca25c990ad"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T04:24:57.700Z
