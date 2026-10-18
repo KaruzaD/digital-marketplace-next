@@ -1318,10 +1318,11 @@ pages:
   # only public sector people are offered, so a vendor named as a member is refused (thrown).
   evaluation-panel-swu:
     actions:
-      # Walked as the administrator on the seeded closed opportunity: the tab opens already
-      # changeable (choosers, "Add an evaluator", "Save evaluation panel"); the "Edit" under
-      # "Opportunity actions" leaves for ?tab=opportunity, so start_editing reaches the
-      # changeable panel and presses an "Edit" only if the section itself draws one.
+      # Walked as the administrator on the seeded closed opportunity: the tab opens read-only
+      # (members listed over "Edit evaluation panel"); start_editing and every change press
+      # that button first, then add through the one "Public sector employee to add" chooser
+      # and "Add an evaluator". The "Edit" under "Opportunity actions" leaves for
+      # ?tab=opportunity and is never pressed.
       start_editing: bound
       add_panel_member: bound
       remove_panel_member: bound
