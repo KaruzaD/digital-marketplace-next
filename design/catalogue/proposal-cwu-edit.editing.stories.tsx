@@ -63,9 +63,14 @@ export const Editing: StoryObj = {
         }
       >
         <FormPart id="form-proponent" title="1. Proponent">
-          <RadioGroup id="proposal-proponent-type" label="Who is submitting this proposal?" isRequired defaultValue="individual">
-            <Radio value="individual" data-testid="proposal-proponent-individual">An individual</Radio>
-            <Radio value="organization" data-testid="proposal-proponent-organization">An organization</Radio>
+          <RadioGroup
+            id="proposal-proponent-type"
+            label="Will you be submitting a proposal for this opportunity as an Individual or Organization?"
+            isRequired
+            defaultValue="individual"
+          >
+            <Radio value="individual" data-testid="proposal-proponent-individual">Individual</Radio>
+            <Radio value="organization" data-testid="proposal-proponent-organization">Organization</Radio>
           </RadioGroup>
           <TextField id="proposal-legal-name" label="Legal name" isRequired defaultValue="Test Vendor" data-testid="proposal-legal-name-field" />
           <div className="pf-pair">

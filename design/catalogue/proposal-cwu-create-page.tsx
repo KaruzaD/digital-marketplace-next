@@ -352,7 +352,7 @@ export function ProposalCwuCreatePage({ state }: { state: ProposalState }) {
                     defaultValue={typed.street}
                     data-testid="proposal-street-field"
                   />
-                  <TextField id="proposal-street-2" label="Street Address" data-testid="proposal-street-2-field" />
+                  <TextField id="proposal-street-2" label="Street Address line 2" data-testid="proposal-street-2-field" />
                   <div className="form-pair">
                     <TextField id="proposal-city" label="City" isRequired defaultValue={typed.city} data-testid="proposal-city-field" />
                     <TextField
