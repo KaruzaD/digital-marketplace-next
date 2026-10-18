@@ -220,6 +220,44 @@ describe("the Team With Us qualification tab (R-3.26, R-3.28)", () => {
       "Full stack developer",
     ]);
     expect(screen.getByTestId("organization-view-twu-terms-link").textContent).not.toContain("accept");
+    expect(screen.getByRole("status").textContent).toBe("Service areas saved.");
+  });
+});
+
+describe("the qualification tabs and terms pages in the chosen direction (decision record 0081)", () => {
+  it("labels each requirement Met in green and Not met in yellow, under the tab's region", async () => {
+    serve(() => json(200, organization()));
+    resetSessionForTests({ status: "signed-in", account: owner }, fakeIdentity());
+    renderAt(`/organizations/${ORG_ID}/edit?tab=swu-qualification`);
+
+    const met = (await screen.findByTestId("organization-swu-requirement-two-members")).querySelector(".dm-label");
+    expect(met?.className).toContain("dm-label-green");
+    expect(met?.textContent).toBe("Met");
+    const unmet = screen.getByTestId("organization-swu-requirement-terms-accepted").querySelector(".dm-label");
+    expect(unmet?.className).toContain("dm-label-yellow");
+    expect(unmet?.textContent).toBe("Not met");
+    const list = screen.getByRole("list", { name: "Sprint With Us requirements" });
+    expect(list.className).toBe("og-reqs");
+    const region = screen.getByRole("region", { name: "Sprint With Us qualification" });
+    expect(region.className).toBe("op-region");
+    expect(within(region).getByRole("region", { name: "Terms and conditions" })).toBeTruthy();
+  });
+
+  it("draws a terms page with the organization's name over the H1 and the terms in a panel", async () => {
+    serve((_method, path) =>
+      path.startsWith("/api/content/") ? json(200, termsPage("sprint-with-us-terms-and-conditions")) : json(200, organization()),
+    );
+    resetSessionForTests({ status: "signed-in", account: owner }, fakeIdentity());
+    renderAt(`/organizations/${ORG_ID}/sprint-with-us-terms-and-conditions`);
+
+    const title = await screen.findByRole("heading", { level: 1, name: "Sprint With Us Terms & Conditions" });
+    expect(title.previousElementSibling?.textContent).toBe("Northern Pines Digital Ltd.");
+    expect(title.previousElementSibling?.className).toBe("op-eyebrow");
+    const panel = screen.getByTestId("organization-terms-body");
+    expect(panel.className).toBe("op-panel");
+    expect(within(panel).getByRole("heading", { level: 2, name: "Terms and conditions" })).toBeTruthy();
+    await waitFor(() => expect(panel.textContent).toContain("These are the program's terms."));
+    expect(screen.getAllByRole("button", { name: "Accept terms and conditions" })).toHaveLength(1);
   });
 });
 

@@ -3,7 +3,7 @@ import { Heading, InlineAlert, Link } from "@bcgov/design-system-react-component
 import { fileAddress } from "../api/files";
 import type { ListedOrganization } from "../api/organizations";
 import { Label, look, type LabelColour } from "./marketplace";
-import { DataTable, Details, OpportunityPage, PageTitle } from "./opportunity-kit";
+import { DataTable, Details, OpportunityPage, PageTitle, Panel } from "./opportunity-kit";
 import { AlertTitle } from "./proposal-kit";
 import { useNarrow } from "./site-header";
 
@@ -15,9 +15,8 @@ import { useNarrow } from "./site-header";
  * on a wide screen, stacked cards on a phone), the membership labels, the team and changelog rows,
  * the page alert, the small dialogs' body and the status an immediate change reports into. This
  * project's own compositions of design-system components and tokens; none of them is a
- * design-system component (decision records 0079 and 0080).
- *
- * The requirement pieces are added when the screens of slice 13 are restyled.
+ * design-system component (decision records 0079, 0080 and 0081). It also holds the
+ * qualification tabs' requirement list and the program terms pages' frame.
  */
 
 const css = `
@@ -68,6 +67,17 @@ const css = `
   gap: var(--layout-margin-small);
 }
 .og-card-facts { font: var(--typography-regular-small-body); color: var(--typography-color-secondary); }
+.og-reqs {
+  list-style: none;
+  margin: var(--layout-margin-none);
+  padding: var(--layout-padding-none);
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-margin-small);
+  font: var(--typography-regular-body);
+  color: var(--typography-color-primary);
+}
+.og-reqs > li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--layout-margin-small); }
 .og-pages ul {
   list-style: none;
   margin: var(--layout-margin-none);
@@ -591,5 +601,64 @@ export function ChangelogRows({ entries }: { entries: readonly ChangelogRow[] })
         </tr>
       ))}
     </DataTable>
+  );
+}
+
+// ——— Qualification ———
+
+export type Requirement = { readonly testId: string; readonly met: boolean; readonly text: string };
+
+/**
+ * One program's requirements as a list, each beginning with Met (green) or Not met (yellow: it
+ * waits on the organization) in words, then the requirement.
+ */
+export function Requirements({ label, items }: { label: string; items: readonly Requirement[] }) {
+  return (
+    <ul className="og-reqs" aria-label={label}>
+      {items.map((item) => (
+        <li key={item.testId} data-testid={item.testId}>
+          <Label colour={item.met ? "green" : "yellow"}>{item.met ? "Met" : "Not met"}</Label>
+          <span>{item.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ——— The program terms pages ———
+
+/**
+ * A program's terms for one organization: the organization's name in small secondary text over
+ * the H1, any line about acceptance, the terms text in a panel, then whatever the viewer may do.
+ * `before` goes ahead of the panel after the notice: a refusal's alert.
+ */
+export function TermsPage({
+  legalName,
+  title,
+  notice,
+  before,
+  terms,
+  children,
+}: {
+  legalName: string;
+  title: string;
+  notice?: ReactNode;
+  before?: ReactNode;
+  terms?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <OrganizationPage>
+      <div className="op-head">
+        <p className="op-eyebrow">{legalName}</p>
+        <PageTitle>{title}</PageTitle>
+      </div>
+      {notice}
+      {before}
+      <Panel id="terms-heading" title="Terms and conditions" testId="organization-terms-body">
+        {terms}
+      </Panel>
+      {children}
+    </OrganizationPage>
   );
 }

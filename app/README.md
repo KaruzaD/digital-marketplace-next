@@ -312,8 +312,16 @@ grant or withdrawal of rights and every transfer of ownership is kept in `affili
 shown on the Changelog tab (`?tab=changelog`), read from the organization's own record. The
 service is `backend/src/organizations/team.service.ts`, the rules the team section of
 `backend/src/rules/organizations.ts`, the screens `frontend/src/screens/organization-team.tsx`;
-the answers and refusals are decision record 0050. The qualification tabs and the program terms
-pages arrive in slice 13.
+the answers and refusals are decision record 0050.
+
+The Sprint With Us and Team With Us qualification tabs (`?tab=swu-qualification`,
+`?tab=twu-qualification`) list each program's requirements as the service reports them met, and
+link to the terms pages at `/organizations/<id>/sprint-with-us-terms-and-conditions` and
+`…/team-with-us-terms-and-conditions`. On those pages the owner accepts the terms once. A service
+administrator alone edits the approved service areas on the Team With Us tab. The screens are
+`frontend/src/screens/organization-qualification.tsx` and `organization-terms.tsx`, drawn from the
+kit's `Requirements` and `TermsPage`. The answers and refusals are decision record 0053, and the
+look is 0081.
 
 ## The first administrator
 
