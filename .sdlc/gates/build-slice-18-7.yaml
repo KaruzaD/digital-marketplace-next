@@ -1,0 +1,24 @@
+gate: G3
+verdict: return
+by: runner:verify
+held_by: runner
+rationale: This build breaks 1 criterion that passed when an earlier slice was
+  approved. Each condition is the criterion and what the running application
+  did.
+conditions:
+  - 'R-3.10 (passed when slice 12 was approved): Error:
+    expect(received).not.toContain(expected) // indexOf — Expected substring:
+    not "Cormorant Bay Membership Ends Ltd." — Received
+    string:        "Cormorant Bay Membership Ends Ltd. | Member | Leave" — at
+    tests/acceptance/organizations/R-3.10.spec.ts:52 — its last steps:
+    signIn(persona organization-member) at /dashboard →
+    organizationUserMemberships.open({userId}) at
+    /users/00000000-0000-4000-8000-000000000204?tab=organizations →
+    organizationUserMemberships.leaveOrganization({organization}) at
+    /users/00000000-0000-4000-8000-000000000204?tab=organizations →
+    organizationUserMemberships.affiliatedOrganizationsTable() at
+    /users/00000000-0000-4000-8000-000000000204?tab=organizations read
+    "Cormorant Bay Membership Ends Ltd. | Member | Leave" — the page as it
+    failed: .sdlc/evidence/slice-18/R-3.10.png,
+    .sdlc/evidence/slice-18/R-3.10.txt'
+at: 2026-10-18T23:07:50.553Z
