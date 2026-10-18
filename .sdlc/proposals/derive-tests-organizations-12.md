@@ -37,3 +37,23 @@ Each test reads and changes only the organization it created.
 **For the contract.** I did not need any surface action or observation that was missing. Two things are worth noting:
 - No seed handle lists the service areas the installation offers, so the test still writes those codes as literals.
 - The persona file says the organization owner can "choose the service areas of an organization they own". R-3.28 says the opposite. The test follows the criterion, but the persona text may need reconciling.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Question: do the revised organizations tests now follow from their criteria and from nothing else? Approve. The revision does what build-slice-10-8's request asked: each R-3.28 test now registers its own uniquely named organization through the surface, has the administrator approve it for the two areas of the given, and reads and changes only that organization. The test no longer depends on seed.organizations.qualified, so it no longer passes or fails by timing. Each assertion still follows from R-3.28. The first test asserts that after the save the organization is approved for exactly the two ticked areas and not the cleared one. The second asserts that the owner's attempts to edit and save leave the approvals unchanged. That is the observable meaning of the owner being offered no editing control, and it is the reading already approved for this test. Creating and approving the organization only sets up the criterion's given and asserts nothing the criterion does not say. organizationCreate and organizationIdentifier are already used by R-3.15 and other organizations tests. A failed setup now fails rather than skips, and the runner's typecheck passed with no diagnostics. What would change the ruling: evidence that the surface can observe whether an editing control is offered to the owner. The second test should then assert that directly rather than relying on the approvals staying unchanged.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `b925d3358e32639a71fe18ab584da1082ab5b710`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `acceptance/organizations/`, which this proposal answers for.
+
+    No diagnostics.
