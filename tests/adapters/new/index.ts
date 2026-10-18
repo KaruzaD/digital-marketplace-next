@@ -5918,24 +5918,61 @@ export default function create(
     // Each member as "<name> — <role>", the roles as the locked table words them
     // ("Evaluator", "Evaluator and chair"), with somebody who chairs without evaluating
     // as "<name> — Chair". A member still reading "Select an item" is nobody yet.
+    // A member shown read-only (locked, or before editing starts) is a list item reading its
+    // name, then its role after a visually hidden "Role:" ("Robin Placeholder Role : Evaluator
+    // and chair"), or a table row of cells; either reads as "<name> — <role>".
+    async function shownRow(row: Locator): Promise<string> {
+      const cells = seen(row.getByRole("cell"));
+      if (await cells.count()) {
+        const words: string[] = [];
+        for (let c = 0; c < (await cells.count()); c++) words.push((await cells.nth(c).innerText()).replace(/\s+/g, " ").trim());
+        return words.join(" — ");
+      }
+      const [name = "", ...rest] = lined(await row.innerText().catch(() => ""));
+      const role = rest.join(" ").replace(/\s+/g, " ").replace(/^role\s*:?\s*/i, "").trim();
+      return role ? `${name} — ${role}` : name;
+    }
+
     async function rows(member: string): Promise<string[]> {
       await reached(member);
       if (await lockNote().count()) {
         const marked = byTestId("evaluation-panel-member-row", section());
-        const listed = (await marked.count()) ? await rowsText(marked) : await tableRows(section());
-        return listed.map((row) => row.replace(/\s*\|\s*/, " — "));
+        if (!(await marked.count())) return (await tableRows(section())).map((row) => row.replace(/\s*\|\s*/, " — "));
+        const listed: string[] = [];
+        for (let i = 0; i < (await marked.count()); i++) {
+          const one = await shownRow(marked.nth(i));
+          if (one) listed.push(one);
+        }
+        return listed;
       }
       const out: string[] = [];
       const named: string[] = [];
       for (let i = 0; i < (await members().count()); i++) {
         const group = members().nth(i);
+        // Only a newly added member has a chooser. One already on the panel shows, while
+        // editing, its name ("Robin Placeholder (admin.one@example.test)") over its Chair box,
+        // and before editing starts the read-only row as shown.
+        if (!(await memberChooser(group).count())) {
+          const label = seen(group.getByRole("paragraph")).first();
+          if ((await chairBox(group).count()) && (await label.count())) {
+            const name = (await label.innerText()).replace(/\s+/g, " ").replace(/\s*\([^()]*@[^()]*\)\s*$/, "").trim();
+            if (!name) continue;
+            named.push(name.toLowerCase());
+            const chair = await chairBox(group).isChecked().catch(() => false);
+            out.push(`${name} — ${chair ? "Evaluator and chair" : "Evaluator"}`);
+            continue;
+          }
+          const one = await shownRow(group);
+          if (one) out.push(one);
+          continue;
+        }
         const name = await chosen(memberChooser(group));
         if (!name) continue;
         named.push(name.toLowerCase());
         const chair = await chairBox(group).isChecked().catch(() => false);
         out.push(`${name} — ${chair ? "Evaluator and chair" : "Evaluator"}`);
       }
-      const chair = await chosen(chairChooser());
+      const chair = (await chairChooser().count()) ? await chosen(chairChooser()) : "";
       if (chair && !named.includes(chair.toLowerCase())) out.push(`${chair} — Chair`);
       return out;
     }
