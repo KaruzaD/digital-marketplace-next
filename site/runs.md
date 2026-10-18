@@ -205,6 +205,10 @@
 - 02:57:04 run build: ok, cost 0, turns 0
 - 02:57:04 propose build-slice-10-9 at G3
 - 03:10:53 rule build-slice-10-9 approve at G3 by tech-lead (human)
+- 03:11:09 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 9`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 03:21:00 drive: step 1: `sdlc run verify --slice 9` — build-slice-9-5 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 03:52:53 verify slice 9 verified: every claimed criterion passes against the application in build-slice-9-5. Ready for G3.
+- 03:52:55 run verify: regenerated 3 files in .sdlc, site
 
 # Run record 2026-10-17
 
