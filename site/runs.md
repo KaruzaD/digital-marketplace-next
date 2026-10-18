@@ -13,6 +13,9 @@
 - 17:33:28 drive: step 5 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-21-3)
 - 17:33:47 drive: step 6: `sdlc rule bind-adapter-new-92 --by agent:reviewer` — bind-adapter-new-92 is open at G3, held by agent:reviewer
 - 17:34:37 rule bind-adapter-new-92 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 17:38:31 drive: step 8: `sdlc run verify --slice 8` — build-slice-8-13 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 17:42:17 verify slice 8: R-1.3, R-1.38 fail. R-1.3, R-1.38 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's, so build-slice-8-13 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 17:42:18 run verify: regenerated 684 files in .sdlc, site
 
 # Run record 2026-10-17
 
