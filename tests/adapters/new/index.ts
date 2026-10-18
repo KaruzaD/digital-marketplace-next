@@ -7300,12 +7300,25 @@ export default function create(
         { timeout: 15000 },
       )
       .catch(() => undefined);
+    // Once it has arrived, the person's row is redrawn — gone after a removal ("Remove <name>
+    // from the team?", confirmed by "Remove from team", draws no status line), "Member" after an
+    // approval — or the refusal is drawn; whichever comes first is waited for, so that a read of
+    // the table straight after does not find the row as it was.
+    const before = ((await row.innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
     await press(where, control, row, testId);
     await confirmIfAsked(where, confirm);
     if (await answered) {
       await settle();
       const team = seen(regionNamed(page.getByRole("main"), /^\s*team( members)?\s*$/i)).first();
-      await team.getByRole("alert").first().waitFor({ state: "visible", timeout: 2000 }).catch(() => undefined);
+      const refused = team.getByRole("alert").first();
+      const until = Date.now() + 5000;
+      while (Date.now() < until) {
+        if (await refused.isVisible().catch(() => false)) return;
+        if (!(await row.count())) return;
+        const now = ((await row.innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+        if (now !== before) return;
+        await page.waitForTimeout(100);
+      }
     }
   }
   // Walked as the organization's owner and as the administrator on the seeded qualified
@@ -8077,6 +8090,43 @@ export default function create(
       if (await carried(testId, scope)) return (await testIdTexts(testId, scope)).join("\n");
       return (await paragraphs(scope)).join("\n");
     }
+    // The rows of the screen's tables that name an organization, as their words read.
+    async function rowsNaming(named: string): Promise<string[]> {
+      const rows = seen(page.getByRole("main").getByRole("row")).filter({ hasText: named });
+      const out: string[] = [];
+      for (let i = 0; i < (await rows.count()); i++) {
+        out.push(((await rows.nth(i).innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim());
+      }
+      return out;
+    }
+    // Walked as the organization member, the invited vendor and the vendor: once an answer is
+    // confirmed the screen's status says "You have joined <org>." (the row then reads "Member"
+    // with "Leave"), "You have left <org>." or "You have declined the invitation from <org>."
+    // (the row is gone, or the table gives way to "You do not belong to any other
+    // organizations…"). The answer returns once the organization's row has changed from what
+    // it read before — a read straight after leaving otherwise still finds the row the table
+    // has not yet redrawn. With no row to watch, the status naming the organization is the
+    // sign. Neither within ten seconds of confirming, the screen is left as it is for the test
+    // to read.
+    async function untilAnswered(named: string, before: string[]): Promise<void> {
+      if (!named) return;
+      const status = seen(page.getByRole("main").getByRole("status")).filter({ hasText: named });
+      const until = Date.now() + 10000;
+      while (Date.now() < until) {
+        // The confirmation is still open; the table behind it is not yet the answer.
+        if (await dialog().count()) {
+          await page.waitForTimeout(100);
+          continue;
+        }
+        if (before.length) {
+          const now = await rowsNaming(named);
+          if (now.length !== before.length || now.some((row, i) => row !== before[i])) return;
+        } else if (await status.count()) {
+          return;
+        }
+        await page.waitForTimeout(100);
+      }
+    }
     // An invitation or membership answered from the row that names the organization. Arrived
     // from the invitation email, the screen already holds this answer's dialog open, and it is
     // confirmed there; a dialog of another kind is cancelled before the row is pressed.
@@ -8095,10 +8145,12 @@ export default function create(
         const said = (await dialog().innerText()).trim();
         const named = orgNamed(input);
         // The answer's own dialog carries its test ID ("membership-accept-dialog",
-        // "membership-decline-dialog"); a leave dialog is known by its words.
+        // "membership-decline-dialog", "membership-leave-dialog").
         const ownKind = dialogId ? (await carried(dialogId)) !== null : kind.test(said);
         if (ownKind && (!named || said.toLowerCase().includes(named.toLowerCase()))) {
+          const before = named ? await rowsNaming(named) : [];
           await press(where, confirm, dialog());
+          await untilAnswered(named, before);
           return;
         }
         await closeDialog();
@@ -8117,8 +8169,11 @@ export default function create(
           `the row "${(await row.innerText()).replace(/\s+/g, " ").trim()}" in "Organizations you belong to" on ${page.url()} offers no control named ${control} — a pending row offers "Accept the invitation from <org>" and "Decline the invitation from <org>", a member's row "Leave <org>"`,
         );
       }
+      const watched = named || (await row.getByRole("cell").first().innerText()).replace(/\s+/g, " ").trim();
+      const before = await rowsNaming(watched);
       await press(where, control, row, testId);
       await confirmIfAsked(where, confirm);
+      await untilAnswered(watched, before);
     }
     // The dialog an invitation answer lands on, open on the screen; none open is unbound,
     // since the answer could not be brought to this screen to be confirmed.
@@ -8168,7 +8223,15 @@ export default function create(
           "membership-decline-dialog",
         ),
       leaveOrganization: (input?: unknown) =>
-        answer("leave_organization", input, /^\s*leave\b/i, /^\s*leave organization\s*$/i, /^\s*leave\b/i, "membership-leave-button", ""),
+        answer(
+          "leave_organization",
+          input,
+          /^\s*leave\b/i,
+          /^\s*leave organization\s*$/i,
+          /^\s*leave\b/i,
+          "membership-leave-button",
+          "membership-leave-dialog",
+        ),
       createOrganization: async () => {
         const scope = await owned("create_organization");
         await press(screen.where("create_organization"), /^\s*create organization\s*$/i, scope, "organization-create-link");

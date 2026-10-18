@@ -367,6 +367,15 @@
 - 15:34:24 drive: step 1: `sdlc run verify --slice 18` — build-slice-18-7 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
 - 16:08:14 verify slice 18: returned — R-3.10 (slice 12) fail. Next: sdlc run build --slice 18 --revise
 - 16:08:16 run verify: regenerated 3 files in .sdlc, site
+- 16:08:27 drive: step 2: `sdlc run build --slice 18 --revise` — build-slice-18-7 was returned at G3 by runner:verify
+- 16:09:24 drive: stopped after 2 steps — step 2 (`sdlc run build --slice 18 --revise`) failed
+- 16:10:00 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make organizationUserMemberships.leaveOrganization in tests/adapters/new/index.ts return only once the page shows the membership has ended. Shown by verify on build-slice-18-7: R-3.10 (tests/acceptance/organizations/R-3.10.spec.ts:52) read the affiliated organizations table straight after leaveOrganization and got "Cormorant Bay Membership Ends Ltd. | Member | Leave", while the page captured at that moment shows the status "You have left Cormorant Bay Membership Ends Ltd." and a table without that row, so the read ran before the table was redrawn. After confirming the leave, wait until the organization's row has left the table or the page says the person has left it, and do the same for any other membership action that returns before its table has changed. Keep what each member hands back as it is, and check it against the running application before proposing.
+- 16:10:01 run bind-adapter: pre-checks failed
+- 16:10:35 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make organizationUserMemberships.leaveOrganization in tests/adapters/new/index.ts return only once the page shows the membership has ended. Shown by verify on build-slice-18-7: R-3.10 (tests/acceptance/organizations/R-3.10.spec.ts:52) read the affiliated organizations table straight after leaveOrganization and got "Cormorant Bay Membership Ends Ltd. | Member | Leave", while the page captured at that moment shows the status "You have left Cormorant Bay Membership Ends Ltd." and a table without that row, so the read ran before the table was redrawn. After confirming the leave, wait until the organization's row has left the table or the page says the person has left it, and do the same for any other membership action that returns before its table has changed. Keep what each member hands back as it is, and check it against the running application before proposing.
+- 16:17:30 run bind-adapter: ok, cost 2.0821136000000005, turns 79, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 16:17:30 propose bind-adapter-new-111 at G3
+- 16:17:54 drive: step 1: `sdlc rule bind-adapter-new-111 --by agent:reviewer` — bind-adapter-new-111 is open at G3, held by agent:reviewer
+- 16:18:04 rule bind-adapter-new-111 approve at G3 by runner:checks (agent)
 
 # Run record 2026-10-17
 
