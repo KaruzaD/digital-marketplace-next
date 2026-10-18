@@ -3534,6 +3534,16 @@ conditions:
     stage: bind-adapter
     by: agent:reviewer
     at: 2026-10-18T03:00:41.403Z
+    closed:
+      outcome: met
+      why: the proposal-cwu-create submit pattern now accepts a button named exactly
+        'Submit' as well as 'Submit proposal' and 'Save changes and submit', in
+        tests/adapters/new/index.ts (ask() in the submit flow); the
+        proposal-cwu-edit submit_proposal check accepts '^submit( proposal)?$'
+        inside 'Proposal actions'; the terms-dialog confirm already accepted
+        'Submit Proposal'
+      by: agent:reviewer
+      at: 2026-10-18T03:06:51.874Z
   - ref: bind-adapter-new-97#2
     text: The create-page address field patterns
       (tests/adapters/new/index.ts:6728-6738, /^\s*province or state/i and
@@ -3546,6 +3556,14 @@ conditions:
     stage: bind-adapter
     by: agent:reviewer
     at: 2026-10-18T03:00:41.403Z
+    closed:
+      outcome: met
+      why: PROVINCE_LABEL (/^\s*province\s*(or|\/)\s*state/i) and POSTAL_LABEL
+        (/^\s*postal\s*(code|\/\s*zip)/i) replace the old patterns for every
+        alias in ORG_FIELDS and in PROPOSAL_FIELDS, in
+        tests/adapters/new/index.ts
+      by: agent:reviewer
+      at: 2026-10-18T03:06:51.921Z
   - ref: bind-adapter-new-97#3
     text: The default-organization step in the proponent flow waits for the
       organization chooser to read 'Select an item', but on the create page it
@@ -3557,6 +3575,14 @@ conditions:
     stage: bind-adapter
     by: agent:reviewer
     at: 2026-10-18T03:00:41.403Z
+    closed:
+      outcome: met
+      why: completeProposal treats the organization chooser as empty when it reads
+        'Select an item', 'Organization' or nothing (CHOOSER_EMPTY), so a test
+        naming no organization gets the first one offered, in
+        tests/adapters/new/index.ts
+      by: agent:reviewer
+      at: 2026-10-18T03:06:51.965Z
   - ref: bind-adapter-new-97#4
     text: The optional second address line is now labelled just 'Street Address',
       the same label as the first line. Make sure the street-address bindings
@@ -3568,3 +3594,10 @@ conditions:
     stage: bind-adapter
     by: agent:reviewer
     at: 2026-10-18T03:00:41.403Z
+    closed:
+      outcome: met
+      why: street line one and line two are filled by position (nth 0 and nth 1) among
+        the textboxes matching STREET_ANY, through streetLine() in the proposal
+        field fill loop, in tests/adapters/new/index.ts
+      by: agent:reviewer
+      at: 2026-10-18T03:06:52.007Z
