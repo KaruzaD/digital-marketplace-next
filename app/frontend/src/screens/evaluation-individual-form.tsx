@@ -1,5 +1,5 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { Button, ButtonGroup, Form, Heading, InlineAlert, Link, NumberField, Text, TextArea } from "@bcgov/design-system-react-components";
+import { FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { Button, Form, Heading, InlineAlert, Link, NumberField, Text, TextArea } from "@bcgov/design-system-react-components";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   EnteredScore,
@@ -13,8 +13,9 @@ import type { OtherProgram } from "@rules/other-program-drafts";
 import type { Account } from "../api/accounts";
 import { Evaluation, EvaluationSaveAnswer, fetchEvaluation, fetchOwnEvaluations, saveEvaluation, startEvaluation } from "../api/evaluations";
 import { OtherProgramOpportunity, Proponent, StoredQuestion, fetchOtherProgramOpportunity } from "../api/other-programs";
-import { Loading } from "../app/loading";
+import { ErrorSummary, EvaluationStyles, Notice, QuestionBox, Refusal, Response, SaveRow, ScoringHead } from "../app/evaluation-kit";
 import { NotFound } from "../app/not-found";
+import { Details, OpportunityPage, PageTitle, Panel, Waiting } from "../app/opportunity-kit";
 import { Stack } from "../app/page-layout";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
@@ -33,31 +34,16 @@ import { evaluatedFrom } from "./opportunity-other-manage";
  * evaluation, or another evaluator's once the reader may see it (R-5.28), is shown and not offered
  * for change (R-5.24). Anybody who may not record or read it is shown the missing page (R-5.11,
  * R-5.21).
+ *
+ * Each is drawn as the evaluation kit's `IndividualCreate` and `IndividualEdit` stories draw it: the
+ * scoring head, the way back, the alerts, then one question box per question with the proponent's
+ * response, or, once the evaluation cannot change, one panel per question.
  */
 
 export const PROGRAM_WORDS: Readonly<Record<OtherProgram, string>> = { "sprint-with-us": "Sprint With Us", "team-with-us": "Team With Us" };
 
 const createTitle = (program: OtherProgram) => `Evaluate a ${PROGRAM_WORDS[program]} proponent`;
 const editTitle = (program: OtherProgram) => `${PROGRAM_WORDS[program]} evaluation`;
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-const group = {
-  margin: "var(--layout-margin-none)",
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
-const response = {
-  padding: "var(--layout-padding-small)",
-  borderInlineStart: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-} as const;
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
 
 export function EvaluationIndividualScreen({
   program,
@@ -145,21 +131,21 @@ function EvaluationLoader({
 
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{evaluatorId ? editTitle(program) : createTitle(program)}</Heading>
-        <Loading label="Loading the proponent's responses…" />
-      </Stack>
+      <OpportunityPage>
+        <PageTitle>{evaluatorId ? editTitle(program) : createTitle(program)}</PageTitle>
+        <Waiting label="Loading the proponent's responses" />
+      </OpportunityPage>
     );
   }
   if (loaded.kind === "missing") return <NotFound />;
   if (loaded.kind === "failed") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{editTitle(program)}</Heading>
+      <OpportunityPage>
+        <PageTitle>{editTitle(program)}</PageTitle>
         <TitledAlert variant="danger" role="alert" title="This evaluation could not be loaded">
           <Text elementType="p">Reload the page to try again.</Text>
         </TitledAlert>
-      </Stack>
+      </OpportunityPage>
     );
   }
   const { opportunity, proponent, evaluation, own } = loaded;
@@ -264,8 +250,9 @@ function EvaluationForm({
   const [notice, setNotice] = useState<"saved" | null>(search.saved === "draft" || search.saved === "changes" ? "saved" : null);
   const [refusal, setRefusal] = useState<EvaluationSaveAnswer | null>(null);
   const [busy, setBusy] = useState(false);
+  // Counts the answered saves, so an alert still showing after another save is drawn afresh and takes focus again.
+  const [answered, setAnswered] = useState(0);
   const scoreRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const alertRef = useRef<HTMLDivElement>(null);
   const place = placeOf(opportunity, proponent);
   const editing = evaluation !== null;
 
@@ -273,12 +260,6 @@ function EvaluationForm({
     entries.map((entry, order) => ({ order, score: typedScore(scoreRefs.current[order] ?? null, entry.score), notes: entry.notes }));
   const problems = scoreProblems(questions, current());
   const shownProblems = problems.filter((problem) => checked || touched.has(`${problem.field}-${problem.order}`));
-
-  useEffect(() => {
-    if (refusal || (checked && problems.length > 0)) alertRef.current?.focus();
-    // Only when a save has just been answered.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refusal, checked]);
 
   function setEntry(order: number, change: Partial<Entry>) {
     setEntries((all) => all.map((entry, index) => (index === order ? { ...entry, ...change } : entry)));
@@ -302,6 +283,7 @@ function EvaluationForm({
     setBusy(false);
     if (answer.kind !== "saved") {
       setRefusal(answer);
+      setAnswered((count) => count + 1);
       return;
     }
     if (then === "stay") {
@@ -310,6 +292,7 @@ function EvaluationForm({
         go(`${evaluationAddress(program, opportunity.id, proponent.id, account.id)}?saved=draft`, true);
         return;
       }
+      setAnswered((count) => count + 1);
       setChecked(true);
       setNotice("saved");
       return;
@@ -325,148 +308,134 @@ function EvaluationForm({
   }
 
   return (
-    <Stack gap="large">
-      <Heading1 kind={editing ? editTitle(program) : createTitle(program)} proponent={proponent} />
-      <OpportunityLine opportunity={opportunity} proponent={proponent} />
-      {editing ? (
-        <Text elementType="p">
-          Status:{" "}
-          <span style={badge} data-testid="evaluation-status">
-            {evaluationStatusLabel({ status: "DRAFT", scores: current() }, questions)}
-          </span>
-        </Text>
-      ) : null}
-      <div>
-        <Link href={listAddress(program, opportunity.id)}>Back to your evaluations</Link>
-      </div>
-      <Text elementType="p">
+    <OpportunityPage>
+      <EvaluationStyles />
+      <ScoringHead
+        eyebrow={editing ? editTitle(program) : createTitle(program)}
+        program={program}
+        status={editing ? evaluationStatusLabel({ status: "DRAFT", scores: current() }, questions) : undefined}
+        statusTestId="evaluation-status"
+        name={proponent.anonymousProponentName}
+        facts={placeFacts(opportunity, proponent)}
+      />
+      <BackLink href={listAddress(program, opportunity.id)}>Back to your evaluations</BackLink>
+      <p className="op-text">
         Score each question between 0 and its maximum, with up to two decimal places, and explain each score in a comment. Your draft is
         saved as you move between proponents. Nothing is shared until you submit your scores for consensus.
-      </Text>
+      </p>
       {refusal?.kind === "duplicate" ? (
         <>
-          <div tabIndex={-1} ref={alertRef} data-testid="evaluation-duplicate-error">
-            <InlineAlert variant="danger" role="alert" title="This evaluation was not started" description={refusal.reason} />
-          </div>
-          <div>
-            <Link href={evaluationAddress(program, opportunity.id, proponent.id, account.id)}>
-              Go to your evaluation of {proponent.anonymousProponentName}
-            </Link>
-          </div>
+          <Refusal key={answered} testId="evaluation-duplicate-error" title="This evaluation was not started" description={refusal.reason} />
+          <BackLink href={evaluationAddress(program, opportunity.id, proponent.id, account.id)}>
+            Go to your evaluation of {proponent.anonymousProponentName}
+          </BackLink>
         </>
       ) : refusal ? (
-        <div tabIndex={-1} ref={alertRef}>
-          <InlineAlert
-            variant="danger"
-            role="alert"
-            title="This evaluation was not saved"
-            description={refusal.kind === "refused" ? refusal.reasons.join(" ") : "The service could not save it. Try again."}
-          />
-        </div>
+        <Refusal
+          key={answered}
+          title="This evaluation was not saved"
+          description={refusal.kind === "refused" ? refusal.reasons.join(" ") : "The service could not save it. Try again."}
+        />
       ) : checked && problems.length > 0 ? (
-        <div tabIndex={-1} ref={alertRef}>
-          <InlineAlert variant="danger" title={`This evaluation has ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`} role="alert">
-            <Text elementType="p">
+        <ErrorSummary
+          key={answered}
+          title={`This evaluation has ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`}
+          lead={
+            <p>
               {editing ? "Your changes were saved as you entered them." : "Your draft was saved as you entered it."} Your scores cannot be submitted
               until these are fixed.
-            </Text>
-            <ul>
-              {problems.map((problem) => (
-                <li key={`${problem.field}-${problem.order}`} data-testid="field-error">
-                  <Link
-                    href={`#question-${problem.order + 1}-${problem.field}`}
-                    data-testid={problem.field === "score" ? "evaluation-score-error" : "evaluation-notes-error"}
-                  >
-                    {summaryLine(problem)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </InlineAlert>
-        </div>
+            </p>
+          }
+          problems={problems.map((problem) => ({
+            href: `#question-${problem.order + 1}-${problem.field}`,
+            testId: problem.field === "score" ? "evaluation-score-error" : "evaluation-notes-error",
+            text: summaryLine(problem),
+          }))}
+        />
       ) : notice === "saved" ? (
-        <div role="status">
+        <div role="status" className="ev-alert">
           <InlineAlert variant="success" title="Saved" description="Your evaluation has been saved." />
         </div>
       ) : null}
-      <Form validationBehavior="aria" onSubmit={onSubmit}>
-        <Stack gap="medium">
-          {questions.map((question, order) => {
-            const n = order + 1;
-            const scoreProblem = shownProblems.find((problem) => problem.order === order && problem.field === "score");
-            const notesProblem = shownProblems.find((problem) => problem.order === order && problem.field === "notes");
-            const answer = proponent.responses.find((entry) => entry.order === order)?.response ?? "";
-            return (
-              <fieldset key={order} style={group} id={`question-${n}`}>
-                <legend style={legend}>Question {n}</legend>
-                <Stack gap="medium">
-                  <Text elementType="p">{question.question}</Text>
-                  <Text elementType="p" size="small" color="secondary">
-                    Worth up to {question.score} points.
-                    {question.minimumScore !== null ? ` The minimum score to move on is ${question.minimumScore}.` : ""}
-                  </Text>
-                  <div style={response} data-testid="evaluation-question-response">
-                    <Stack gap="small">
-                      <Text elementType="p" size="small" color="secondary">
-                        {proponent.anonymousProponentName}'s response
-                      </Text>
-                      <Text elementType="p">{answer}</Text>
-                    </Stack>
-                  </div>
-                  <div
-                    ref={(element) => {
-                      scoreRefs.current[order] = element;
-                    }}
-                  >
-                    <NumberField
-                      id={`question-${n}-score`}
-                      label={`Score for question ${n}`}
-                      isRequired
-                      description={`Between 0 and ${question.score}, with up to two decimal places.`}
-                      value={entries[order]?.score ?? Number.NaN}
-                      formatOptions={{ maximumFractionDigits: 20, useGrouping: false }}
-                      onChange={(value) => setEntry(order, { score: value })}
-                      onBlur={() => setTouched((all) => new Set(all).add(`score-${order}`))}
-                      isInvalid={scoreProblem !== undefined}
-                      errorMessage={scoreProblem?.message}
-                      data-testid="evaluation-question-score-field"
-                    />
-                  </div>
-                  <TextArea
-                    id={`question-${n}-notes`}
-                    label={`Comment for question ${n}`}
-                    isRequired
-                    description="At least one word, explaining the score."
-                    value={entries[order]?.notes ?? ""}
-                    onChange={(value) => setEntry(order, { notes: value })}
-                    onBlur={() => setTouched((all) => new Set(all).add(`notes-${order}`))}
-                    isInvalid={notesProblem !== undefined}
-                    errorMessage={notesProblem?.message}
-                    data-testid="evaluation-question-notes-field"
-                  />
-                </Stack>
-              </fieldset>
-            );
-          })}
-          <ButtonGroup ariaLabel="Evaluation actions">
-            <Button variant="secondary" isDisabled={busy} onPress={() => void save("previous")} data-testid="evaluation-save-previous">
-              Save and go to previous proponent
-            </Button>
-            <Button
-              variant="secondary"
-              isDisabled={busy}
-              onPress={() => void save("stay")}
-              data-testid={editing ? "evaluation-save-changes" : "evaluation-save-draft"}
-            >
-              {editing ? "Save changes" : "Save draft"}
-            </Button>
-            <Button type="submit" variant="primary" isDisabled={busy} data-testid="evaluation-save-next">
-              Save and go to next proponent
-            </Button>
-          </ButtonGroup>
-        </Stack>
+      <Form validationBehavior="aria" className="op-region" onSubmit={onSubmit}>
+        {questions.map((question, order) => {
+          const n = order + 1;
+          const scoreProblem = shownProblems.find((problem) => problem.order === order && problem.field === "score");
+          const notesProblem = shownProblems.find((problem) => problem.order === order && problem.field === "notes");
+          const answer = proponent.responses.find((entry) => entry.order === order)?.response ?? "";
+          return (
+            <QuestionBox key={order} n={n}>
+              <p className="op-text">{question.question}</p>
+              <p className="op-note">
+                Worth up to {question.score} points.
+                {question.minimumScore !== null ? ` The minimum score to move on is ${question.minimumScore}.` : ""}
+              </p>
+              <Response name={proponent.anonymousProponentName}>{answer}</Response>
+              <div
+                ref={(element) => {
+                  scoreRefs.current[order] = element;
+                }}
+              >
+                <NumberField
+                  id={`question-${n}-score`}
+                  label={`Score for question ${n}`}
+                  isRequired
+                  description={`Between 0 and ${question.score}, with up to two decimal places.`}
+                  value={entries[order]?.score ?? Number.NaN}
+                  formatOptions={{ maximumFractionDigits: 20, useGrouping: false }}
+                  onChange={(value) => setEntry(order, { score: value })}
+                  onBlur={() => setTouched((all) => new Set(all).add(`score-${order}`))}
+                  isInvalid={scoreProblem !== undefined}
+                  errorMessage={scoreProblem?.message}
+                  data-testid="evaluation-question-score-field"
+                />
+              </div>
+              <TextArea
+                id={`question-${n}-notes`}
+                label={`Comment for question ${n}`}
+                isRequired
+                description="At least one word, explaining the score."
+                value={entries[order]?.notes ?? ""}
+                onChange={(value) => setEntry(order, { notes: value })}
+                onBlur={() => setTouched((all) => new Set(all).add(`notes-${order}`))}
+                isInvalid={notesProblem !== undefined}
+                errorMessage={notesProblem?.message}
+                data-testid="evaluation-question-notes-field"
+              />
+            </QuestionBox>
+          );
+        })}
+        <SaveRow label="Evaluation actions">
+          <Button variant="secondary" isDisabled={busy} onPress={() => void save("previous")} data-testid="evaluation-save-previous">
+            Save and go to previous proponent
+          </Button>
+          <Button
+            variant="secondary"
+            isDisabled={busy}
+            onPress={() => void save("stay")}
+            data-testid={editing ? "evaluation-save-changes" : "evaluation-save-draft"}
+          >
+            {editing ? "Save changes" : "Save draft"}
+          </Button>
+          <Button type="submit" variant="primary" isDisabled={busy} data-testid="evaluation-save-next">
+            Save and go to next proponent
+          </Button>
+        </SaveRow>
       </Form>
-    </Stack>
+    </OpportunityPage>
+  );
+}
+
+/** The opportunity's title and the proponent's place among those evaluated, as the scoring head's facts. */
+export function placeFacts(opportunity: OtherProgramOpportunity, proponent: Proponent): string[] {
+  return [opportunity.title, `${proponent.anonymousProponentName} of ${placeOf(opportunity, proponent).count}`];
+}
+
+function BackLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <p className="op-text">
+      <Link href={href}>{children}</Link>
+    </p>
   );
 }
 
@@ -494,58 +463,50 @@ function EvaluationShown({
   const next = placeOf(opportunity, proponent).next;
   const nextHeld = next ? own.some((entry) => entry.proposal.id === next.id) : false;
   return (
-    <Stack gap="large">
-      <Heading1 kind={editTitle(program)} proponent={proponent} />
-      <OpportunityLine opportunity={opportunity} proponent={proponent} />
-      {mine ? null : <Text elementType="p">Evaluator: {evaluation.evaluator.name}</Text>}
-      <Text elementType="p">
-        Status:{" "}
-        <span style={badge} data-testid="evaluation-status">
-          {evaluationStatusLabel(evaluation, questions)}
-        </span>
-      </Text>
-      <div>
-        <Link href={mine ? listAddress(program, opportunity.id) : `/opportunities/${program}/${opportunity.id}/edit`}>
-          {mine ? "Back to your evaluations" : "Back to the opportunity"}
-        </Link>
-      </div>
+    <OpportunityPage>
+      <EvaluationStyles />
+      <ScoringHead
+        eyebrow={editTitle(program)}
+        program={program}
+        status={evaluationStatusLabel(evaluation, questions)}
+        statusTestId="evaluation-status"
+        name={proponent.anonymousProponentName}
+        facts={placeFacts(opportunity, proponent)}
+      />
+      {mine ? null : <Details items={[{ term: "Evaluator", value: evaluation.evaluator.name }]} />}
+      <BackLink href={mine ? listAddress(program, opportunity.id) : `/opportunities/${program}/${opportunity.id}/edit`}>
+        {mine ? "Back to your evaluations" : "Back to the opportunity"}
+      </BackLink>
       {evaluation.status === "SUBMITTED" ? (
-        <div data-testid="evaluation-read-only-notice">
-          <InlineAlert variant="info" title="This evaluation has been submitted" description="Submitted scores and comments cannot be changed." />
-        </div>
+        <Notice
+          testId="evaluation-read-only-notice"
+          title="This evaluation has been submitted"
+          description="Submitted scores and comments cannot be changed."
+        />
       ) : null}
-      <Stack gap="medium">
-        {questions.map((question, order) => {
-          const stored = evaluation.scores.find((score) => score.order === order);
-          return (
-            <section key={order} style={group} aria-labelledby={`question-${order + 1}-heading`}>
-              <Stack gap="medium">
-                <Heading level={2} id={`question-${order + 1}-heading`}>
-                  Question {order + 1}
-                </Heading>
-                <Text elementType="p">{question.question}</Text>
-                <Stack as="dl" direction="row" gap="medium">
-                  <Stack gap="small">
-                    <dt style={term}>{mine ? "Your score" : "Score"}</dt>
-                    <dd>{typeof stored?.score === "number" ? `${stored.score} out of ${question.score}` : "Not entered"}</dd>
-                  </Stack>
-                  <Stack gap="small">
-                    <dt style={term}>{mine ? "Your comment" : "Comment"}</dt>
-                    <dd>{stored?.notes ? stored.notes : "Not entered"}</dd>
-                  </Stack>
-                </Stack>
-              </Stack>
-            </section>
-          );
-        })}
-      </Stack>
+      {questions.map((question, order) => {
+        const stored = evaluation.scores.find((score) => score.order === order);
+        return (
+          <Panel key={order} id={`question-${order + 1}-heading`} title={`Question ${order + 1}`}>
+            <p className="op-text">{question.question}</p>
+            <Details
+              items={[
+                {
+                  term: mine ? "Your score" : "Score",
+                  value: typeof stored?.score === "number" ? `${stored.score} out of ${question.score}` : "Not entered",
+                },
+                { term: mine ? "Your comment" : "Comment", value: stored?.notes ? stored.notes : "Not entered" },
+              ]}
+            />
+          </Panel>
+        );
+      })}
       {mine && next && (nextHeld || opportunity.status === "EVAL_QUESTIONS_INDIVIDUAL") ? (
-        <div>
-          <Link href={evaluationAddress(program, opportunity.id, next.id, nextHeld ? account.id : null)}>
-            Next proponent: {next.anonymousProponentName}
-          </Link>
-        </div>
+        <BackLink href={evaluationAddress(program, opportunity.id, next.id, nextHeld ? account.id : null)}>
+          Next proponent: {next.anonymousProponentName}
+        </BackLink>
       ) : null}
-    </Stack>
+    </OpportunityPage>
   );
 }
+
