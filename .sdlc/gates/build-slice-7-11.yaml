@@ -1,0 +1,16 @@
+gate: G3
+verdict: return
+by: agent:tech-lead
+held_by: agent
+rationale: |2-
+  Question: does slice 7 do what its criteria say, given verify failed R-1.14, R-1.21 and R-1.22 three times running? Ruling: return, with the work addressed to bind-adapter. The verify evidence decides it: the R-1.21 page snapshot (.sdlc/evidence/slice-7/R-1.21.txt) shows the page head reading 'Code With Us Draft' and 'Closes October 31, 2026 at 4:00 p.m. Pacific time', so the application renders the status and the 4:00 p.m. deadline these criteria ask about. The adapter's opportunityCwuView.status() and proposalDeadline() (tests/adapters/new/index.ts:8313, :8320) read them as definition-list terms labelled 'Status' and 'Proposal deadline', which the restyle removed to follow the catalogue approved at G-DESIGN, while keeping the opportunity-status and opportunity-proposal-deadline test IDs on the elements. Every read returned an empty string, and that single mismatch accounts for all three failures. Another build cannot fix this without undoing an approved design, and it is not a pipeline defect, because bind-adapter can be asked to rebind. R-1.51 is not asserted through the running service but is covered by the app's state rules, backend tests and migration, and does not block on its own. What would change the ruling: a rebound adapter reading the test-ID elements that still fails to see 'Draft', 'Published' or 4:00 p.m. where the page shows them, which would put the fault back on the application.
+conditions:
+  - "addressed-to bind-adapter: opportunityCwuView.status() and opportunityCwuView.proposalDeadline() in tests/adapters/new/index.ts look up definition-list terms labelled 'Status' and 'Proposal deadline'. The Code With Us view, restyled to the catalogue approved at G-DESIGN, no longer has either label. Status is now an unlabelled label in the page head (data-testid opportunity-status), and the deadline is a head fact reading 'Closes <date> at 4:00 p.m. Pacific time', or 'Closed' once passed (data-testid opportunity-proposal-deadline). Rebind both reads to those test IDs, and check reward(), which still finds its 'Reward' label but now carries data-testid opportunity-reward. Shown by verify on build-slice-7-11 (application tree 7e29391): R-1.14, R-1.21 and R-1.22 all read '' from these members, while the page snapshot .sdlc/evidence/slice-7/R-1.21.txt shows 'Draft' and the 4:00 p.m. deadline on the page."
+cost: 0.7459555999999999
+turns: 8
+session: "ba24a83d-659b-4026-be08-6539b2e35385"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T01:40:05.461Z
