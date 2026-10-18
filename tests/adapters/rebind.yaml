@@ -14395,3 +14395,15 @@ rebind:
       why: tests/adapters/new has changed since this was found
       by: runner:verify
       at: 2026-10-18T03:13:15.225Z
+  - id: R-8.31
+    target: new
+    why: "unbound: proposal-cwu-edit.save_changes — no control named /^\\s*save
+      changes\\s*$/i on
+      http://localhost:4400/opportunities/code-with-us/d7514aac-47d7-42cb-9f02-\
+      138e23b6b984/proposals/55b85da3-2a9d-401e-852f-b31c6015bd67/edit"
+    found: unbound
+    adapter: 281e99719ae9801fe105ffe25d652cc690019363
+    slice: 14
+    app_tree: 30edc73448a7f24c6f483b8d20418fd8d2706c5b
+    by: runner:verify
+    at: 2026-10-18T03:44:51.764Z
