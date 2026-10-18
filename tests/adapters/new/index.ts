@@ -5741,12 +5741,16 @@ export default function create(
   // Walked as the owning public sector employee and as the administrator on the seeded
   // closed Sprint With Us and Team With Us opportunities: the management screen's
   // "Opportunity sections" offer an "Evaluation panel" link to ?tab=evaluationPanel, whose
-  // "Evaluation panel" section holds one group per member ("Evaluator 1", "Evaluator 2"),
-  // each with a "Public sector employee (required)" chooser (only public sector people are
-  // offered, by name), a "Chair: evaluator N" box and "Remove evaluator N"; then "Add an
-  // evaluator" (a new group, its chooser reading "Select an item"), a "Chair (required)"
-  // chooser that takes an evaluator or somebody who chairs without evaluating, and "Save
-  // evaluation panel" under "Evaluation panel actions". Ticking an evaluator's Chair box
+  // "Evaluation panel" section first shows the panel read-only: a "Members of the evaluation
+  // panel" list ("Casey Placeholder", "Role: Evaluator" / "Evaluator and chair") over an
+  // "Edit evaluation panel" button. Pressed, it shows one group per member ("Evaluator 1",
+  // "Evaluator 2"), each a paragraph "Name (email)" beside a "Chair: evaluator N" box and
+  // "Remove evaluator N"; then one "Public sector employee to add" chooser (only public
+  // sector people are offered, as "Name (email)") and "Add an evaluator", which seats the
+  // person chosen as a new group and empties the chooser (pressed with nobody chosen it does
+  // nothing); a "Chair (required)" chooser that takes an evaluator or somebody who chairs
+  // without evaluating, and "Save evaluation panel" / "Cancel" under "Evaluation panel
+  // actions" (re-walked 2026-10-18). Ticking an evaluator's Chair box
   // chooses them in the Chair chooser and unticking it empties the chooser. A save says "The
   // evaluation panel has been saved." in a status; a refused one raises an alert "The
   // evaluation panel has N problem(s)" / "The panel was not saved. It is still the panel it
@@ -5805,7 +5809,19 @@ export default function create(
           .getByRole("checkbox")
           .or(group.getByRole("checkbox", { name: /^\s*chair\b/i })),
       ).first();
+    // While editing, the one chooser a new member is picked in ("evaluation-panel-member-
+    // choice", "Public sector employee to add").
+    const addChooser = (): Locator =>
+      seen(
+        section()
+          .getByTestId("evaluation-panel-member-choice")
+          .getByRole("button")
+          .or(section().getByRole("button", { name: /public sector employee to add/i })),
+      ).first();
     const BLANK = /^\s*select an item\s*$/i;
+    // People are offered and shown as "Name (email)"; the name alone is what is compared and
+    // handed back.
+    const bareName = (words: string): string => words.replace(/\s+/g, " ").replace(/\s*\([^()]*@[^()]*\)\s*$/, "").trim();
 
     async function reached(member: string): Promise<void> {
       await screen.on(member);
@@ -5829,9 +5845,54 @@ export default function create(
       return true;
     }
 
+    // The panel is drawn read-only until "Edit evaluation panel" ("evaluation-panel-edit") is
+    // pressed; every change presses it first, as start_editing does. False when the panel is
+    // locked (noted by editable()).
+    async function editing(member: string): Promise<boolean> {
+      if (!(await editable(member))) return false;
+      const controls = (): Locator =>
+        seen(
+          section()
+            .getByTestId("evaluation-panel-add-member")
+            .or(section().getByTestId("evaluation-panel-save"))
+            .or(section().getByRole("button", { name: /^\s*(add an evaluator|save evaluation panel)\s*$/i })),
+        );
+      if (await controls().count()) return true;
+      const edit = seen(
+        section()
+          .getByTestId("evaluation-panel-edit")
+          .or(section().getByRole("button", { name: /^\s*edit( (the )?(evaluation )?panel)?\s*$/i })),
+      ).first();
+      if (await edit.count()) {
+        if (await isDisabled(edit)) unbound(where(member), `"Edit evaluation panel" is disabled on ${page.url()}`);
+        await edit.click();
+        await settle();
+        await controls().first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
+        if (await controls().count()) return true;
+      }
+      const offered = (await seen(section().getByRole("button")).allInnerTexts().catch(() => [] as string[]))
+        .map((one) => `"${one.trim()}"`)
+        .filter((one) => one !== '""')
+        .join(", ");
+      return unbound(
+        where(member),
+        `the "Evaluation panel" section on ${page.url()} shows no lock note and, ${(await edit.count()) ? 'after "Edit evaluation panel" was pressed' : 'with no "Edit evaluation panel" to press'}, neither "Add an evaluator" nor "Save evaluation panel"; its buttons are ${offered || "none"}`,
+      );
+    }
+
     async function chosen(chooser: Locator): Promise<string> {
       const words = (await chooser.innerText().catch(() => "")).trim();
-      return BLANK.test(words) ? "" : words;
+      return BLANK.test(words) ? "" : bareName(words);
+    }
+
+    // The person a member group holds: its chooser's choice where it has one, else the
+    // paragraph "Name (email)" a seated member shows while editing, else the first line of
+    // the read-only row.
+    async function heldBy(group: Locator): Promise<string> {
+      if (await memberChooser(group).count()) return chosen(memberChooser(group));
+      const label = seen(group.getByRole("paragraph")).first();
+      if (await label.count()) return bareName(await label.innerText().catch(() => ""));
+      return bareName(lined(await group.innerText().catch(() => ""))[0] ?? "");
     }
 
     // Choose a person by name in a chooser. A person the chooser does not offer (a vendor is
@@ -5842,9 +5903,9 @@ export default function create(
       await chooser.click();
       const list = seen(page.getByRole("listbox")).last();
       await list.waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
-      const option = list.getByRole("option", { name: new RegExp(`^\\s*${escapeRx(name)}\\s*$`, "i") });
+      const option = list.getByRole("option", { name: new RegExp(`^\\s*${escapeRx(name)}(\\s*\\([^()]*\\))?\\s*$`, "i") });
       if (!(await option.count())) {
-        const names = (await list.getByRole("option").allInnerTexts().catch(() => [] as string[])).map((one) => one.trim()).filter(Boolean);
+        const names = (await list.getByRole("option").allInnerTexts().catch(() => [] as string[])).map(bareName).filter(Boolean);
         await page.keyboard.press("Escape").catch(() => undefined);
         const found = personOf(person);
         const users = seedGroups.users ?? {};
@@ -5886,10 +5947,10 @@ export default function create(
       const name = await nameOf(member, given(input, ["member", "user", "person", "evaluator"]) ?? input);
       for (let i = 0; i < (await members().count()); i++) {
         const group = members().nth(i);
-        if ((await chosen(memberChooser(group))).toLowerCase() === name.toLowerCase()) return group;
+        if ((await heldBy(group)).toLowerCase() === name.toLowerCase()) return group;
       }
       const there: string[] = [];
-      for (let i = 0; i < (await members().count()); i++) there.push((await chosen(memberChooser(members().nth(i)))) || "nobody chosen");
+      for (let i = 0; i < (await members().count()); i++) there.push((await heldBy(members().nth(i))) || "nobody chosen");
       return unbound(where(member), `no evaluator on the panel at ${page.url()} is "${name}"; it lists ${there.join(", ") || "nobody"}`);
     }
 
@@ -5955,7 +6016,7 @@ export default function create(
         if (!(await memberChooser(group).count())) {
           const label = seen(group.getByRole("paragraph")).first();
           if ((await chairBox(group).count()) && (await label.count())) {
-            const name = (await label.innerText()).replace(/\s+/g, " ").replace(/\s*\([^()]*@[^()]*\)\s*$/, "").trim();
+            const name = bareName(await label.innerText());
             if (!name) continue;
             named.push(name.toLowerCase());
             const chair = await chairBox(group).isChecked().catch(() => false);
@@ -5979,57 +6040,42 @@ export default function create(
 
     const built = {
       open: (params?: Record<string, string>) => screen.open(params),
-      // Walked as the administrator on the seeded closed Sprint With Us and Team With Us
-      // opportunities (at "Team questions: individual evaluation" / its Team With Us
-      // counterpart): the tab opens already changeable, its choosers, "Add an evaluator" and
-      // "Save evaluation panel" drawn without any step first. The "Edit" under "Opportunity
-      // actions" is not the panel's: it leaves for ?tab=opportunity to edit the opportunity
-      // itself, so it is never pressed here. Starting to edit is reaching the changeable
-      // panel; an "Edit" drawn inside the section itself is pressed should a build draw the
-      // panel read-only first. A locked panel is noted, as every change to it is, for
-      // panel_locked_after_consensus to report.
+      // Walked as the administrator on the seeded closed Sprint With Us opportunity: the tab
+      // opens read-only, and the section's own "Edit evaluation panel" makes it changeable.
+      // The "Edit" under "Opportunity actions" is not the panel's: it leaves for
+      // ?tab=opportunity to edit the opportunity itself, so it is never pressed here. A
+      // locked panel is noted, as every change to it is, for panel_locked_after_consensus to
+      // report.
       startEditing: async (): Promise<void> => {
-        const member = "start_editing";
-        if (!(await editable(member))) return;
-        const controls = (): Locator =>
-          seen(
-            section()
-              .getByTestId("evaluation-panel-add-member")
-              .or(section().getByTestId("evaluation-panel-save"))
-              .or(section().getByRole("button", { name: /^\s*(add an evaluator|save evaluation panel)\s*$/i })),
-          );
-        if (await controls().count()) return;
-        const edit = seen(
-          section()
-            .getByTestId("evaluation-panel-edit")
-            .or(section().getByRole("button", { name: /^\s*edit( (the )?(evaluation )?panel)?\s*$/i })),
-        ).first();
-        if (await edit.count()) {
-          await edit.click();
-          await settle();
-          if (await controls().count()) return;
-        }
-        const offered = (await seen(section().getByRole("button")).allInnerTexts().catch(() => [] as string[]))
-          .map((one) => `"${one.trim()}"`)
-          .filter((one) => one !== '""')
-          .join(", ");
-        unbound(
-          where(member),
-          `the "Evaluation panel" section on ${page.url()} shows no lock note and neither "Add an evaluator" nor "Save evaluation panel"; its buttons are ${offered || "none"}`,
-        );
+        await editing("start_editing");
       },
-      // Each person named joins the first member still reading "Select an item", or a new
-      // one "Add an evaluator" makes; a chair flag ticks their Chair box.
+      // Each person named is chosen in "Public sector employee to add" and seated by "Add an
+      // evaluator" as a new member; a chair flag ticks their Chair box. Where a build draws a
+      // chooser per member instead, the first still reading "Select an item" is used, or a
+      // new one "Add an evaluator" makes.
       addPanelMember: async (input?: unknown): Promise<void> => {
         const member = "add_panel_member";
-        if (!(await editable(member))) return;
+        if (!(await editing(member))) return;
         const wanted = picks(input);
         if (!wanted.length) unbound(where(member), `the input names nobody to add (${JSON.stringify(input)})`);
         for (const one of wanted) {
           const name = await nameOf(member, one.person);
+          if (await addChooser().count()) {
+            const before = await members().count();
+            // A person the chooser does not offer is refused a place on the panel, raised
+            // here so the test reads the refusal from the action itself.
+            if (!(await pick(member, addChooser(), name, one.person))) {
+              throw new Error(`refused: ${refusalLog[refusalLog.length - 1] ?? `${where(member)} — the chooser on ${page.url()} does not offer "${name}"`}`);
+            }
+            await press(where(member), /^\s*add an evaluator\s*$/i, section(), "evaluation-panel-add-member");
+            await members().nth(before).waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
+            if ((await members().count()) <= before) unbound(where(member), `"${name}" was chosen in "Public sector employee to add" but "Add an evaluator" seated no new member on ${page.url()}`);
+            if (one.chair !== undefined && one.chair !== null) await tickChair(members().last(), saysYes(one.chair));
+            continue;
+          }
           let group: Locator | null = null;
           for (let i = 0; i < (await members().count()); i++) {
-            if (!(await chosen(memberChooser(members().nth(i))))) {
+            if ((await memberChooser(members().nth(i)).count()) && !(await chosen(memberChooser(members().nth(i))))) {
               group = members().nth(i);
               break;
             }
@@ -6050,7 +6096,7 @@ export default function create(
       },
       removePanelMember: async (input?: unknown): Promise<void> => {
         const member = "remove_panel_member";
-        if (!(await editable(member))) return;
+        if (!(await editing(member))) return;
         const group = input === undefined || input === null ? members().last() : await memberGroup(member, input);
         const remove = seen(
           group
@@ -6068,7 +6114,7 @@ export default function create(
       // nobody empties it by unticking whichever evaluator's Chair box holds it.
       choosePanelChair: async (input?: unknown): Promise<void> => {
         const member = "choose_panel_chair";
-        if (!(await editable(member))) return;
+        if (!(await editing(member))) return;
         if (namesNoChair(input)) {
           for (let i = 0; i < (await members().count()); i++) await tickChair(members().nth(i), false);
           return;
@@ -6078,7 +6124,7 @@ export default function create(
       },
       markMemberAsChair: async (input?: unknown): Promise<void> => {
         const member = "mark_member_as_chair";
-        if (!(await editable(member))) return;
+        if (!(await editing(member))) return;
         const group = await memberGroup(member, input);
         const flag = given(input, ["chair", "isChair"]);
         await tickChair(group, flag === undefined || flag === null ? true : saysYes(flag));
@@ -6095,12 +6141,13 @@ export default function create(
         }
       },
       panelMemberRow: async (): Promise<string> => (await rows("panel_member_row")).join("\n"),
-      // Who chairs: the "Chair (required)" chooser's choice, or on a locked panel the member
-      // whose role names the chair; nobody chosen reads as nothing.
+      // Who chairs, by name: the "Chair (required)" chooser's choice while editing, or, on a
+      // panel shown read-only (locked, or before "Edit evaluation panel" is pressed), the
+      // member whose role names the chair; nobody chosen reads as nothing.
       chairField: async (): Promise<string> => {
         const member = "chair_field";
         await reached(member);
-        if (await lockNote().count()) {
+        if ((await lockNote().count()) || !(await chairChooser().count())) {
           return (await rows(member)).filter((row) => /chair$/i.test(row)).map((row) => row.replace(/\s+—.*$/, "")).join("\n");
         }
         return chosen(chairChooser());
