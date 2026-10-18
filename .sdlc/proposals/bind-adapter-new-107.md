@@ -35,3 +35,22 @@ The Code With Us, Sprint With Us and Team With Us opportunity forms, the opportu
 **Left for another run.** The Sprint With Us proposal form calls its capabilities section "3. Capabilities", not "Team capabilities", and it has no section headed "Terms and conditions". So those two name lookups still find nothing on that page. That's a difference in wording, not numbering, and outside this run's scope. Members that find their section by test ID first may not depend on these lookups, but I didn't check that. A later binding run should look at them.
 
 All routes I opened resolved, except that `/organizations/create` showed the application's "Page not found" when signed in as the administrator. I didn't try it as a vendor, because it wasn't part of this change. I only edited `tests/adapters/new/index.ts`.
+
+## Ruling
+
+**Verdict:** approve
+**By:** runner:checks
+
+Approved by the runner's checks, which policy.gates.G3.auto_approve lets settle bind-adapter proposals: the acceptance typecheck of 0052e51e24 is clean; no condition is open against it; no escalation stands on it; nothing outside tests/adapters changed.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `0052e51e24705c6374e372d59b77bc0115a8a6a1`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
