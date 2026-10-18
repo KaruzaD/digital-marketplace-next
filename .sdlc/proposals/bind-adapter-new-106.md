@@ -27,3 +27,23 @@ I fixed all three conditions in `tests/adapters/new/index.ts`. I could not type-
 **3. Over-budget cost not reported (R-2.19).** The cost reader looked for a region named exactly "Cost", but the page names it "4. Cost". It now accepts either name. The region's numbered heading is skipped like the plain one, so it doesn't come back as an error line, and "The proposed cost exceeds the maximum budget for this opportunity." is returned as `total: …`. The over-budget reader (`budgetExceeded`) uses the same cost reader, so it picks up that notice too.
 
 No condition was deferred, and nothing outside `tests/adapters/new/` was changed.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:tech-lead
+**Ruled on:** claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Question: does this revision of the new-target adapter carry out the three requests build-slice-15-7 left owed on R-2.19 (phase completeness, missing capabilities, over-budget cost) without moving anything else? Ruling: approve. bind-adapter escalated because the request loop ran past policy.loops.request (5 sends against a limit of 2). That is a policy limit, not a pipeline stage that cannot produce what G3 asks for, so the proposal is ruled here rather than escalated to the pipeline owner. Decisive evidence is the escalation account's items 14-16 set against the diff and the recorded pages. In .sdlc/evidence/slice-15/R-2.19-3.txt the region is named '4. Cost' and contains only the heading, the 'Total proposed cost' line and 'The proposed cost exceeds the maximum budget for this opportunity.'; the widened region name and heading skip return exactly that sentence as 'total: ...'. In R-2.19-2.txt each phase group carries the paragraph 'This phase's team is incomplete. Not yet held: <capability>.' with no test-ID element, and the fallback path now reads that paragraph through phaseRequirementState, giving incomplete plus the named capability. The old 'Incomplete:' and ': not held' forms are kept, and repeated names are removed. The one addition, reading the phase group's paragraphs next to the test-ID element, only adds sentences from the same phase and is deduplicated, so it stays within the requests. The diff touches only tests/adapters/new/index.ts in the two named readers, bindings.yaml is unchanged, and the runner's typecheck passed with no diagnostics under adapters/new/. What would change the ruling: a slice-15 build run in which phaseRequirements or costErrors still misread these pages, or page wording that contradicts the patterns.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `1b38c62b02129085139418727066565ff07666d8`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
