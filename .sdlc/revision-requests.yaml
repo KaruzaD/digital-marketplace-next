@@ -1941,3 +1941,22 @@ requests:
     at: 2026-10-18T02:55:02.406Z
     taken: 2026-10-18T02:59:20.216Z
     taken_by: bind-adapter-new-97
+  - stage: bind-adapter
+    target: new
+    why: attachmentRegion() in tests/adapters/new/index.ts (line 9442,
+      regionNamed(page, /^attachments$/i)) only finds a region or heading named
+      exactly 'Attachments'. The Code With Us proposal create and edit forms
+      draw that part as a section named '3. Attachments', which is the approved
+      design (design/catalogue/proposal-cwu-create-page.tsx:418 and
+      proposal-cwu-edit.editing.stories.tsx:114). As a result,
+      proposal-cwu-create.add_attachment in R-8.31's case 'removing an
+      attachment from a proposal withdraws the read path the file held through
+      that proposal' finds no row and fails with 'no row naming it', although
+      the page shows the row with its 'Download R-8.31 removed from a
+      proposal.pdf' link. Make the region lookup accept the numbered part title
+      (for example /^(\d+\.\s*)?attachments$/i) for every proposal form's
+      add_attachment and remove step.
+    from: build-slice-14-6
+    gate: G3
+    by: agent:tech-lead
+    at: 2026-10-18T03:32:03.779Z
