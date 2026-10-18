@@ -1794,3 +1794,18 @@ requests:
     at: 2026-10-17T20:01:32.481Z
     taken: 2026-10-17T20:03:39.804Z
     taken_by: bind-adapter-new-91
+  - stage: bind-adapter
+    target: new
+    why: the new target's opportunityList group readers (opportunityGroup in
+      tests/adapters/new/index.ts) must read a group's rows from inside that
+      group's own section on the page, not as the text lines that follow its
+      heading up to the next group heading, and must open a collapsed group
+      before reading it. On the slice 8 run the Closed Opportunities group was
+      collapsed and was the last group, so the reader took the program
+      descriptions panel that follows it as its rows, never opened it, and
+      reported the seeded closed Sprint With Us opportunity missing for an
+      administrator.
+    from: build-slice-8-12
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T00:30:29.230Z
