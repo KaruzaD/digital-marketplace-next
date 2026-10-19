@@ -185,7 +185,13 @@ export function ProposalActions({ children }: { children?: ReactNode }) {
   return <div data-testid="proposal-actions">{children ? <ButtonGroup ariaLabel="Proposal actions">{children}</ButtonGroup> : null}</div>;
 }
 
-export type ProposalTab = { key: string; label: string };
+export type ProposalTab = {
+  /** The test ID's suffix: `proposal-tab-<key>`. */
+  key: string;
+  label: string;
+  /** The address's query value where it is not the key (`teamQuestions` for `team-questions`). */
+  query?: string;
+};
 
 /**
  * The tabs of a manage or evaluate page. Each has its own address (`?tab=…`), so they are links
@@ -198,7 +204,7 @@ export function ProposalTabs({ base, current, tabs }: { base: string; current: s
         {tabs.map((tab) => (
           <li key={tab.key}>
             <Link
-              href={`${base}?tab=${tab.key}`}
+              href={`${base}?tab=${tab.query ?? tab.key}`}
               aria-current={tab.key === current ? "page" : undefined}
               data-testid={`proposal-tab-${tab.key}`}
             >
