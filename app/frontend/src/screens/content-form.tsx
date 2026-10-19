@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Toolbar } from "react-aria-components";
 import {
   AlertDialog,
@@ -7,6 +7,7 @@ import {
   Form,
   Link,
   Modal,
+  ProgressCircle,
   Text,
   TextArea,
   TextField,
@@ -32,9 +33,7 @@ import {
 import { PageWording, PublishAnswer } from "../api/content";
 import { originOfThisApp } from "../api/client";
 import { uploadEmbeddedImage } from "../api/files";
-import { Loading } from "../app/loading";
-import { Stack } from "../app/page-layout";
-import { TitledAlert } from "../app/titled-alert";
+import { FieldGroup, FieldPair, PageForm, PublishProblems, Refusal } from "../app/content-kit";
 import {
   FORMATTING_LABELS,
   Formatting,
@@ -50,7 +49,9 @@ import {
  * full public address beside the address (R-7.21 note); the body editor with its formatting
  * buttons, its image control and its link to the formatting guide (R-7.26, R-8.29); and a
  * publish button that is unavailable until every field is valid and asks to be confirmed,
- * because a page is public as soon as it is published.
+ * because a page is public as soon as it is published. It is laid out with the content kit's
+ * form pieces (design/catalogue/content-kit.tsx): title and address side by side where they fit,
+ * the editor's parts `small` apart, the reason Publish is unavailable just before the submit row.
  */
 
 const hiddenInput = { display: "none" } as const;
@@ -132,7 +133,7 @@ export async function checkChosenImage(file: Pick<File, "size" | "slice">): Prom
   return null;
 }
 
-export function PageForm({
+export function PageEditor({
   purpose,
   initial,
   addressLocked = false,
@@ -148,10 +149,10 @@ export function PageForm({
   const [publishing, setPublishing] = useState(false);
   /** The address the service last said another page holds (R-7.22). */
   const [addressInUse, setAddressInUse] = useState<string | null>(null);
-  const [failure, setFailure] = useState<readonly string[] | null>(null);
+  /** What the service said when it would not publish, and which attempt that was, so a repeat is said again. */
+  const [failure, setFailure] = useState<{ readonly reasons: readonly string[]; readonly attempt: number } | null>(null);
+  const attempts = useRef(0);
   const [image, setImage] = useState<ImageState>({ kind: "idle" });
-  const duplicateRef = useRef<HTMLDivElement>(null);
-  const failureRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const pendingSelection = useRef<{ start: number; end: number } | null>(null);
@@ -172,14 +173,6 @@ export function PageForm({
     .filter((field) => touched.has(field) && problems[field])
     .map((field) => problems[field] as PageProblem);
   const slugIsInUse = addressInUse !== null && addressInUse === wording.slug;
-
-  useEffect(() => {
-    if (addressInUse !== null) duplicateRef.current?.focus();
-  }, [addressInUse]);
-
-  useEffect(() => {
-    if (failure) failureRef.current?.focus();
-  }, [failure]);
 
   // A formatting button or an inserted image says where the selection goes once the new text
   // is drawn.
@@ -266,7 +259,8 @@ export function PageForm({
       setTouched((current) => new Set([...current, "slug"]));
       return;
     }
-    setFailure(answer.kind === "refused" ? answer.reasons : []);
+    attempts.current += 1;
+    setFailure({ reasons: answer.kind === "refused" ? answer.reasons : [], attempt: attempts.current });
   }
 
   const fieldError = (field: PageField): string | undefined =>
@@ -288,32 +282,31 @@ export function PageForm({
       ? "Changing the address moves the page at once. Links to the old address will stop working."
       : undefined;
 
+  // While the address the service refused is still in the field, the form says only that: the
+  // refusal over the form and at the field, with no intro and no hint (content-create and
+  // content-edit, duplicate-slug).
+  const hinted = !slugIsInUse;
+
   return (
     <>
       {addressInUse !== null ? (
-        <div tabIndex={-1} ref={duplicateRef} data-testid="content-duplicate-slug-error">
-          <TitledAlert variant="danger" role="alert" title="This address is already in use">
-            <Text elementType="p">
-              {`Another page is already published at /content/${addressInUse}, ${words.notPublished}. `}
-              <Link href={`#${FIELD_IDS.slug}`}>Choose a different address</Link>.
-            </Text>
-          </TitledAlert>
-        </div>
+        <Refusal key={addressInUse} focus title="This address is already in use" testId="content-duplicate-slug-error">
+          {`Another page is already published at /content/${addressInUse}, ${words.notPublished}. `}
+          <Link href={`#${FIELD_IDS.slug}`}>Choose a different address</Link>.
+        </Refusal>
       ) : null}
       {failure ? (
-        <div tabIndex={-1} ref={failureRef}>
-          <TitledAlert
-            variant="danger"
-            role="alert"
-            title={purpose === "create" ? "The page was not published" : "Your changes were not published"}
-          >
-            <Text elementType="p">
-              {failure.length > 0 ? failure.join(" ") : "The service could not publish it. Nothing you entered has been lost. Try again."}
-            </Text>
-          </TitledAlert>
-        </div>
+        <Refusal
+          key={failure.attempt}
+          focus
+          title={purpose === "create" ? "The page was not published" : "Your changes were not published"}
+        >
+          {failure.reasons.length > 0
+            ? failure.reasons.join(" ")
+            : "The service could not publish it. Nothing you entered has been lost. Try again."}
+        </Refusal>
       ) : null}
-      {intro}
+      {hinted ? intro : null}
       <Form
         validationBehavior="aria"
         onSubmit={(event) => {
@@ -321,117 +314,112 @@ export function PageForm({
           if (ready) setConfirming(true);
         }}
       >
-        <Stack gap="medium">
-          <TextField
-            id={FIELD_IDS.title}
-            label="Title"
-            isRequired
-            description="Between 1 and 100 characters."
-            value={wording.title}
-            onChange={(value) => change("title", value)}
-            onBlur={() => leave("title")}
-            isInvalid={fieldError("title") !== undefined}
-            errorMessage={fieldError("title")}
-            data-testid="content-title-field"
-          />
-          {addressLocked ? (
+        <PageForm>
+          <FieldPair>
             <TextField
-              id={FIELD_IDS.slug}
-              label="Address"
-              isReadOnly
-              description={addressDescription}
-              value={wording.slug}
-              data-testid="content-slug-field"
+              id={FIELD_IDS.title}
+              label="Title"
+              isRequired
+              description="Between 1 and 100 characters."
+              value={wording.title}
+              onChange={(value) => change("title", value)}
+              onBlur={() => leave("title")}
+              isInvalid={fieldError("title") !== undefined}
+              errorMessage={fieldError("title")}
+              data-testid="content-title-field"
             />
-          ) : (
-            <Stack gap="small">
+            {addressLocked ? (
               <TextField
                 id={FIELD_IDS.slug}
                 label="Address"
-                isRequired
+                isReadOnly
                 description={addressDescription}
                 value={wording.slug}
-                onChange={(value) => change("slug", value)}
-                onBlur={() => leave("slug")}
-                isInvalid={fieldError("slug") !== undefined}
-                errorMessage={fieldError("slug")}
-                aria-describedby="content-slug-rule content-resulting-address"
                 data-testid="content-slug-field"
               />
-              <div id="content-slug-rule" data-testid="content-slug-rule">
-                <Text elementType="p" size="small" color="secondary">
-                  {ADDRESS_RULE}
-                </Text>
-              </div>
-              <div id="content-resulting-address" data-testid="content-resulting-address">
-                <Text elementType="p" size="small" color="secondary">
-                  {publicAddress}
-                </Text>
-              </div>
-            </Stack>
-          )}
-          {/* A plain wrapper only so the editor can find its text area; the stack inside lays it out. */}
+            ) : (
+              <FieldGroup>
+                <TextField
+                  id={FIELD_IDS.slug}
+                  label="Address"
+                  isRequired
+                  description={addressDescription}
+                  value={wording.slug}
+                  onChange={(value) => change("slug", value)}
+                  onBlur={() => leave("slug")}
+                  isInvalid={fieldError("slug") !== undefined}
+                  errorMessage={fieldError("slug")}
+                  aria-describedby="content-slug-rule content-resulting-address"
+                  data-testid="content-slug-field"
+                />
+                <div id="content-slug-rule" data-testid="content-slug-rule">
+                  <Text elementType="p" size="small" color="secondary">
+                    {ADDRESS_RULE}
+                  </Text>
+                </div>
+                <div id="content-resulting-address" data-testid="content-resulting-address">
+                  <Text elementType="p" size="small" color="secondary">
+                    {publicAddress}
+                  </Text>
+                </div>
+              </FieldGroup>
+            )}
+          </FieldPair>
+          {/* A plain wrapper only so the editor can find its text area; the group inside lays it out. */}
           <div ref={editorRef}>
-            <Stack gap="small">
-              <Toolbar aria-label="Formatting for Body">
-                <Stack direction="row" gap="small">
-                  {FORMATTING_ORDER.map((formatting) => (
-                    <Button key={formatting} variant="tertiary" size="small" onPress={() => format(formatting)}>
-                      {FORMATTING_LABELS[formatting]}
-                    </Button>
-                  ))}
-                  {/* The editor's own file input, opened by the button. React Aria's FileTrigger is not
-                      used: the design system bundles its own copy of React Aria, so FileTrigger's press
-                      handler never reached its Button and no file chooser opened (as in image-picker). */}
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept={IMAGE_TYPES.join(",")}
-                    tabIndex={-1}
-                    aria-hidden="true"
-                    style={hiddenInput}
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      // Cleared so that choosing the same file again is still noticed.
-                      event.currentTarget.value = "";
-                      void insertImage(file);
-                    }}
-                  />
-                  <Button
-                    variant="tertiary"
-                    size="small"
-                    isDisabled={image.kind === "uploading"}
-                    aria-describedby="embedded-image-rule"
-                    data-testid="content-body-image-button"
-                    onPress={() => imageInputRef.current?.click()}
-                  >
-                    Insert image
+            <FieldGroup>
+              <Toolbar aria-label="Formatting for Body" className="ct-toolbar">
+                {FORMATTING_ORDER.map((formatting) => (
+                  <Button key={formatting} variant="tertiary" size="small" onPress={() => format(formatting)}>
+                    {FORMATTING_LABELS[formatting]}
                   </Button>
-                </Stack>
+                ))}
+                {/* The editor's own file input, opened by the button. React Aria's FileTrigger is not
+                    used: the design system bundles its own copy of React Aria, so FileTrigger's press
+                    handler never reached its Button and no file chooser opened (as in image-picker). */}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept={IMAGE_TYPES.join(",")}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  style={hiddenInput}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    // Cleared so that choosing the same file again is still noticed.
+                    event.currentTarget.value = "";
+                    void insertImage(file);
+                  }}
+                />
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  isDisabled={image.kind === "uploading"}
+                  aria-describedby="embedded-image-rule"
+                  data-testid="content-body-image-button"
+                  onPress={() => imageInputRef.current?.click()}
+                >
+                  Insert image
+                </Button>
               </Toolbar>
-              <div id="embedded-image-rule" data-testid="image-file-rule">
-                <Text elementType="p" size="small" color="secondary">
-                  {`Insert image takes a JPEG or PNG image, up to ${FILE_SIZE_LIMIT_LABEL}. An inserted image is stored as soon as you choose it and anyone can see it.`}
-                </Text>
-              </div>
+              <p id="embedded-image-rule" className="op-note" data-testid="image-file-rule">
+                {`Insert image takes a JPEG or PNG image, up to ${FILE_SIZE_LIMIT_LABEL}. An inserted image is stored as soon as you choose it and anyone can see it.`}
+              </p>
               {image.kind === "uploading" ? (
-                <div data-testid="embedded-image-uploading">
-                  <Loading label={`Uploading ${image.name}…`} />
+                <div className="op-wait" role="status" data-testid="embedded-image-uploading">
+                  <ProgressCircle isIndeterminate aria-label="Uploading image" />
+                  <span className="op-note">{`Uploading ${image.name}…`}</span>
                 </div>
               ) : null}
-              <div role="status">
-                {image.kind === "inserted" ? (
-                  <Text elementType="p">
-                    {`${image.name} was inserted at the cursor. Replace "${EMBEDDED_IMAGE_PLACEHOLDER_ALT}" with a description of what it shows.`}
-                  </Text>
-                ) : null}
-              </div>
+              {image.kind === "inserted" ? (
+                <p role="status" className="op-note">
+                  {`${image.name} was inserted at the cursor. Replace "${EMBEDDED_IMAGE_PLACEHOLDER_ALT}" with a description of what it shows.`}
+                </p>
+              ) : null}
               {image.kind === "failed" ? (
-                <div data-testid="embedded-image-error">
-                  <TitledAlert variant="danger" role="alert" title={`${image.name} could not be inserted`}>
-                    <Text elementType="p">{image.reason}</Text>
-                  </TitledAlert>
-                </div>
+                <Refusal title={`${image.name} could not be inserted`} testId="embedded-image-error">
+                  {image.reason}
+                </Refusal>
               ) : null}
               <TextArea
                 id={FIELD_IDS.body}
@@ -445,32 +433,25 @@ export function PageForm({
                 errorMessage={fieldError("body")}
                 data-testid="content-body-field"
               />
-              <Text elementType="p" size="small">
+              <p className="ct-guide">
                 <Link href="/content/markdown-guide" target="_blank">
                   How to format text (opens in a new tab)
                 </Link>
-              </Text>
-            </Stack>
+              </p>
+            </FieldGroup>
           </div>
           {shown.length > 0 ? (
-            <div id="content-publish-hint">
-              <TitledAlert
-                variant="danger"
-                title={`Fix ${shown.length} ${shown.length === 1 ? "field" : "fields"} ${words.toPublish}`}
-              >
-                <ul>
-                  {shown.map((problem) => (
-                    <li key={problem.field} data-testid="field-error">
-                      <Link href={`#${FIELD_IDS[problem.field]}`}>
-                        {`${PAGE_FIELD_LABELS[problem.field]}: ${problem.summary}`}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </TitledAlert>
-            </div>
-          ) : (
-            <Text elementType="p" id="content-publish-hint">
+            <PublishProblems title={`Fix ${shown.length} ${shown.length === 1 ? "field" : "fields"} ${words.toPublish}`}>
+              {shown.map((problem) => (
+                <li key={problem.field} data-testid="field-error">
+                  <Link href={`#${FIELD_IDS[problem.field]}`}>
+                    {`${PAGE_FIELD_LABELS[problem.field]}: ${problem.summary}`}
+                  </Link>
+                </li>
+              ))}
+            </PublishProblems>
+          ) : hinted ? (
+            <p className="op-text" id="content-publish-hint">
               {ready
                 ? words.ready
                 : purpose === "create"
@@ -478,8 +459,8 @@ export function PageForm({
                   : addressLocked
                     ? "Fill in the title and body to publish your changes."
                     : "Fill in the title, address and body to publish your changes."}
-            </Text>
-          )}
+            </p>
+          ) : null}
           <ButtonGroup ariaLabel={words.actions}>
             <Button variant="secondary" onPress={onCancel} data-testid="content-cancel-button">
               Cancel
@@ -488,13 +469,13 @@ export function PageForm({
               type="submit"
               variant="primary"
               isDisabled={!ready}
-              aria-describedby="content-publish-hint"
+              aria-describedby={shown.length > 0 || hinted ? "content-publish-hint" : undefined}
               data-testid={words.buttonTestId}
             >
               {words.button}
             </Button>
           </ButtonGroup>
-        </Stack>
+        </PageForm>
       </Form>
       <Modal isOpen={confirming} isDismissable onOpenChange={(open) => (publishing ? undefined : setConfirming(open))}>
         <AlertDialog
