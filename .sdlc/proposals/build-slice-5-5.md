@@ -36,3 +36,14 @@ Every existing test ID and all wording are unchanged. One thing a later test cou
 **Left for the next slice.** The "Notify vendors of updated terms" section on the terms page's managing screen belongs to slice 6 and is still drawn the old way.
 
 The choices are recorded in `docs/decisions/0087-the-content-list-create-form-and-managing-screen-follow-the-chosen-direction.md`. The main code is in `app/frontend/src/app/content-kit.tsx` and the three screens under `app/frontend/src/screens/`.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+Question: does slice 5's restyle of the content list, create form and managing screen still do what its criteria say? Ruling: approve. The verify result is a pass and current (recorded against application tree 8d6c048, which is this branch's app tree), with all 18 claimed criteria exercised and met and none unasserted. The diff is limited to layout: shared pieces consolidated into content-kit.tsx, existing test IDs and wording preserved, Delete still withheld and the address read-only on needed pages (R-7.25), authorship with System fallback kept (R-7.27), no history surfaced (R-7.23), and the duplicate-address refusal still focused on each appearance (R-7.22). Slice 6's terms-notification section is left untouched, no secrets, personal data or protected paths appear, and the six new unit tests cover the seams the restyle created. The 16-versus-22 needed-page question raised in the proposal is settled by R-7.12's text (twenty-two) and its passing test. What would change the ruling: a verify result on a different tree that does not pass, or a criterion found to depend on the list being a table on a phone.
+
+**Conditions:**
+none
