@@ -1,5 +1,5 @@
 import { FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
-import { Button, Form, Heading, InlineAlert, Link, NumberField, Text, TextArea } from "@bcgov/design-system-react-components";
+import { Button, Form, InlineAlert, Link, NumberField, Text, TextArea } from "@bcgov/design-system-react-components";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   EnteredScore,
@@ -16,7 +16,6 @@ import { OtherProgramOpportunity, Proponent, StoredQuestion, fetchOtherProgramOp
 import { ErrorSummary, EvaluationStyles, Notice, QuestionBox, Refusal, Response, SaveRow, ScoringHead } from "../app/evaluation-kit";
 import { NotFound } from "../app/not-found";
 import { Details, OpportunityPage, PageTitle, Panel, Waiting } from "../app/opportunity-kit";
-import { Stack } from "../app/page-layout";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
 import { TitledAlert } from "../app/titled-alert";
@@ -169,31 +168,6 @@ export function placeOf(opportunity: OtherProgramOpportunity, proponent: Propone
     previous: index > 0 ? proponents[index - 1]! : null,
     next: index >= 0 && index < proponents.length - 1 ? proponents[index + 1]! : null,
   };
-}
-
-export function Heading1({ kind, proponent }: { kind: string; proponent: Proponent }) {
-  return (
-    <Stack gap="small">
-      <Text elementType="p" size="small" color="secondary">
-        {kind}
-      </Text>
-      <Heading level={1}>
-        <span data-testid="proposal-proponent-name">{proponent.anonymousProponentName}</span>
-      </Heading>
-    </Stack>
-  );
-}
-
-export function OpportunityLine({ opportunity, proponent }: { opportunity: OtherProgramOpportunity; proponent: Proponent }) {
-  const place = placeOf(opportunity, proponent);
-  return (
-    <Stack direction="row" align="center" gap="medium">
-      <Text elementType="p">{opportunity.title}</Text>
-      <Text elementType="p" size="small" color="secondary">
-        {proponent.anonymousProponentName} of {place.count}
-      </Text>
-    </Stack>
-  );
 }
 
 const listAddress = (program: OtherProgram, opportunityId: string) => `/opportunities/${program}/${opportunityId}/edit?tab=evaluation`;
@@ -431,7 +405,8 @@ export function placeFacts(opportunity: OtherProgramOpportunity, proponent: Prop
   return [opportunity.title, `${proponent.anonymousProponentName} of ${placeOf(opportunity, proponent).count}`];
 }
 
-function BackLink({ href, children }: { href: string; children: ReactNode }) {
+/** A way back or on, as a link in its own paragraph. */
+export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <p className="op-text">
       <Link href={href}>{children}</Link>

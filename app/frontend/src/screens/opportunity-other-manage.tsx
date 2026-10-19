@@ -221,8 +221,8 @@ function Manage({ program, account, initial }: { program: OtherProgram; account:
   const [notice, setNotice] = useState<Notice | null>(null);
   const [dialog, setDialog] = useState<"publish" | "delete" | "cancel" | "finalize" | null>(null);
   // A refusal to finalise, named (R-1.41); shown above the tab, whichever tab is open.
-  const [finalizeRefusal, setFinalizeRefusal] = useState<readonly string[] | null>(null);
-  const finalizeRef = useRef<HTMLDivElement>(null);
+  // Each refused attempt is counted, so the refusal is drawn afresh and takes focus again.
+  const [finalizeRefusal, setFinalizeRefusal] = useState<{ readonly reasons: readonly string[]; readonly attempt: number } | null>(null);
   // A refusal to start the team scenario (R-1.42), shown in the same place.
   const [advanceRefusal, setAdvanceRefusal] = useState<readonly string[] | null>(null);
   const advanceRef = useRef<HTMLDivElement>(null);
@@ -235,10 +235,6 @@ function Manage({ program, account, initial }: { program: OtherProgram; account:
   useEffect(() => {
     if (notice && notice.kind !== "done") noticeRef.current?.focus();
   }, [notice]);
-
-  useEffect(() => {
-    if (finalizeRefusal) finalizeRef.current?.focus();
-  }, [finalizeRefusal]);
 
   useEffect(() => {
     if (advanceRefusal) advanceRef.current?.focus();
@@ -325,7 +321,10 @@ function Manage({ program, account, initial }: { program: OtherProgram; account:
       return;
     }
     setNotice(null);
-    setFinalizeRefusal(answer.kind === "refused" ? answer.reasons : ["The consensus scores could not be finalized. Try again."]);
+    setFinalizeRefusal((previous) => ({
+      reasons: answer.kind === "refused" ? answer.reasons : ["The consensus scores could not be finalized. Try again."],
+      attempt: (previous?.attempt ?? 0) + 1,
+    }));
   }
 
   /** Moves the opportunity on to the team scenario; a refusal says why, above the tab (R-1.42). */
@@ -418,7 +417,7 @@ function Manage({ program, account, initial }: { program: OtherProgram; account:
         ) : null}
       </ActionBar>
       <ManageTabs base={base} current={tab} tabs={offered.map((key) => ({ key, label: TAB_NAMES[key], testId: TAB_TEST_IDS[key] }))} />
-      {finalizeRefusal ? <FinalizeRefusal reasons={finalizeRefusal} alertRef={finalizeRef} /> : null}
+      {finalizeRefusal ? <FinalizeRefusal key={finalizeRefusal.attempt} reasons={finalizeRefusal.reasons} /> : null}
       {advanceRefusal ? (
         <div tabIndex={-1} ref={advanceRef} data-testid="advance-refused-message">
           <InlineAlert variant="danger" role="alert" title="The team scenario could not be started" description={advanceRefusal.join(" ")} />
