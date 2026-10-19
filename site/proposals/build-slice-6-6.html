@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-6-6 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">732</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">726</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">581</span></a></li><li><a href="../runs.html">Run log <span class="count">27</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-6-6</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-19 03:01</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.302 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 6 (An administrator can announce changed terms, and vendors accept them again) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> Slice 6 was already working, so this run only restyled its screens to the approved catalogue.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.302 (Claude Code))</p>
+<p>Slice 6 was already working, so this run only restyled its screens to the approved catalogue. One section needed changing: the &quot;Notify vendors of updated terms&quot; section on the terms page&#39;s managing screen. No behaviour, wording or test ID changed. <code>npm --prefix app run check</code> passes for all three packages. I couldn&#39;t look at the pages in a browser here, so the new look is proven by unit tests only.</p>
+<p><strong>Where the slice&#39;s criteria are reached in the app</strong></p>
+<ul><li><strong>R-7.13:</strong> the announcement is offered only on the managing screen for the page at <code>terms-and-conditions</code> (<code>/content/terms-and-conditions/edit</code>). That screen is for administrators only.</li><li><strong>R-6.23:</strong> the administrator is asked to confirm first. Confirming sends <code>POST /api/emailNotifications</code> with the tag <code>updateTerms</code>.</li><li><strong>R-6.24:</strong> the service withdraws every vendor&#39;s acceptance and answers before any email goes out. The success message claims no more than that.</li><li><strong>R-6.18 and R-6.28:</strong> each active vendor gets their own email naming all three programs. A vendor with no address is skipped, and one the mail server can&#39;t reach is logged and passed over while the rest still go. All of this is backend work from the original build.</li><li><strong>R-4.16 and R-4.33:</strong> the vendor&#39;s legal section sets out the privacy policy, the terms with the date and time they agreed, and the three programs&#39; terms. Only the vendor sees it. When their acceptance has been withdrawn, it shows the &quot;terms have changed&quot; warning and lets them agree again.</li></ul>
+<p>The rules and reasons for all of this are in decision record 0027.</p>
+<p><strong>What changed:</strong> <code>app/frontend/src/screens/terms-broadcast.tsx</code> is now drawn the way the catalogue&#39;s <code>TermsBroadcastPage</code> draws it:</p>
+<ul><li>It is a region under the heading &quot;Notify vendors of updated terms&quot;, placed after the &quot;Current wording&quot; region.</li><li>The success or failure message comes first, then the two explanatory sentences.</li><li>The button is secondary and sits in the shared actions row, so it goes full width on a phone. Edit page stays the screen&#39;s only primary button.</li><li>It reuses the shared kits already in <code>app/frontend/src/app</code> (<code>Region</code>, <code>Actions</code>, the notification style sheet), so nothing new was added there.</li></ul>
+<p>The rest of that screen and the legal section had already been restyled in slices 5 and 3 (records 0087 and 0077). I compared the legal section with its stories and it matches region for region, so I left it alone.</p>
+<p><strong>One place I didn&#39;t follow a story:</strong> the <code>terms-updated</code> story draws the legal section without the profile section links. DESIGN.md gives no reason and no criterion asks for it. Taking them away would leave the vendor no way to reach their other profile sections from that page, so I kept them. Record 0088 says so.</p>
+<p><strong>Tests:</strong> I added one to <code>app/frontend/tests/changed-terms.test.tsx</code>. It checks that the broadcast is a region with that heading, that it comes after &quot;Current wording&quot;, and that its button is a secondary button inside the actions row. The existing tests for this slice (which page offers it, who may use it, confirm/cancel, success and failure, re-agreeing) still pass.</p>
+<p><strong>Records:</strong> I added decision record 0088. <code>app/compose/compose.yaml</code> already publishes the app at port 4300 and the identity provider&#39;s realm at port 8080, so I didn&#39;t touch it. Nothing outside <code>app/</code> and <code>docs/decisions/</code> needed changing, and the next slice should find nothing missing from this one.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-19 03:38.</p>
+<div class="body"><p>The question is whether slice 6 does what its seven criteria say. I approve it. Verify recorded a pass against the current application tree for this proposal: R-7.13, R-6.18, R-6.23, R-6.24, R-6.28, R-4.16 and R-4.33 were all exercised and met, and none was left unasserted. The diff only restyles the screen. It redraws terms-broadcast.tsx inside the existing shared components (Region, Actions, NotificationStyles), and I checked that each one exists and renders the structure the new unit test asserts: Actions renders a div with the class op-actions. Test IDs, alert wording, the confirmation step and the call to the service are unchanged. The one new secondary button leaves Edit page as the only primary action. The diff contains no secrets or personal data and touches no protected path. The new unit test covers the one structural change this build made: the region, its order after the current wording, and the secondary button in the actions row. Where the build kept the profile section links that the terms-updated story leaves out, decision record 0088 says why, and no criterion asks for them to be removed. Any of these would change the ruling: a later verify result that no longer passes on this tree, evidence that removing the links is required by a criterion or by the design rationale, or a regression in the existing changed-terms tests.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>
