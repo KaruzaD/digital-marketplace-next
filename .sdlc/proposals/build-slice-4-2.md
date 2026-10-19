@@ -47,3 +47,14 @@ The existing tests for the list, the export, the profile controls and the access
 **Left alone.** `user-list-request` is a reference page for an API address, not a screen, so it needed no markup. The compose file already publishes the application at http://localhost:4300 and the identity provider's realm at http://localhost:8080/realms/digital-marketplace; I did not change it. Nothing in this slice required changing the spec, plan or design, and I couldn't look at the page in a browser here, so the visual result is proven only by the unit tests.
 
 **For the next slice.** Every slice-4 screen now follows the chosen direction. The profile's organizations section and the shared sign-in wait are still in the older layout, as 0077 notes; they belong to the organizations stories and slice 2's restyle.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+Does slice 4 (an administrator can manage people's accounts) do what its criteria say? Approve. The verify result is current for this proposal: it was recorded against application tree cb90c9d, which matches app/ on the branch. 9 of the 10 criteria the slice claims passed and none failed. The one unasserted criterion, R-4.13 (no way to create the first administrator through the service), is recorded as not-testable for a real reason: it claims the absence of any route anywhere in the service, which no observation can establish. It is also a seed and data-level property this restyle does not touch, so I accept the slice on the strength of what was asserted. The diff changes presentation only: user-list.tsx moves to the shared DataTable on wide screens and to stacked cards below the header's switch point (each row test ID once per account); user-kit.tsx gains the Toolbar and DialogBody components and their styles; the export dialog is wrapped in DialogBody with its behaviour unchanged. The retained 'N of M people shown' status line and the export failure alert are justified in decision 0086 on accessibility grounds and go beyond no criterion. Nothing touches another slice or a protected path, no secret or personal data appears, and the new waiting, wide-table and phone-card paths each have unit tests in administering.test.tsx. The ruling would change if the verify result were stale against the tree, if any claimed criterion failed, or if evidence showed the service does offer a route to create an administrator.
+
+**Conditions:**
+none
