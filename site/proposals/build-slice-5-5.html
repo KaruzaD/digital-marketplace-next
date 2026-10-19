@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-5-5 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">731</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">725</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">580</span></a></li><li><a href="../runs.html">Run log <span class="count">27</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-5-5</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-19 02:19</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.302 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 5 (An administrator can write and manage the service&#39;s pages) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I restyled slice 5&#39;s three screens to the approved catalogue: the list of pages, the create form and a page&#39;s managing screen.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.302 (Claude Code))</p>
+<p>I restyled slice 5&#39;s three screens to the approved catalogue: the list of pages, the create form and a page&#39;s managing screen. Typecheck and <code>npm --prefix app run check</code> pass across all workspaces, including six new frontend tests. Nothing has been looked at in a browser, because this environment has none.</p>
+<p><strong>What the slice already had.</strong> All eighteen criteria were built in this slice&#39;s first pass (decision record 0025) and their tests still pass unchanged. Page requests, permissions, versions, the needed-page protection, authorship, the editor and image upload all behave as before. The only behaviour changes in this pass are layout and the duplicate-address state described below.</p>
+<p><strong>What changed on screen.</strong> Each screen now uses the shared page frame and heading sizes, and the shared pieces went into the app&#39;s content kit once, not per screen.</p>
+<ul><li><strong>List of pages:</strong> the title bar with Create page, then a table with a caption that counts the pages: &quot;Every page, in order of title (N pages)&quot;. The number carries the one new test ID, <code>content-list-count</code>. &quot;Needed by the service: Yes&quot; is now a grey label. On a phone each page is a card instead of a table row, with the same test IDs once each. While the list loads, only the heading and &quot;Loading pages…&quot; show, as the loading story draws it, so Create page appears with the rows.</li><li><strong>Managing screen:</strong> &quot;Manage a page&quot; sits over the page&#39;s title. The facts are laid out as columns of labels and values, the needed-page warning and actions follow, then the current wording with title and address side by side. Editing happens in an &quot;Edit the page&quot; section.</li><li><strong>Form:</strong> title and address share a line where they fit. The image control&#39;s rule, upload progress, inserted message and refusal follow the files design.</li><li><strong>Duplicate address:</strong> while the refused address is still in the field, the form shows only the refusal: no intro sentence and no hint before Publish, as both duplicate-address stories draw it. Both come back once the address is changed, and the refusal still takes focus each time it appears.</li><li><strong>Signed-in check:</strong> the wait while the app checks who is signed in now looks the same as each screen&#39;s own loading state.</li><li><strong>Kept where the stories are silent:</strong> the alerts for a list that fails to load, a publish failure and a removal failure stay, since no story draws them.</li></ul>
+<p>Every existing test ID and all wording are unchanged. One thing a later test could trip on: on a phone, <code>content-list-table</code> is now on the list of cards, not on a table.</p>
+<p><strong>Tests.</strong> The new tests cover the list&#39;s loading state, the page count in the caption, the grey label, the phone cards in title order, the managing screen&#39;s heading and facts, the warning&#39;s title being shown, and the focused duplicate-address state with the hint coming back afterwards. The design system&#39;s check reported no problems on the restyled screens.</p>
+<p><strong>Not mine to settle.</strong> The brief says a fresh installation lists sixteen needed pages (decision record 0007), but decision record 0026 and DESIGN.md say twenty-two. The count on screen is whatever the database holds, which slice 1&#39;s migration and the seed decide. If the acceptance suite expects one figure and the data gives the other, the fix belongs there, not in these screens.</p>
+<p><strong>Left for the next slice.</strong> The &quot;Notify vendors of updated terms&quot; section on the terms page&#39;s managing screen belongs to slice 6 and is still drawn the old way.</p>
+<p>The choices are recorded in <code>docs/decisions/0087-the-content-list-create-form-and-managing-screen-follow-the-chosen-direction.md</code>. The main code is in <code>app/frontend/src/app/content-kit.tsx</code> and the three screens under <code>app/frontend/src/screens/</code>.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-19 02:55.</p>
+<div class="body"><p>Question: does slice 5&#39;s restyle of the content list, create form and managing screen still do what its criteria say? Ruling: approve. The verify result is a pass and current (recorded against application tree 8d6c048, which is this branch&#39;s app tree), with all 18 claimed criteria exercised and met and none unasserted. The diff is limited to layout: shared pieces consolidated into content-kit.tsx, existing test IDs and wording preserved, Delete still withheld and the address read-only on needed pages (R-7.25), authorship with System fallback kept (R-7.27), no history surfaced (R-7.23), and the duplicate-address refusal still focused on each appearance (R-7.22). Slice 6&#39;s terms-notification section is left untouched, no secrets, personal data or protected paths appear, and the six new unit tests cover the seams the restyle created. The 16-versus-22 needed-page question raised in the proposal is settled by R-7.12&#39;s text (twenty-two) and its passing test. What would change the ruling: a verify result on a different tree that does not pass, or a criterion found to depend on the list being a table on a phone.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

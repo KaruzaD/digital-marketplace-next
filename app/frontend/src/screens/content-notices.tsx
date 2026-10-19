@@ -1,5 +1,5 @@
 import { Text } from "@bcgov/design-system-react-components";
-import { TitledAlert } from "../app/titled-alert";
+import { Notice } from "../app/content-kit";
 
 /**
  * What a content screen tells the person it has just sent them to: the managing screen of a page
@@ -32,32 +32,26 @@ export function contentNoticeOf(state: unknown): ContentNotice | null {
 
 export function PublishedPageNotice({ slug }: { slug: string }) {
   return (
-    <div data-testid="content-published-success">
-      <TitledAlert variant="success" role="status" title="Page published">
-        <Text elementType="p">{`Anyone can now read it at /content/${slug}.`}</Text>
-      </TitledAlert>
-    </div>
+    <Notice variant="success" role="status" title="Page published" testId="content-published-success">
+      <Text elementType="p">{`Anyone can now read it at /content/${slug}.`}</Text>
+    </Notice>
   );
 }
 
 export function ChangesPublishedNotice({ slug }: { slug: string }) {
   return (
-    <div data-testid="content-changes-published-success">
-      <TitledAlert variant="success" role="status" title="Changes published">
-        <Text elementType="p">{`Readers of /content/${slug} now see the new wording.`}</Text>
-      </TitledAlert>
-    </div>
+    <Notice variant="success" role="status" title="Changes published" testId="content-changes-published-success">
+      <Text elementType="p">{`Readers of /content/${slug} now see the new wording.`}</Text>
+    </Notice>
   );
 }
 
 export function RemovedPageNotice({ title, slug }: { title: string; slug: string }) {
   return (
-    <div data-testid="content-deleted-success">
-      <TitledAlert variant="success" role="status" title="Page removed">
-        <Text elementType="p">
-          {`"${title}" and every earlier version of it have been removed. Its address, /content/${slug}, no longer answers.`}
-        </Text>
-      </TitledAlert>
-    </div>
+    <Notice variant="success" role="status" title="Page removed" testId="content-deleted-success">
+      <Text elementType="p">
+        {`"${title}" and every earlier version of it have been removed. Its address, /content/${slug}, no longer answers.`}
+      </Text>
+    </Notice>
   );
 }

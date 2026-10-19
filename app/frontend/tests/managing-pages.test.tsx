@@ -492,3 +492,111 @@ describe("the content screens' structure, names and roles (constitution P1, J5)"
     }
   });
 });
+
+describe("the content screens follow the chosen direction (decision record 0087)", () => {
+  /** Makes the window read as a phone's, below the header's switch point. */
+  function asPhone() {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+  }
+
+  it("waits under the list's heading with the kit's waiting row, offering nothing yet", async () => {
+    serve(() => new Promise<Response>(() => {}));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/content");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Content Management" })).toBeTruthy();
+    expect(screen.getByText("Loading pages…")).toBeTruthy();
+    expect(screen.queryByTestId("content-create-link")).toBeNull();
+  });
+
+  it("says in the list's caption how many pages it holds, each needed page a label reading Yes", async () => {
+    serve(() => json(200, [privacy, aboutUs, about]));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/content");
+
+    const table = await screen.findByTestId("content-list-table");
+    expect(table.tagName).toBe("TABLE");
+    expect(screen.getByTestId("content-list-count").textContent).toBe("3");
+    expect(table.querySelector("caption")?.textContent).toBe("Every page, in order of title (3 pages)");
+    expect(within(table).getAllByTestId("content-list-fixed")[0]?.querySelector(".dm-label")?.textContent).toBe("Yes");
+  });
+
+  it("is a card for each page on a phone, with the same test IDs once each, in title order", async () => {
+    asPhone();
+    serve(() => json(200, [privacy, aboutUs, about]));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/content");
+
+    const list = await screen.findByTestId("content-list-table");
+    expect(list.tagName).toBe("UL");
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(within(list).getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "about",
+      "About us",
+      "privacy",
+    ]);
+    expect(within(list).getAllByTestId("content-list-title-link")).toHaveLength(3);
+    expect(within(list).getAllByTestId("content-list-updated")).toHaveLength(3);
+    expect(screen.getByTestId("content-list-count").textContent).toBe("3");
+  });
+
+  it("heads the managing screen with what it is over the page's title, its facts as terms and values", async () => {
+    serve(() => json(200, aboutUs));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/content/about-us/edit");
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "About us" });
+    expect(heading.previousElementSibling?.textContent).toBe("Manage a page");
+    const facts = screen.getByTestId("content-published-by").closest("dl") as HTMLElement;
+    expect(within(facts).getAllByRole("term").map((term) => term.textContent)).toEqual([
+      "Public address",
+      "Published",
+      "Published by",
+      "Last updated",
+      "Last updated by",
+    ]);
+    expect(screen.getByRole("region", { name: "Current wording" })).toBeTruthy();
+  });
+
+  it("shows the titles of its notices, which the design system would otherwise drop", async () => {
+    serve(() => json(200, about));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/content/about/edit");
+
+    expect((await screen.findByTestId("content-fixed-page-warning")).textContent).toContain("The service needs this page");
+  });
+
+  it("edits in its own region, and while the refused address stands says only that, focused", async () => {
+    serve((method) => (method === "PUT" ? json(400, { errors: [ADDRESS_IN_USE_REFUSAL] }) : json(200, aboutUs)));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/content/about-us/edit");
+
+    fireEvent.click(await screen.findByTestId("content-edit-button"));
+    const region = screen.getByRole("region", { name: "Edit the page" });
+    expect(within(region).getByText(/^Every field is required/)).toBeTruthy();
+    type("content-slug-field", "about");
+    fireEvent.click(screen.getByTestId("content-publish-changes-button"));
+    fireEvent.click(
+      within(await screen.findByTestId("content-publish-changes-dialog")).getByTestId("content-publish-changes-confirm"),
+    );
+
+    const error = await screen.findByTestId("content-duplicate-slug-error");
+    expect(region.contains(error)).toBe(true);
+    expect(document.activeElement).toBe(error);
+    expect(error.textContent).toContain("This address is already in use");
+    expect(within(region).queryByText(/^Every field is required/)).toBeNull();
+    expect(document.getElementById("content-publish-hint")).toBeNull();
+    expect(screen.getByTestId("content-publish-changes-button").getAttribute("aria-describedby")).toBeNull();
+
+    type("content-slug-field", "about-the-service");
+    expect(within(region).getByText(/^Every field is required/)).toBeTruthy();
+    expect(document.getElementById("content-publish-hint")?.textContent).toBe(
+      "You will be asked to confirm before your changes are published.",
+    );
+  });
+});
