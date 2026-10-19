@@ -159,6 +159,24 @@ describe("the notification reference (R-6.13)", () => {
     expect(within(terms!).queryByRole("link", { name: "Unsubscribe" })).toBeNull();
   });
 
+  it("is laid out as the catalogue draws it: a section per event, an article per message, its facts as terms (decision record 0090)", async () => {
+    serve(200, { groups: GROUPS });
+    resetSessionForTests({ status: "signed-in", account: account({}) }, fakeIdentity());
+    renderAt("/admin/email-notification-reference");
+
+    const page = await screen.findByTestId("email-reference-page");
+    await within(page).findAllByTestId("email-reference-body");
+    expect(page.classList.contains("op-regions")).toBe(true);
+    const event = screen.getByRole("region", { name: "A Code With Us opportunity is published" });
+    expect(within(event).getByRole("heading", { level: 2 }).textContent).toBe("A Code With Us opportunity is published");
+    const message = within(event).getByRole("article", { name: "To everyone who asked to be emailed about new opportunities" });
+    expect(Array.from(message.querySelectorAll("dt")).map((term) => term.textContent)).toEqual(["Subject", "Who receives it and why"]);
+    expect(within(message).getByRole("group", { name: "Email body: [TEST] A New Code With Us Opportunity Has Been Posted" })).toBeTruthy();
+    // A message with no summary written has only its subject among its facts.
+    const terms = screen.getByRole("article", { name: "To every active vendor" });
+    expect(Array.from(terms.querySelectorAll("dt")).map((term) => term.textContent)).toEqual(["Subject"]);
+  });
+
   it("is the missing page for anybody but an administrator, and nothing is asked of the service", async () => {
     serve(200, { groups: GROUPS });
     for (const who of [account({ type: "VENDOR" }), account({ type: "GOV" })]) {
