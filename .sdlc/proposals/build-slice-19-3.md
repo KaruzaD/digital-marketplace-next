@@ -48,3 +48,14 @@ The manage page's Start team scenario button and its refusal already matched the
 I recorded all of this in `docs/decisions/0085-…`. No test IDs, routes or service behaviour changed, and nothing outside `app/` and `docs/decisions/` was touched. The compose file still publishes the app at :4300 and the identity provider's realm at :8080.
 
 **For the next slice (20):** the printable and export pages are its own, and still need restyling on the same frame.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+Does slice 19 do what its criteria say? Approve. The verify result is current: it was recorded against application tree d4f5c24, which is the branch's app tree, and it passes all 7 claimed criteria (R-1.25, R-1.42, R-1.49, R-2.28, R-2.30, R-2.31, R-2.35). The diff is confined to app/ and docs/decisions/. It restyles the Sprint With Us and Team With Us evaluate page and the manage page's stage tabs onto the shared proposal kit, with no change to service behaviour, routes or test IDs. Its one functional change makes proposal-rank always present and empty until the proposal is fully evaluated, which the contract surface requires. That does not breach R-2.32, because the Scores region is still withheld from vendors until a decision. The wrong-stage refusal still carries R-2.28's exact message, and each refusal is counted so it redraws and takes focus. New unit tests cover the empty rank, the always-present score-actions wrapper, the frame and tab addresses, and the questions-tab move. The departures from the design stories follow criteria (R-2.28, R-2.37) and are recorded in decision record 0085. No secrets or personal data appear. Not checked: the restyle was never seen in a browser, only exercised by unit and acceptance tests. The ruling would change if the result were stale for this tree, a protected path were touched, or the restyle changed what any criterion exposes to whom.
+
+**Conditions:**
+none
