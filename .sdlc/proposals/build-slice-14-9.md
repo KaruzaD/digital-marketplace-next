@@ -32,3 +32,14 @@ I brought the slice 14 screens back in line with the design catalogue. Only two 
 **Effect on the acceptance tests.** No test ID changed. An acceptance test that finds the manage form's choices by "Who is submitting this proposal?", or the create page's second street field by "Street Address", will need the new words.
 
 **Not done here.** I changed no behaviour and nothing in the slice's criteria. As before, the rules that also cover the Sprint With Us and Team With Us screens are answered for in Slice 15, and scoring and awarding in Slice 16. Nothing outside `app/` and `docs/decisions/` was touched. I could not view the pages in a browser here, so the checks rely on the unit tests and the comparison against the stories.
+
+## Ruling
+
+**Verdict:** approve
+**By:** agent:reviewer
+**Ruled on:** claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+Question: does slice 14 (a vendor can propose on a Code With Us opportunity) do what its criteria say? Ruling: approve. The verify result is a current pass: 18 of 18 claimed criteria met, recorded against application tree 01acf7d, which is the branch's app tree. The diff makes exactly the two changes listed in design/DESIGN.md under 'Corrections after the build'. The manage page's edit form now asks the create page's question, 'Will you be submitting a proposal for this opportunity as an Individual or Organization?', with 'Individual' and 'Organization'. The create page's second street field is labelled 'Street Address line 2' (WCAG 2.2 SC 2.4.6). Test IDs, behaviour and criteria are unchanged. The one CSS rule only collapses an empty proposal-score-actions wrapper. The 'keeps this proposal as it is' wording is kept on purpose and is correct under R-2.23, because submitted and withdrawn proposals can be edited and saving does not make them drafts. Unit tests in app/frontend/tests/proposals.test.tsx assert both new wordings. Changes stay within app/ and docs/decisions/, with no secrets or personal data. The ruling would change if a verify run recorded against a newer tree failed a claimed criterion, or if the added style rule were found to differ from the catalogue's.
+
+**Conditions:**
+none
