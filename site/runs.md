@@ -42,6 +42,11 @@
 - 19:19:13 propose build-slice-5-5 at G3
 - 19:54:46 drive: step 2: `sdlc rule build-slice-5-5 --by agent:reviewer` — build-slice-5-5 is open at G3, held by agent:reviewer
 - 19:55:20 rule build-slice-5-5 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 19:55:24 drive: stopped after 2 steps — nothing left to run
+- 19:55:26 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 6`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 20:01:46 drive: step 1: `sdlc run verify --slice 6` — build-slice-6-6 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 20:38:12 verify slice 6 verified: every claimed criterion passes against the application in build-slice-6-6. Ready for G3.
+- 20:38:14 run verify: regenerated 3 files in .sdlc, site
 
 # Run record 2026-10-18
 
