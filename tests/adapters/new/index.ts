@@ -8809,21 +8809,28 @@ export default function create(
       .catch(() => undefined);
     const rows = await carried("user-list-row");
     if (!rows || !(await carried(USER_LIST_IDS.status))) return null;
-    const out: Record<"status" | "type" | "name" | "admin", string>[] = [];
-    for (let i = 0; i < (await rows.count()); i++) {
-      const row = rows.nth(i);
-      const read = async (id: string): Promise<string> => {
-        const found = byTestId(id, row);
-        return (await found.count()) ? (await found.first().innerText()).replace(/\s+/g, " ").trim() : "";
+    // Every row and its four cells in one call to the browser: read one lookup at a time,
+    // a list grown long by the accounts the tests register outlasts the tests' waits. A cell
+    // counts only where it is shown, as byTestId() finds it, and the first shown one is read.
+    return rows.evaluateAll((all, ids) => {
+      const shown = (element: Element): boolean => {
+        const style = getComputedStyle(element);
+        if (style.visibility !== "visible") return false;
+        if (style.display === "contents") return Array.from(element.children).some(shown);
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && box.height > 0;
       };
-      out.push({
-        status: await read(USER_LIST_IDS.status),
-        type: await read(USER_LIST_IDS.type),
-        name: await read(USER_LIST_IDS.name),
-        admin: await read(USER_LIST_IDS.admin),
-      });
-    }
-    return out;
+      const read = (row: Element, id: string): string => {
+        const found = Array.from(row.querySelectorAll(`[data-testid="${id}"]`)).find(shown) as HTMLElement | undefined;
+        return found ? (found.innerText ?? "").replace(/\s+/g, " ").trim() : "";
+      };
+      return all.map((row) => ({
+        status: read(row, ids.status),
+        type: read(row, ids.type),
+        name: read(row, ids.name),
+        admin: read(row, ids.admin),
+      }));
+    }, USER_LIST_IDS);
   }
 
   async function userListColumn(which: "status" | "type" | "name" | "admin"): Promise<string> {
