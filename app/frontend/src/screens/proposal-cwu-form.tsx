@@ -43,7 +43,8 @@ import { TitledAlert } from "../app/titled-alert";
  * dialog every submission passes through.
  *
  * The create page is drawn in the original site's words (`proposal-cwu-create`); the manage page's
- * form in the words its `editing` story gives it. Both have the same fields, test IDs and rules.
+ * form in the words its `editing` story gives it, which asks the create page's proponent question.
+ * Both have the same fields, test IDs and rules.
  */
 
 /** The state in words (`proposal-status`), coloured by the direction's status colours, never colour alone. */
@@ -191,7 +192,8 @@ const CREATE_WORDS: FormWords = {
     email: "Email Address",
     phone: "Phone Number",
     street1: "Street Address",
-    street2: "Street Address",
+    // The original repeats "Street Address"; two fields may not share a name (WCAG 2.2 SC 2.4.6).
+    street2: "Street Address line 2",
     city: "City",
     region: "Province / State",
     mailCode: "Postal / ZIP Code",
@@ -215,9 +217,10 @@ const CREATE_WORDS: FormWords = {
 };
 
 const EDIT_WORDS: FormWords = {
-  proponentQuestion: "Who is submitting this proposal?",
-  individual: "An individual",
-  organization: "An organization",
+  // The create page's question, as the corrected `editing` story asks it (DESIGN.md, "Corrections after the build").
+  proponentQuestion: CREATE_WORDS.proponentQuestion,
+  individual: CREATE_WORDS.individual,
+  organization: CREATE_WORDS.organization,
   labels: {
     legalName: "Legal name",
     email: "Email address",
