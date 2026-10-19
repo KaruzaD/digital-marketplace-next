@@ -59,6 +59,7 @@ const css = `
 .pp-tabs a[aria-current="page"] { font-weight: var(--typography-font-weights-bold); }
 .pp-group-error > p,
 .op-regions :is(.op-region, .op-panel, .op-fieldset-body, .pf-part, .pf-intro) > div > p { margin: var(--layout-margin-none); }
+.op-region > [data-testid="proposal-score-actions"]:empty { display: contents; }
 .pp-errors { margin: var(--layout-margin-none); padding-inline-start: var(--layout-padding-large); }
 .pp-focus:focus {
   outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);

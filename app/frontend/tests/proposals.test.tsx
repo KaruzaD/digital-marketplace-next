@@ -273,6 +273,9 @@ describe("the create page (R-2.3, R-2.12, R-2.13, R-2.14)", () => {
       "Upload any supporting material for your proposal here. Attachments must be smaller than 10MB.",
     );
     expect(screen.getByTestId("attachment-add-button").getAttribute("aria-describedby")).toBe("attachment-size-limit");
+    // No two street lines share a name (WCAG 2.2 SC 2.4.6), so the second is "Street Address line 2".
+    chooseIndividual();
+    expect(screen.getByLabelText(/^Street Address line 2/)).toBe(field("proposal-street-2-field"));
 
     fireEvent.click(screen.getByTestId("proposal-save-draft"));
     await waitFor(() => expect(router.state.location.pathname).toBe(MANAGE));
@@ -560,6 +563,12 @@ describe("the manage page (R-2.4, R-2.9, R-2.15, R-2.23)", () => {
     // The create page's layout: the head, its identifiers and the tabs above, the summary holding the actions.
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Build an accessible permit tracker");
     expect(screen.getByTestId("proposal-tab-proposal").getAttribute("aria-current")).toBe("page");
+    // The create page's proponent question and choices, as the corrected editing story asks them.
+    const question = screen.getByRole("radiogroup", {
+      name: /Will you be submitting a proposal for this opportunity as an Individual or Organization\?/,
+    });
+    expect(within(question).getAllByRole("radio").map((radio) => radio.closest("label")?.textContent)).toEqual(["Individual", "Organization"]);
+    expect(screen.getByLabelText(/Street address line 2/)).toBeTruthy();
     const summary = screen.getByTestId("proposal-opportunity-summary");
     expect(within(summary).getByText("Draft")).toBeTruthy();
     expect(within(summary).getAllByRole("button").map((button) => button.textContent)).toEqual([
