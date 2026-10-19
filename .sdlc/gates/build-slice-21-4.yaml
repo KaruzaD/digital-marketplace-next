@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: does slice 21 (an administrator can preview every message the service sends) do what its criteria say? Ruling: approve. The verify result is current for this proposal (application tree 13fff9b), and all three claimed criteria pass: R-6.6, R-6.13 and R-6.19. The diff touches only app/ and docs/decisions and is purely presentational. The email notification reference is rebuilt from new notification-kit pieces (NotificationPage, ReferenceContents, ReferenceGroup) on top of the opportunity kit's page, title, details and waiting pieces, and the inline styles are removed. Checked against opportunity-kit.tsx: OpportunityPage puts op-regions and the test ID on the same wrapper, Details keeps each fact's test ID on its dd, and Waiting appends the ellipsis, so the loading text is unchanged. Every surface test ID stays on the same element. The existing tests for grouping, subjects, summaries, message endings, refusals and cache-busting still pass, and a new unit test covers the catalogue's layout. Drawing the service's real block shape instead of the catalogue's simplified sample type keeps the preview faithful to the sent message, and decision record 0090 records it. No secrets or real personal data appear; the samples are invented. Reading R-6.16 as narrowing R-6.6 (Unsubscribe only on the new-opportunity announcements, a settings link everywhere else) follows the plan and the approved story, and R-6.6's test passes with it, so I see no contradiction between the criteria that needs escalating. What would change this ruling: R-6.6 being ruled to stand as literally written over R-6.16, or a stale or failing verify result.
+conditions: []
+cost: 0.35800699999999996
+turns: 2
+session: "be9f4fca-9555-4629-985c-e3dcf4ce552b"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.302 (Claude Code)"
+isolation: "none"
+at: 2026-10-19T05:03:53.010Z
