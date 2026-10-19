@@ -33,3 +33,22 @@ The 1.65 seconds is from a local browser session; in a full suite run each round
 - It passes the existing `as const` test-ID map into the page.
 
 **Not touched.** No other member or page, and not `tests/adapters/new/bindings.yaml`. The four readings were already `bound` and still are, so that file needed no change. Nothing outside `tests/adapters/new/` was edited, and this run found no route that failed to resolve.
+
+## Ruling
+
+**Verdict:** approve
+**By:** runner:checks
+
+Approved by the runner's checks, which policy.gates.G3.auto_approve lets settle bind-adapter proposals: the acceptance typecheck of 6da7d7c90b is clean; no condition is open against it; no escalation stands on it; nothing outside tests/adapters changed.
+
+**Conditions:**
+none
+
+### Runner-owned typecheck evidence
+
+Proposal revision: `6da7d7c90b805c798f39b0ae337317d1c006c5f9`
+Typecheck: **passed**; exit code: 0.
+Command (in `tests`): `node node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false`
+Diagnostics below are those under `adapters/new/`, which this proposal answers for.
+
+    No diagnostics.
