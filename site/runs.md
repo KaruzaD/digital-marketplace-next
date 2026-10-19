@@ -1,5 +1,12 @@
 # Run log
 
+# Run record 2026-10-19
+
+- 17:00:51 run bind-adapter: ok, cost 0.5794822, turns 17, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 17:00:51 propose bind-adapter-new-112 at G3
+- 17:01:13 drive: step 1: `sdlc rule bind-adapter-new-112 --by agent:reviewer` — bind-adapter-new-112 is open at G3, held by agent:reviewer
+- 17:01:23 rule bind-adapter-new-112 approve at G3 by runner:checks (agent)
+
 # Run record 2026-10-18
 
 - 2026-10-17 16:58:07 drive: step 3: `sdlc run verify --slice 8` — build-slice-8-12 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
@@ -381,6 +388,11 @@
 - 16:21:50 drive: step 1: `sdlc run verify --slice 18` — build-slice-18-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
 - 16:56:40 verify slice 18: returned — R-4.14 (slice 4) fail. Next: sdlc run build --slice 18 --revise
 - 16:56:42 run verify: regenerated 3 files in .sdlc, site
+- 16:56:54 drive: step 2: `sdlc run build --slice 18 --revise` — build-slice-18-8 was returned at G3 by runner:verify
+- 16:57:45 drive: stopped after 2 steps — step 2 (`sdlc run build --slice 18 --revise`) failed
+- 16:58:17 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make the user list reads in tests/adapters/new/index.ts read the whole list in one call to the browser. userListMarked, behind userList.userRow, statusBadge, accountType and adminCheck, reads each row's status, account type, name and administrator cells with separate test-ID lookups, one after another, so a read costs several browser round trips per row; every test that registers a person makes the list longer, and once it is long the read takes longer than the 5 seconds tests/acceptance/users/R-4.14.spec.ts waits for it (its expect.poll at line 61), which is how R-4.14 failed on build-slice-11-8 and build-slice-18-8 while the application listed everyone. Read every user-list-row and its four cells together, for example with a single evaluateAll over the rows, and keep what each member hands back exactly as it is. Check it against the running application with the full list before proposing.
+- 16:58:17 run bind-adapter: pre-checks failed
+- 16:58:54 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make the user list reads in tests/adapters/new/index.ts read the whole list in one call to the browser. userListMarked, behind userList.userRow, statusBadge, accountType and adminCheck, reads each row's status, account type, name and administrator cells with separate test-ID lookups, one after another, so a read costs several browser round trips per row; every test that registers a person makes the list longer, and once it is long the read takes longer than the 5 seconds tests/acceptance/users/R-4.14.spec.ts waits for it (its expect.poll at line 61), which is how R-4.14 failed on build-slice-11-8 and build-slice-18-8 while the application listed everyone. Read every user-list-row and its four cells together, for example with a single evaluateAll over the rows, and keep what each member hands back exactly as it is. Check it against the running application with the full list before proposing.
 
 # Run record 2026-10-17
 
