@@ -273,6 +273,32 @@ export function Rows({
   );
 }
 
+export type PanelScore = { key: string; who: string; score: string; notes: string };
+
+/**
+ * Every evaluator's own score and comment for one question, beside their names (R-5.28), as rows
+ * whose comment column is twice the width of the others.
+ */
+export function PanelScores({ n, scores }: { n: number; scores: readonly PanelScore[] }) {
+  if (scores.length === 0) return null;
+  return (
+    <Rows
+      captionId={`question-${n}-panel-caption`}
+      caption={`Evaluators' scores for question ${n}`}
+      columns={["Evaluator", "Score", "Comment"]}
+      layout="ev-cols-scores"
+      rows={scores.map((entry) => ({
+        key: entry.key,
+        cells: [
+          { content: entry.who },
+          { content: entry.score, testId: "evaluation-panel-member-score" },
+          { content: entry.notes, testId: "evaluation-panel-member-notes" },
+        ],
+      }))}
+    />
+  );
+}
+
 /** A message that receives keyboard focus when it appears, so it is read out and a keyboard user starts from it. */
 export function Focused({ testId, children }: { testId?: string; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);

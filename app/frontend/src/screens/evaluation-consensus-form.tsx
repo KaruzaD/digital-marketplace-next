@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Button, ButtonGroup, Form, Heading, InlineAlert, Link, NumberField, Text, TextArea } from "@bcgov/design-system-react-components";
+import { Button, Form, InlineAlert, NumberField, Text, TextArea } from "@bcgov/design-system-react-components";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { consensusProblems, consensusStatusLabel, mayReadConsensus, mayRecordConsensus } from "@rules/consensus";
 import { EnteredScore, hasReachedConsensus, isChairOf, isOnPanel } from "@rules/individual-evaluation";
@@ -16,14 +16,25 @@ import {
   startConsensus,
 } from "../api/evaluations";
 import { OtherProgramOpportunity, Proponent, StoredQuestion, fetchOtherProgramOpportunity } from "../api/other-programs";
-import { Loading } from "../app/loading";
+import {
+  ErrorSummary,
+  EvaluationStyles,
+  Notice,
+  PanelScores,
+  QuestionBox,
+  Refusal,
+  Response,
+  SaveRow,
+  ScoringHead,
+  type PanelScore,
+} from "../app/evaluation-kit";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Details, OpportunityPage, PageTitle, Panel, Waiting } from "../app/opportunity-kit";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
 import { TitledAlert } from "../app/titled-alert";
 import { consensusAddress } from "./evaluation-consensus-tab";
-import { Entry, Heading1, OpportunityLine, PROGRAM_WORDS, entriesFrom, placeOf, summaryLine, typedScore } from "./evaluation-individual-form";
+import { BackLink, Entry, PROGRAM_WORDS, entriesFrom, placeFacts, placeOf, summaryLine, typedScore } from "./evaluation-individual-form";
 import { evaluatedFrom } from "./opportunity-other-manage";
 
 /**
@@ -34,35 +45,14 @@ import { evaluatedFrom } from "./opportunity-other-manage";
  * consensus stays open to change until it is finalized (R-5.30). A panel member who is not the chair
  * reads the evaluators' scores and is told only the chair records the consensus. Anybody else, and
  * anybody at all before the consensus stage, is shown the missing page.
+ *
+ * Each is drawn as the evaluation kit's `ConsensusCreate` and `ConsensusEdit` stories draw it: the
+ * scoring head, the way back, the alerts, then one question box per question with the evaluators'
+ * scores as rows, or, where nothing can be changed, one panel per question.
  */
 
 const createTitle = (program: OtherProgram) => `Agree a ${PROGRAM_WORDS[program]} consensus`;
 const editTitle = (program: OtherProgram) => `${PROGRAM_WORDS[program]} consensus`;
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-const group = {
-  margin: "var(--layout-margin-none)",
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
-const response = {
-  padding: "var(--layout-padding-small)",
-  borderInlineStart: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-} as const;
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
 
 export function ConsensusScreen({
   program,
@@ -165,21 +155,21 @@ function ConsensusLoader({
 
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{chairId ? editTitle(program) : createTitle(program)}</Heading>
-        <Loading label="Loading the evaluators' scores…" />
-      </Stack>
+      <OpportunityPage>
+        <PageTitle>{chairId ? editTitle(program) : createTitle(program)}</PageTitle>
+        <Waiting label="Loading the evaluators' scores" />
+      </OpportunityPage>
     );
   }
   if (loaded.kind === "missing") return <NotFound />;
   if (loaded.kind === "failed") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{chairId ? editTitle(program) : createTitle(program)}</Heading>
+      <OpportunityPage>
+        <PageTitle>{chairId ? editTitle(program) : createTitle(program)}</PageTitle>
         <TitledAlert variant="danger" role="alert" title="This consensus could not be loaded">
           <Text elementType="p">Reload the page to try again.</Text>
         </TitledAlert>
-      </Stack>
+      </OpportunityPage>
     );
   }
   const { opportunity, consensus } = loaded;
@@ -190,56 +180,25 @@ function ConsensusLoader({
 
 const listAddress = (program: OtherProgram, opportunityId: string) => `/opportunities/${program}/${opportunityId}/edit?tab=consensus`;
 
-/** Every evaluator's score and comment for one question, beside their name (R-5.28). */
-function EvaluatorsScores({ order, question, evaluations }: { order: number; question: StoredQuestion; evaluations: readonly Evaluation[] }) {
-  if (evaluations.length === 0) return null;
-  const n = order + 1;
-  return (
-    <div role="region" aria-labelledby={`question-${n}-panel-caption`} tabIndex={0} style={{ overflowX: "auto" }}>
-      <table style={{ borderCollapse: "collapse", width: "100%" }}>
-        <caption id={`question-${n}-panel-caption`} style={{ textAlign: "start" }}>
-          <Text size="small" color="secondary">
-            Evaluators' scores for question {n}
-          </Text>
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col" style={cell}>Evaluator</th>
-            <th scope="col" style={cell}>Score</th>
-            <th scope="col" style={cell}>Comment</th>
-          </tr>
-        </thead>
-        <tbody>
-          {evaluations.map((evaluation) => {
-            const entry = evaluation.scores.find((score) => score.order === order);
-            return (
-              <tr key={evaluation.evaluator.id}>
-                <td style={cell}>{evaluation.evaluator.name}</td>
-                <td style={cell} data-testid="evaluation-panel-member-score">
-                  {typeof entry?.score === "number" ? `${entry.score} out of ${question.score}` : "Not entered"}
-                </td>
-                <td style={cell} data-testid="evaluation-panel-member-notes">
-                  {entry?.notes ? entry.notes : "Not entered"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+/** Every evaluator's score and comment for one question, as the kit's panel scores take them (R-5.28). */
+export function panelScoresFor(order: number, question: StoredQuestion, evaluations: readonly Evaluation[]): PanelScore[] {
+  return evaluations.map((evaluation) => {
+    const entry = evaluation.scores.find((score) => score.order === order);
+    return {
+      key: evaluation.evaluator.id,
+      who: evaluation.evaluator.name,
+      score: typeof entry?.score === "number" ? `${entry.score} out of ${question.score}` : "Not entered",
+      notes: entry?.notes ? entry.notes : "Not entered",
+    };
+  });
 }
 
-function ResponseOf({ proponent, order }: { proponent: Proponent; order: number }) {
+function Worth({ question }: { question: StoredQuestion }) {
   return (
-    <div style={response} data-testid="evaluation-question-response">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          {proponent.anonymousProponentName}'s response
-        </Text>
-        <Text elementType="p">{proponent.responses.find((entry) => entry.order === order)?.response ?? ""}</Text>
-      </Stack>
-    </div>
+    <p className="op-note">
+      Worth up to {question.score} points.
+      {question.minimumScore !== null ? ` The minimum score to move on is ${question.minimumScore}.` : ""}
+    </p>
   );
 }
 
@@ -264,8 +223,9 @@ function ConsensusForm({ program, opportunity, proponent, consensus, evaluations
   const [notice, setNotice] = useState<"saved" | null>(arrivedSaved ? "saved" : null);
   const [refusal, setRefusal] = useState<EvaluationSaveAnswer | null>(null);
   const [busy, setBusy] = useState(false);
+  // Counts the answered saves, so an alert still showing after another save is drawn afresh and takes focus again.
+  const [answered, setAnswered] = useState(0);
   const scoreRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const alertRef = useRef<HTMLDivElement>(null);
   const editing = consensus !== null;
   // Moving on goes through the proponents still to be agreed, in anonymous order.
   const place = placeOf({ ...opportunity, proponents: (opportunity.proponents ?? []).filter((entry) => entry.status === "UNDER_REVIEW_QUESTIONS") }, proponent);
@@ -274,12 +234,6 @@ function ConsensusForm({ program, opportunity, proponent, consensus, evaluations
     entries.map((entry, order) => ({ order, score: typedScore(scoreRefs.current[order] ?? null, entry.score), notes: entry.notes }));
   const problems = consensusProblems(questions, current());
   const shownProblems = problems.filter((problem) => checked || touched.has(`${problem.field}-${problem.order}`));
-
-  useEffect(() => {
-    if (refusal || (checked && problems.length > 0)) alertRef.current?.focus();
-    // Only when a save has just been answered.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refusal, checked]);
 
   function setEntry(order: number, change: Partial<Entry>) {
     setEntries((all) => all.map((entry, index) => (index === order ? { ...entry, ...change } : entry)));
@@ -301,6 +255,7 @@ function ConsensusForm({ program, opportunity, proponent, consensus, evaluations
     setBusy(false);
     if (answer.kind !== "saved") {
       setRefusal(answer);
+      setAnswered((count) => count + 1);
       return;
     }
     if (then === "stay") {
@@ -308,6 +263,7 @@ function ConsensusForm({ program, opportunity, proponent, consensus, evaluations
         go(`${consensusAddress(program, opportunity.id, proponent.id, answer.evaluation.evaluator.id)}?saved=draft`, true);
         return;
       }
+      setAnswered((count) => count + 1);
       setChecked(true);
       setNotice("saved");
       return;
@@ -322,154 +278,131 @@ function ConsensusForm({ program, opportunity, proponent, consensus, evaluations
     void save("next");
   }
 
+  const held = consensuses.find((entry) => entry.proposal.id === proponent.id);
+
   return (
-    <Stack gap="large">
-      <Heading1 kind={editing ? editTitle(program) : createTitle(program)} proponent={proponent} />
-      <OpportunityLine opportunity={opportunity} proponent={proponent} />
-      {editing ? (
-        <Text elementType="p">
-          Status:{" "}
-          <span style={badge} data-testid="evaluation-consensus-status">
-            {consensusStatusLabel({ status: consensus.status, scores: current() }, questions)}
-          </span>
-        </Text>
-      ) : null}
-      <div>
-        <Link href={listAddress(program, opportunity.id)}>Back to the consensus</Link>
-      </div>
+    <OpportunityPage>
+      <EvaluationStyles />
+      <ScoringHead
+        eyebrow={editing ? editTitle(program) : createTitle(program)}
+        program={program}
+        status={editing ? consensusStatusLabel({ status: consensus.status, scores: current() }, questions) : undefined}
+        statusTestId="evaluation-consensus-status"
+        name={proponent.anonymousProponentName}
+        facts={placeFacts(opportunity, proponent)}
+      />
+      <BackLink href={listAddress(program, opportunity.id)}>Back to the consensus</BackLink>
       {consensus?.status === "SUBMITTED" ? (
-        <div data-testid="evaluation-editable-notice">
-          <InlineAlert
-            variant="info"
-            title="This consensus has been submitted"
-            description="You can still change it until the consensus scores are finalized. If you change it, submit the final consensus scores again."
-          />
-        </div>
-      ) : (
-        <Text elementType="p">
+        <Notice
+          testId="evaluation-editable-notice"
+          title="This consensus has been submitted"
+          description="You can still change it until the consensus scores are finalized. If you change it, submit the final consensus scores again."
+        />
+      ) : null}
+      {editing ? null : (
+        <p className="op-text">
           Record the score and comment the panel agreed for each question. Each evaluator's own score and comment is shown with the question. A
           consensus is checked when you submit the final consensus scores.
-        </Text>
+        </p>
       )}
       {refusal?.kind === "duplicate" ? (
         <>
-          <div tabIndex={-1} ref={alertRef} data-testid="evaluation-duplicate-consensus-error">
-            <InlineAlert variant="danger" role="alert" title="This consensus was not started" description={refusal.reason} />
-          </div>
-          {(() => {
-            const held = consensuses.find((entry) => entry.proposal.id === proponent.id);
-            return held ? (
-              <div>
-                <Link href={consensusAddress(program, opportunity.id, proponent.id, held.evaluator.id)}>
-                  Go to the consensus for {proponent.anonymousProponentName}
-                </Link>
-              </div>
-            ) : null;
-          })()}
+          <Refusal key={answered} testId="evaluation-duplicate-consensus-error" title="This consensus was not started" description={refusal.reason} />
+          {held ? (
+            <BackLink href={consensusAddress(program, opportunity.id, proponent.id, held.evaluator.id)}>
+              Go to the consensus for {proponent.anonymousProponentName}
+            </BackLink>
+          ) : null}
         </>
       ) : refusal ? (
-        <div tabIndex={-1} ref={alertRef}>
-          <InlineAlert
-            variant="danger"
-            role="alert"
-            title="This consensus was not saved"
-            description={refusal.kind === "refused" ? refusal.reasons.join(" ") : "The service could not save it. Try again."}
-          />
-        </div>
+        <Refusal
+          key={answered}
+          title="This consensus was not saved"
+          description={refusal.kind === "refused" ? refusal.reasons.join(" ") : "The service could not save it. Try again."}
+        />
       ) : checked && problems.length > 0 ? (
-        <div tabIndex={-1} ref={alertRef}>
-          <InlineAlert variant="danger" title={`This consensus has ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`} role="alert">
-            <Text elementType="p">
+        <ErrorSummary
+          key={answered}
+          title={`This consensus has ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`}
+          lead={
+            <p>
               {editing ? "Your changes were saved as you entered them." : "Your draft was saved as you entered it."} The consensus scores cannot be
               submitted until these are fixed.
-            </Text>
-            <ul>
-              {problems.map((problem) => (
-                <li key={`${problem.field}-${problem.order}`} data-testid="field-error">
-                  <Link
-                    href={`#question-${problem.order + 1}-${problem.field}`}
-                    data-testid={problem.field === "score" ? "evaluation-score-error" : "evaluation-notes-error"}
-                  >
-                    {summaryLine(problem)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </InlineAlert>
-        </div>
+            </p>
+          }
+          problems={problems.map((problem) => ({
+            href: `#question-${problem.order + 1}-${problem.field}`,
+            testId: problem.field === "score" ? "evaluation-score-error" : "evaluation-notes-error",
+            text: summaryLine(problem),
+          }))}
+        />
       ) : notice === "saved" ? (
-        <div role="status">
+        <div role="status" className="ev-alert">
           <InlineAlert variant="success" title="Saved" description="The consensus has been saved." />
         </div>
       ) : null}
-      <Form validationBehavior="aria" onSubmit={onSubmit}>
-        <Stack gap="medium">
-          {questions.map((question, order) => {
-            const n = order + 1;
-            const scoreProblem = shownProblems.find((problem) => problem.order === order && problem.field === "score");
-            const notesProblem = shownProblems.find((problem) => problem.order === order && problem.field === "notes");
-            return (
-              <fieldset key={order} style={group} id={`question-${n}`}>
-                <legend style={legend}>Question {n}</legend>
-                <Stack gap="medium">
-                  <Text elementType="p">{question.question}</Text>
-                  <Text elementType="p" size="small" color="secondary">
-                    Worth up to {question.score} points.
-                    {question.minimumScore !== null ? ` The minimum score to move on is ${question.minimumScore}.` : ""}
-                  </Text>
-                  <ResponseOf proponent={proponent} order={order} />
-                  <EvaluatorsScores order={order} question={question} evaluations={evaluations} />
-                  <div
-                    ref={(element) => {
-                      scoreRefs.current[order] = element;
-                    }}
-                  >
-                    <NumberField
-                      id={`question-${n}-score`}
-                      label={`Agreed score for question ${n}`}
-                      isRequired
-                      description={`Between 0 and ${question.score}, with up to two decimal places.`}
-                      value={entries[order]?.score ?? Number.NaN}
-                      formatOptions={{ maximumFractionDigits: 20, useGrouping: false }}
-                      onChange={(value) => setEntry(order, { score: value })}
-                      onBlur={() => setTouched((all) => new Set(all).add(`score-${order}`))}
-                      isInvalid={scoreProblem !== undefined}
-                      errorMessage={scoreProblem?.message}
-                      data-testid="evaluation-question-score-field"
-                    />
-                  </div>
-                  <TextArea
-                    id={`question-${n}-notes`}
-                    label={`Agreed comment for question ${n}`}
-                    isRequired
-                    description="At least one word, explaining the score."
-                    value={entries[order]?.notes ?? ""}
-                    onChange={(value) => setEntry(order, { notes: value })}
-                    onBlur={() => setTouched((all) => new Set(all).add(`notes-${order}`))}
-                    isInvalid={notesProblem !== undefined}
-                    errorMessage={notesProblem?.message}
-                    data-testid="evaluation-question-notes-field"
-                  />
-                </Stack>
-              </fieldset>
-            );
-          })}
-          <ButtonGroup ariaLabel="Consensus actions">
-            <Button
-              variant="secondary"
-              isDisabled={busy}
-              onPress={() => void save("stay")}
-              data-testid={editing ? "evaluation-save-changes" : "evaluation-save-draft"}
-            >
-              {editing ? "Save changes" : "Save draft"}
-            </Button>
-            <Button type="submit" variant="primary" isDisabled={busy} data-testid="evaluation-save-next">
-              Save and go to next proponent
-            </Button>
-          </ButtonGroup>
-        </Stack>
+      <Form validationBehavior="aria" className="op-region" onSubmit={onSubmit}>
+        {questions.map((question, order) => {
+          const n = order + 1;
+          const scoreProblem = shownProblems.find((problem) => problem.order === order && problem.field === "score");
+          const notesProblem = shownProblems.find((problem) => problem.order === order && problem.field === "notes");
+          return (
+            <QuestionBox key={order} n={n}>
+              <p className="op-text">{question.question}</p>
+              <Worth question={question} />
+              {editing ? null : (
+                <Response name={proponent.anonymousProponentName}>{proponent.responses.find((entry) => entry.order === order)?.response ?? ""}</Response>
+              )}
+              <PanelScores n={n} scores={panelScoresFor(order, question, evaluations)} />
+              <div
+                ref={(element) => {
+                  scoreRefs.current[order] = element;
+                }}
+              >
+                <NumberField
+                  id={`question-${n}-score`}
+                  label={`Agreed score for question ${n}`}
+                  isRequired
+                  description={`Between 0 and ${question.score}, with up to two decimal places.`}
+                  value={entries[order]?.score ?? Number.NaN}
+                  formatOptions={{ maximumFractionDigits: 20, useGrouping: false }}
+                  onChange={(value) => setEntry(order, { score: value })}
+                  onBlur={() => setTouched((all) => new Set(all).add(`score-${order}`))}
+                  isInvalid={scoreProblem !== undefined}
+                  errorMessage={scoreProblem?.message}
+                  data-testid="evaluation-question-score-field"
+                />
+              </div>
+              <TextArea
+                id={`question-${n}-notes`}
+                label={`Agreed comment for question ${n}`}
+                isRequired
+                description="At least one word, explaining the score."
+                value={entries[order]?.notes ?? ""}
+                onChange={(value) => setEntry(order, { notes: value })}
+                onBlur={() => setTouched((all) => new Set(all).add(`notes-${order}`))}
+                isInvalid={notesProblem !== undefined}
+                errorMessage={notesProblem?.message}
+                data-testid="evaluation-question-notes-field"
+              />
+            </QuestionBox>
+          );
+        })}
+        <SaveRow label="Consensus actions">
+          <Button
+            variant="secondary"
+            isDisabled={busy}
+            onPress={() => void save("stay")}
+            data-testid={editing ? "evaluation-save-changes" : "evaluation-save-draft"}
+          >
+            {editing ? "Save changes" : "Save draft"}
+          </Button>
+          <Button type="submit" variant="primary" isDisabled={busy} data-testid="evaluation-save-next">
+            Save and go to next proponent
+          </Button>
+        </SaveRow>
       </Form>
-    </Stack>
+    </OpportunityPage>
   );
 }
 
@@ -484,63 +417,47 @@ function ConsensusShown({ program, account, opportunity, proponent, consensus, e
   const atConsensus = opportunity.status === "EVAL_QUESTIONS_CONSENSUS";
   const chairOnly = atConsensus && isOnPanel(account, evaluated) && !isChairOf(account, evaluated);
   const evaluator = evaluations.some((evaluation) => evaluation.evaluator.id === account.id);
+  const backToEvaluations = evaluator && !consensus;
   return (
-    <Stack gap="large">
-      <Heading1 kind={consensus ? editTitle(program) : createTitle(program)} proponent={proponent} />
-      <OpportunityLine opportunity={opportunity} proponent={proponent} />
-      {consensus ? (
-        <Text elementType="p">
-          Status:{" "}
-          <span style={badge} data-testid="evaluation-consensus-status">
-            {consensusStatusLabel(consensus, questions)}
-          </span>
-        </Text>
-      ) : null}
-      <div>
-        <Link href={`/opportunities/${program}/${opportunity.id}/edit?tab=${evaluator && !consensus ? "evaluation" : "consensus"}`}>
-          {evaluator && !consensus ? "Back to your evaluations" : "Back to the consensus"}
-        </Link>
-      </div>
+    <OpportunityPage>
+      <EvaluationStyles />
+      <ScoringHead
+        eyebrow={consensus ? editTitle(program) : createTitle(program)}
+        program={program}
+        status={consensus ? consensusStatusLabel(consensus, questions) : undefined}
+        statusTestId="evaluation-consensus-status"
+        name={proponent.anonymousProponentName}
+        facts={placeFacts(opportunity, proponent)}
+      />
+      <BackLink href={`/opportunities/${program}/${opportunity.id}/edit?tab=${backToEvaluations ? "evaluation" : "consensus"}`}>
+        {backToEvaluations ? "Back to your evaluations" : "Back to the consensus"}
+      </BackLink>
       {chairOnly ? (
-        <div data-testid="evaluation-chair-only-message">
-          <InlineAlert
-            variant="info"
-            title="Only the chair records the consensus"
-            description="You can read each evaluator's scores and comments for this proponent. The panel's chair records the agreed score."
-          />
-        </div>
+        <Notice
+          testId="evaluation-chair-only-message"
+          title="Only the chair records the consensus"
+          description="You can read each evaluator's scores and comments for this proponent. The panel's chair records the agreed score."
+        />
       ) : !atConsensus ? (
-        <InlineAlert variant="info" title="The consensus scores have been finalized" description="The agreed scores can be read but no longer changed." />
+        <Notice title="The consensus scores have been finalized" description="The agreed scores can be read but no longer changed." />
       ) : null}
-      <Stack gap="medium">
-        {questions.map((question, order) => {
-          const agreed = consensus?.scores.find((entry) => entry.order === order);
-          return (
-            <section key={order} style={group} aria-labelledby={`question-${order + 1}-heading`}>
-              <Stack gap="medium">
-                <Heading level={2} id={`question-${order + 1}-heading`}>
-                  Question {order + 1}
-                </Heading>
-                <Text elementType="p">{question.question}</Text>
-                <ResponseOf proponent={proponent} order={order} />
-                <EvaluatorsScores order={order} question={question} evaluations={evaluations} />
-                {consensus ? (
-                  <Stack as="dl" direction="row" gap="medium">
-                    <Stack gap="small">
-                      <dt style={term}>Agreed score</dt>
-                      <dd>{typeof agreed?.score === "number" ? `${agreed.score} out of ${question.score}` : "Not entered"}</dd>
-                    </Stack>
-                    <Stack gap="small">
-                      <dt style={term}>Agreed comment</dt>
-                      <dd>{agreed?.notes ? agreed.notes : "Not entered"}</dd>
-                    </Stack>
-                  </Stack>
-                ) : null}
-              </Stack>
-            </section>
-          );
-        })}
-      </Stack>
-    </Stack>
+      {questions.map((question, order) => {
+        const agreed = consensus?.scores.find((entry) => entry.order === order);
+        return (
+          <Panel key={order} id={`question-${order + 1}-heading`} title={`Question ${order + 1}`}>
+            <p className="op-text">{question.question}</p>
+            <PanelScores n={order + 1} scores={panelScoresFor(order, question, evaluations)} />
+            {consensus ? (
+              <Details
+                items={[
+                  { term: "Agreed score", value: typeof agreed?.score === "number" ? `${agreed.score} out of ${question.score}` : "Not entered" },
+                  { term: "Agreed comment", value: agreed?.notes ? agreed.notes : "Not entered" },
+                ]}
+              />
+            ) : null}
+          </Panel>
+        );
+      })}
+    </OpportunityPage>
   );
 }

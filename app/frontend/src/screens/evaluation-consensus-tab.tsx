@@ -1,4 +1,4 @@
-import { RefObject, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertDialog, Button, InlineAlert, Link, Modal, Text } from "@bcgov/design-system-react-components";
 import {
   NEXT_STAGE_NAME,
@@ -16,8 +16,8 @@ import type { OtherProgram } from "@rules/other-program-drafts";
 import type { Account } from "../api/accounts";
 import { Consensus, fetchConsensuses, submitConsensus } from "../api/evaluations";
 import { OtherProgramOpportunity } from "../api/other-programs";
-import { Loading } from "../app/loading";
-import { Stack } from "../app/page-layout";
+import { EvaluationStatus, EvaluationStyles, Focused, Notice, Refusal, Rows, type Row } from "../app/evaluation-kit";
+import { Actions, Waiting } from "../app/opportunity-kit";
 import { TitledAlert } from "../app/titled-alert";
 import { evaluatedFrom } from "./opportunity-other-manage";
 
@@ -28,21 +28,11 @@ import { evaluatedFrom } from "./opportunity-other-manage";
  * (R-5.13, R-5.29 to R-5.31); the panel reads the list from the consensus stage; an administrator
  * at any stage; the owner off the panel is told why it is not shown yet (R-5.12). Finalising is the
  * manage page's own action, in its action bar (R-5.14; design gap 13).
+ *
+ * Drawn inside the manage page's frame as the evaluation kit's `ConsensusListTab` story draws it:
+ * the sentence on what the reader may do, the proponents as the kit's rows, then the submit hint and
+ * the one primary button.
  */
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
 
 /** Where one proponent's consensus is: the chair's, or a new one. */
 export function consensusAddress(program: OtherProgram, opportunityId: string, proposalId: string, chairId: string | null): string {
@@ -62,6 +52,8 @@ type Loaded =
   | { readonly kind: "withheld" }
   | { readonly kind: "failed" };
 
+type Outcome = { readonly kind: "submitted" } | { readonly kind: "refused"; readonly reasons: readonly string[] };
+
 export function ConsensusTab({
   program,
   account,
@@ -80,8 +72,7 @@ export function ConsensusTab({
   const [round, setRound] = useState(0);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<{ readonly kind: "submitted" } | { readonly kind: "refused"; readonly reasons: readonly string[] } | null>(null);
-  const alertRef = useRef<HTMLDivElement>(null);
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   useEffect(() => {
     if (!readable) return;
@@ -95,25 +86,22 @@ export function ConsensusTab({
     };
   }, [program, opportunity.id, readable, round]);
 
-  useEffect(() => {
-    if (outcome?.kind === "refused") alertRef.current?.focus();
-  }, [outcome]);
-
   if (withheld || loaded.kind === "withheld") {
     return (
-      <div data-testid="evaluation-consensus-withheld-message">
-        <InlineAlert
-          variant="info"
+      <>
+        <EvaluationStyles />
+        <Notice
+          testId="evaluation-consensus-withheld-message"
           title="The agreed scores are not shown to you yet"
           description={`While the consensus is being agreed, only the evaluation panel can see it, and you are not on this opportunity's panel. The agreed scores appear here once the opportunity moves to the ${NEXT_STAGE_NAME[program].toLowerCase()}.`}
         />
-      </div>
+      </>
     );
   }
   if (!hasReachedConsensus(opportunity.status) && (!readable || (opportunity.proponents ?? []).length === 0)) {
-    return <Text elementType="p">The consensus stage begins once every evaluator on the panel has submitted their scores.</Text>;
+    return <p className="op-text">The consensus stage begins once every evaluator on the panel has submitted their scores.</p>;
   }
-  if (loaded.kind === "loading") return <Loading label="Loading the agreed scores…" />;
+  if (loaded.kind === "loading") return <Waiting label="Loading consensus" />;
   if (loaded.kind === "failed") {
     return (
       <TitledAlert variant="danger" role="alert" title="The agreed scores could not be loaded">
@@ -166,14 +154,40 @@ export function ConsensusTab({
     setRound((value) => value + 1);
   }
 
+  const rows = proponents.map((proponent): Row => {
+    const action = showsAction ? actionFor(proponent.id) : null;
+    return {
+      key: proponent.id,
+      testId: "evaluation-proponent-row",
+      cells: [
+        { content: proponent.anonymousProponentName, testId: "proposal-proponent-name" },
+        {
+          content: (
+            <EvaluationStatus testId="evaluation-consensus-status">{consensusStatusLabel(consensusOf(proponent.id), questions)}</EvaluationStatus>
+          ),
+        },
+        ...(showsAction
+          ? [
+              {
+                content: action ? (
+                  <Link href={action.href} aria-label={`${action.label}: ${proponent.anonymousProponentName}`} data-testid="evaluation-open-consensus">
+                    {action.label}
+                  </Link>
+                ) : null,
+              },
+            ]
+          : []),
+      ],
+    };
+  });
+
   return (
     <>
+      <EvaluationStyles />
       {outcome?.kind === "refused" ? (
-        <div tabIndex={-1} ref={alertRef}>
-          <InlineAlert variant="danger" role="alert" title="The consensus scores were not submitted" description={outcome.reasons.join(" ")} />
-        </div>
+        <Refusal key={round} title="The consensus scores were not submitted" description={outcome.reasons.join(" ")} />
       ) : outcome?.kind === "submitted" ? (
-        <div role="status">
+        <div role="status" className="ev-alert">
           <InlineAlert
             variant="success"
             title="The consensus scores have been submitted"
@@ -181,7 +195,7 @@ export function ConsensusTab({
           />
         </div>
       ) : null}
-      <Text elementType="p">
+      <p className="op-text">
         {hasPassedQuestions(opportunity.status)
           ? "The consensus scores have been finalized. The agreed scores are recorded against each proponent."
           : chairing
@@ -193,57 +207,24 @@ export function ConsensusTab({
               : atConsensus
                 ? "The panel's chair records one agreed score and comment for each question of each proponent."
                 : "The consensus stage begins once every evaluator on the panel has submitted their scores."}
-      </Text>
-      <div role="region" aria-labelledby="consensus-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="evaluation-consensus-table">
-          <caption id="consensus-caption" style={{ textAlign: "start" }}>
-            <Text size="small" color="secondary">
-              Agreed scores, by anonymous proponent name
-            </Text>
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col" style={cell}>Proponent</th>
-              <th scope="col" style={cell}>Consensus</th>
-              {showsAction ? <th scope="col" style={cell}>Action</th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {proponents.map((proponent) => {
-              const action = showsAction ? actionFor(proponent.id) : null;
-              return (
-                <tr key={proponent.id} data-testid="evaluation-proponent-row">
-                  <td style={cell}>
-                    <span data-testid="proposal-proponent-name">{proponent.anonymousProponentName}</span>
-                  </td>
-                  <td style={cell}>
-                    <span style={badge} data-testid="evaluation-consensus-status">
-                      {consensusStatusLabel(consensusOf(proponent.id), questions)}
-                    </span>
-                  </td>
-                  {showsAction ? (
-                    <td style={cell}>
-                      {action ? (
-                        <Link href={action.href} aria-label={`${action.label}: ${proponent.anonymousProponentName}`} data-testid="evaluation-open-consensus">
-                          {action.label}
-                        </Link>
-                      ) : null}
-                    </td>
-                  ) : null}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      </p>
+      <Rows
+        captionId="consensus-caption"
+        caption="Agreed scores, by anonymous proponent name"
+        columns={showsAction ? ["Proponent", "Consensus", "Action"] : ["Proponent", "Consensus"]}
+        layout={showsAction ? "ev-cols-3" : "ev-cols-2"}
+        unlabelled={["Action"]}
+        testId="evaluation-consensus-table"
+        rows={rows}
+      />
       {chairing ? (
-        <Stack gap="medium">
-          <Text elementType="p" id="submit-hint">
+        <>
+          <p className="op-text" id="submit-hint">
             {ready
               ? "Every proponent has a complete consensus. When you submit, the opportunity's owner and every administrator are told."
               : "You can submit once every proponent has a complete consensus: an agreed score and comment for every question."}
-          </Text>
-          <div>
+          </p>
+          <Actions>
             <Button
               variant="primary"
               isDisabled={!ready || busy}
@@ -253,8 +234,8 @@ export function ConsensusTab({
             >
               Submit final consensus scores
             </Button>
-          </div>
-        </Stack>
+          </Actions>
+        </>
       ) : null}
       <Modal isOpen={confirming} isDismissable onOpenChange={(open) => (!open && !busy ? setConfirming(false) : undefined)}>
         <AlertDialog
@@ -322,22 +303,26 @@ export function FinalizeDialog({
   );
 }
 
+/** Which refusal to finalise this is, as the inner test ID names it (R-1.41, R-5.10, R-5.13). */
+export function finalizeRefusalTestId(reasons: readonly string[]): string | undefined {
+  if (reasons.includes(NOT_ALL_CONSENSUSES_SUBMITTED)) return "evaluation-not-all-submitted-error";
+  return /screened into the/.test(reasons.join(" ")) ? "evaluation-no-screenable-error" : undefined;
+}
+
 /**
- * A refusal to finalise (R-1.41, R-5.10, R-5.13), in the opportunities domain's wrapper, the inner
- * test ID saying which refusal it is.
+ * A refusal to finalise, in the opportunities domain's wrapper, the inner test ID saying which
+ * refusal it is. It takes focus when drawn; the manage page draws it afresh after each refused
+ * attempt, so it takes focus again.
  */
-export function FinalizeRefusal({ reasons, alertRef }: { reasons: readonly string[]; alertRef: RefObject<HTMLDivElement> }) {
-  const text = reasons.join(" ");
-  const inner = reasons.includes(NOT_ALL_CONSENSUSES_SUBMITTED)
-    ? "evaluation-not-all-submitted-error"
-    : /screened into the/.test(text)
-      ? "evaluation-no-screenable-error"
-      : undefined;
+export function FinalizeRefusal({ reasons }: { reasons: readonly string[] }) {
   return (
-    <div tabIndex={-1} ref={alertRef} data-testid="advance-refused-message">
-      <div data-testid={inner}>
-        <InlineAlert variant="danger" role="alert" title="The consensus scores could not be finalized" description={text} />
-      </div>
-    </div>
+    <>
+      <EvaluationStyles />
+      <Focused testId="advance-refused-message">
+        <div data-testid={finalizeRefusalTestId(reasons)}>
+          <InlineAlert variant="danger" role="alert" title="The consensus scores could not be finalized" description={reasons.join(" ")} />
+        </div>
+      </Focused>
+    </>
   );
 }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-18-9 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">728</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">722</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">577</span></a></li><li><a href="../runs.html">Run log <span class="count">27</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-18-9</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-19 00:05</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.302 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 18 (The chair agrees a consensus and the questions stage is finalised) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I made no changes to the application in this revision.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.302 (Claude Code))</p>
+<p>I made no changes to the application in this revision.</p>
+<p><strong>Why R-4.14 needed no fix.</strong> The ruling sent this build back for one criterion from slice 4, R-4.14: an administrator browsing the people registered with the service, with each person&#39;s status, account kind, name and whether they are an administrator. The test timed out on the user list at <code>/users</code>. I opened the page outline the failure left (<code>.sdlc/evidence/slice-18/R-4.14.txt</code>). The page had loaded fully for the administrator:</p>
+<ul><li>the heading &quot;Digital Marketplace Users&quot;, the name search and the &quot;Export contact list&quot; button were all drawn;</li><li>the table had the columns Status, Account type, Name and Administrator, with active accounts first and then sorted by account type and name;</li><li>every row was filled in and each name linked to that person&#39;s profile.</li></ul>
+<p>So the page does what the criterion asks. This agrees with the operator&#39;s note: the timeout came from the test adapter reading the list one cell at a time, which took longer than the test waits once the list had grown. A binding approved just before this run reads the list in one call. As instructed, I left the restyle and everything else alone.</p>
+<p><strong>Slice 18 itself is unchanged</strong> from the version that was returned. That covers:</p>
+<ul><li>the chair&#39;s consensus tab and the per-proponent consensus screens;</li><li>reopening and resubmitting until the stage is finalised;</li><li>the explanation shown to an owner who is not on the panel;</li><li>the single finalise action, and its refusals that name the right next stage;</li><li>screening in the top proponents who met every minimum;</li><li>the submitted and finalised notices.</li></ul>
+<p>It also still carries the criteria the plan places here for testing although earlier slices built them (R-6.15, R-5.28, R-5.36).</p>
+<p><strong>Checks.</strong> This workspace had no dependencies installed, so I installed them from the existing lockfile and ran <code>npm --prefix app run check</code>. It passed: typechecks were clean and all 1,521 unit tests passed (16, 862 and 643 across the three test runs). I wrote no new tests because no code changed.</p>
+<p><strong>Not done here.</strong> Nothing outside <code>app/</code> and <code>docs/decisions/</code> needed touching. If R-4.14 fails again once the new binding is in place, the next thing to look at is the adapter&#39;s reading of the list, not this page.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-19 00:41.</p>
+<div class="body"><p>Question: does slice 18 (the chair agrees a consensus and the questions stage is finalised) do what its criteria say, now that the previous return over R-4.14 has been answered? Ruling: approve. The verify result is pass, recorded for build-slice-18-9 against application tree cc151ae, which is this branch&#39;s app tree. All 15 claimed criteria (R-5.10, R-5.12, R-5.13, R-5.14, R-5.28 to R-5.33, R-5.36, R-6.15, R-1.41, R-1.50, R-2.29) were exercised and met. R-4.14, the regression the runner returned the previous revision for, is in this run&#39;s rechecked set and passes under the updated adapter binding, which agrees with the build&#39;s finding that the user list page was correct and the timeout came from the adapter reading the list one cell at a time. The application diff against main restyles the consensus tab, the finalise refusal and the consensus create, edit and read-only screens onto the evaluation kit (a new PanelScores component, plus Rows, Notice, Refusal, Focused, ScoringHead and QuestionBox). Test IDs, routes, message text and permission logic are unchanged. Removing the proponent&#39;s response from the edit and read-only views follows the approved design stories and is recorded in decision record 0084. The change to refocus a repeated refusal is covered by six new unit tests in consensus.test.tsx, and the full check suite (1,521 tests) passes. Nothing built belongs to another slice, no secret or personal data appears, and no protected path is touched. What would change this ruling: a verify result recorded against a different app tree, any claimed criterion or rechecked regression failing, or evidence that the restyle changed a criterion-bearing message or permission.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>
