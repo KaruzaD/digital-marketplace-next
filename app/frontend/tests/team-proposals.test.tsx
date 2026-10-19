@@ -749,7 +749,7 @@ describe("awarding and the vendor's scoresheet (R-1.26, R-2.32, R-2.34)", () => 
       const view = renderAt(VIEW);
       const total = await screen.findByTestId("proposal-total-score");
       expect(total.textContent).toBe("87.5%");
-      expect(total.previousElementSibling?.textContent).toBe("Total score");
+      expect(total.previousElementSibling?.textContent).toBe("Total");
       expect(screen.getByTestId("proposal-scenario-score").textContent).toBe("70%");
       // The read-only page names the place, "1st", among the fully evaluated (R-2.31).
       expect(screen.getByTestId("proposal-rank").textContent).toBe("1st");
@@ -761,7 +761,8 @@ describe("awarding and the vendor's scoresheet (R-1.26, R-2.32, R-2.34)", () => 
     answering(staff, { status: "UNDER_REVIEW_CODE_CHALLENGE", opportunity: { ...inProcessing, status: "EVAL_CC" }, scoresheet: { ...scoresheet, challenge: null, scenario: null, price: null, total: null, rank: null } }, () => json(500, {}));
     const view = renderAt(VIEW);
     expect((await screen.findByTestId("proposal-total-score")).textContent).toBe("Not yet calculated");
-    expect(screen.queryByTestId("proposal-rank")).toBeNull();
+    // The rank is there but empty until the proposal is fully evaluated (proposal-swu-view, rank).
+    expect(screen.getByTestId("proposal-rank").textContent).toBe("");
     view.unmount();
 
     answering(vendor, { status: "EVALUATED_TEAM_SCENARIO", opportunity: inProcessing, scoresheet }, () => json(500, {}));

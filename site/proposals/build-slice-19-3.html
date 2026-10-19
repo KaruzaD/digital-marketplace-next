@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-19-3 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">729</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">723</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">578</span></a></li><li><a href="../runs.html">Run log <span class="count">27</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-19-3</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-19 00:50</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.302 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 19 (Sprint With Us and Team With Us proposals go through their challenge stages to an award) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I restyled slice 19&#39;s screens to the approved design catalogue, and <code>npm --prefix app run check</code> passes: typecheck plus 862 backend, 646 frontend and 16 migration tests.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.302 (Claude Code))</p>
+<p>I restyled slice 19&#39;s screens to the approved design catalogue, and <code>npm --prefix app run check</code> passes: typecheck plus 862 backend, 646 frontend and 16 migration tests. I could not open the pages in a browser here, so the new look has only been checked by unit tests.</p>
+<p><strong>The slice&#39;s behaviour.</strong> R-1.25, R-1.42, R-1.49, R-2.28, R-2.30, R-2.31 and R-2.35 were built in an earlier pass and are recorded in decision record 0065. The service&#39;s behaviour (the scoring routes, screening, the guard on starting the team scenario, price scores, the move to processing, award and proposal history) is unchanged. This pass changed only the screens, plus one fix described below.</p>
+<p><strong>The read-only proposal page</strong> for Sprint With Us and Team With Us (<code>frontend/src/screens/proposal-team-view.tsx</code>) is now drawn the same way as the Code With Us one:</p>
+<ul><li><strong>Layout and order:</strong> the shared page frame, then the heading with the program and coloured status labels, the details, the Scores section, the printable-copy link, the shared action bar, the tabs, and the open tab&#39;s content.</li><li><strong>Stage tabs:</strong> each one shows a sentence about the stage and the stage&#39;s score. The score button now sits in a <code>proposal-score-actions</code> wrapper that is always there and empty when no score is offered. Screen in and Screen out are in a button group of their own.</li><li><strong>Wrong-stage refusal:</strong> shown as a titled alert that takes focus. Each refused attempt is counted, so a second refusal is drawn again and takes focus again.</li><li><strong>Questions:</strong> the Team questions and Resource questions tabs list the responses in the shared table. The Proposal tab no longer repeats them and ends with a note saying which tab holds them.</li></ul>
+<p><strong>Three small changes outside that page:</strong></p>
+<ul><li>The shared tab links in <code>frontend/src/app/proposal-kit.tsx</code> can now use an address that differs from their test ID, as the catalogue&#39;s do. <code>proposal-tab-team-questions</code> still links to <code>?tab=teamQuestions</code>.</li><li>The shared proposal details can leave the questions out. The vendor&#39;s manage page still shows them.</li><li>The manage page&#39;s Code challenge, Team scenario and Challenge tabs now list proponents in the shared table, with coloured status labels and the shared loading spinner. They keep their test IDs. No story draws these tabs, so they now match the page&#39;s other tables.</li></ul>
+<p>The manage page&#39;s Start team scenario button and its refusal already matched the stories, so I left them alone.</p>
+<p><strong>One fix that matters for the acceptance tests.</strong> The contract says <code>proposal-rank</code> reads empty when a proposal has no rank, but the page used to leave the element out entirely, so a test looking for it would not find it. It is now always present: &quot;1st&quot;, &quot;2nd&quot; and so on once fully evaluated, otherwise empty beside &quot;Not yet ranked&quot;. &quot;Total score&quot; is now &quot;Total&quot;, as the stories have it. I updated the two existing tests that expected the old wording and the missing element.</p>
+<p><strong>New unit tests</strong> in <code>frontend/tests/stage-evaluation.test.tsx</code> cover:</p>
+<ul><li>the empty rank beside &quot;Not yet ranked&quot;;</li><li>the score wrapper staying present and empty when nothing is offered;</li><li>the page layout: status label, heading, tab addresses and the current tab;</li><li>responses appearing on the questions tab and not on the Proposal tab.</li></ul>
+<p><strong>Where the page still differs from the stories</strong>, all carried over from decision record 0065:</p>
+<ul><li>A stage the opportunity has not reached offers no score button, following criterion R-2.28 rather than the older design.</li><li>The questions table has no Score column, because the service doesn&#39;t send each question&#39;s agreed score with the proposal.</li><li>The page names the proponent by organization rather than as &quot;Proponent 1&quot;. Hiding the name is criterion R-2.37&#39;s rule, and I didn&#39;t change it.</li></ul>
+<p>I recorded all of this in <code>docs/decisions/0085-…</code>. No test IDs, routes or service behaviour changed, and nothing outside <code>app/</code> and <code>docs/decisions/</code> was touched. The compose file still publishes the app at :4300 and the identity provider&#39;s realm at :8080.</p>
+<p><strong>For the next slice (20):</strong> the printable and export pages are its own, and still need restyling on the same frame.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-19 01:26.</p>
+<div class="body"><p>Does slice 19 do what its criteria say? Approve. The verify result is current: it was recorded against application tree d4f5c24, which is the branch&#39;s app tree, and it passes all 7 claimed criteria (R-1.25, R-1.42, R-1.49, R-2.28, R-2.30, R-2.31, R-2.35). The diff is confined to app/ and docs/decisions/. It restyles the Sprint With Us and Team With Us evaluate page and the manage page&#39;s stage tabs onto the shared proposal kit, with no change to service behaviour, routes or test IDs. Its one functional change makes proposal-rank always present and empty until the proposal is fully evaluated, which the contract surface requires. That does not breach R-2.32, because the Scores region is still withheld from vendors until a decision. The wrong-stage refusal still carries R-2.28&#39;s exact message, and each refusal is counted so it redraws and takes focus. New unit tests cover the empty rank, the always-present score-actions wrapper, the frame and tab addresses, and the questions-tab move. The departures from the design stories follow criteria (R-2.28, R-2.37) and are recorded in decision record 0085. No secrets or personal data appear. Not checked: the restyle was never seen in a browser, only exercised by unit and acceptance tests. The ruling would change if the result were stale for this tree, a protected path were touched, or the restyle changed what any criterion exposes to whom.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

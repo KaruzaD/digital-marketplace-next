@@ -438,11 +438,14 @@ export function TeamProposalDetails({
   proposal,
   opportunity,
   people = null,
+  questions = true,
 }: {
   program: TeamProgram;
   proposal: TeamProposal;
   opportunity: OtherProgramOpportunity;
   people?: ReadonlyMap<string, TeamMember> | null;
+  /** Whether the responses to the questions are a part here; the evaluate page gives them a tab of their own. */
+  questions?: boolean;
 }) {
   const sprint = program === "sprint-with-us";
   const contact = proposal.organization?.contact;
@@ -527,25 +530,27 @@ export function TeamProposalDetails({
           </>
         )}
       </Region>
-      <Region id="tab-questions" title={sprint ? "Team questions" : "Resource questions"} level={3}>
-        {opportunity.questions.length === 0 ? (
-          <p className="op-text">This opportunity asks no questions.</p>
-        ) : (
-          <ol className="op-list">
-            {opportunity.questions.map((question, order) => {
-              const response = proposal.responses.find((entry) => entry.order === order)?.response ?? "";
-              return (
-                <li key={order}>
-                  <div className="op-region">
-                    <p className="op-text">{question.question}</p>
-                    <p className="op-text">{`Response: ${notEntered(response)}`}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </Region>
+      {questions ? (
+        <Region id="tab-questions" title={sprint ? "Team questions" : "Resource questions"} level={3}>
+          {opportunity.questions.length === 0 ? (
+            <p className="op-text">This opportunity asks no questions.</p>
+          ) : (
+            <ol className="op-list">
+              {opportunity.questions.map((question, order) => {
+                const response = proposal.responses.find((entry) => entry.order === order)?.response ?? "";
+                return (
+                  <li key={order}>
+                    <div className="op-region">
+                      <p className="op-text">{question.question}</p>
+                      <p className="op-text">{`Response: ${notEntered(response)}`}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </Region>
+      ) : null}
       {sprint ? (
         <Region id="tab-references" title="References" level={3}>
           {proposal.references.length === 0 ? (

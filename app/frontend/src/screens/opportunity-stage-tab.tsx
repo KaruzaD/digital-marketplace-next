@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, Text } from "@bcgov/design-system-react-components";
 import type { OtherProgram } from "@rules/other-program-drafts";
+import { proposalStatusLabel } from "@rules/proposals";
 import { hasReachedStage } from "@rules/team-evaluation";
 import { TeamProposal, listTeamProposals } from "../api/team-proposals";
-import { Loading } from "../app/loading";
+import { DataTable, Waiting } from "../app/opportunity-kit";
+import { ProposalStatus } from "../app/proposal-kit";
 import { TitledAlert } from "../app/titled-alert";
-import { ProposalStatusBadge } from "./proposal-cwu-form";
 import { teamProponentName } from "./proposal-team-view";
 
 /**
@@ -64,13 +65,6 @@ export function inStage(tab: StageTabName, proposals: readonly TeamProposal[]): 
   return proposals.filter((proposal) => stage.statuses.includes(proposal.status) || stage.score(proposal) !== null);
 }
 
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-
 type Listed = { readonly kind: "loading" } | { readonly kind: "listed"; readonly proposals: readonly TeamProposal[] } | { readonly kind: "failed" };
 
 export function StageTab({
@@ -95,9 +89,9 @@ export function StageTab({
     };
   }, [program, opportunity.id, opportunity.status, reached]);
 
-  const words = <Text elementType="p">{stageTabWords(tab, opportunity.status)}</Text>;
+  const words = <p className="op-text">{stageTabWords(tab, opportunity.status)}</p>;
   if (!reached) return words;
-  if (listed.kind === "loading") return <Loading label="Loading proponents…" />;
+  if (listed.kind === "loading") return <Waiting label="Loading proponents" />;
   if (listed.kind === "failed") {
     return (
       <TitledAlert variant="danger" role="alert" title="The proponents could not be loaded">
@@ -111,46 +105,29 @@ export function StageTab({
     <>
       {words}
       {shown.length === 0 ? (
-        <Text elementType="p">{`No proponent was carried into the ${stage.name}.`}</Text>
+        <p className="op-text">{`No proponent was carried into the ${stage.name}.`}</p>
       ) : (
-        <div role="region" aria-labelledby="stage-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-          <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="opportunity-stage-table">
-            <caption id="stage-caption" style={{ textAlign: "start" }}>
-              <Text size="small" color="secondary">
-                {`Proponents in the ${stage.name}, with their scores`}
-              </Text>
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" style={cell}>
-                  Proponent
-                </th>
-                <th scope="col" style={cell}>
-                  Status
-                </th>
-                <th scope="col" style={cell}>
-                  Score
-                </th>
+        <DataTable
+          captionId="stage-caption"
+          caption={`Proponents in the ${stage.name}, with their scores`}
+          columns={["Proponent", "Status", "Score"]}
+          testId="opportunity-stage-table"
+        >
+          {shown.map((proposal) => {
+            const score = stage.score(proposal);
+            return (
+              <tr key={proposal.id} data-testid="opportunity-stage-row">
+                <td>
+                  <Link href={`/opportunities/${program}/${opportunity.id}/proposals/${proposal.id}?tab=${tab}`}>{teamProponentName(proposal)}</Link>
+                </td>
+                <td>
+                  <ProposalStatus bare>{proposalStatusLabel(proposal.status)}</ProposalStatus>
+                </td>
+                <td>{score === null ? "Not yet scored" : `${score}%`}</td>
               </tr>
-            </thead>
-            <tbody>
-              {shown.map((proposal) => {
-                const score = stage.score(proposal);
-                return (
-                  <tr key={proposal.id} data-testid="opportunity-stage-row">
-                    <td style={cell}>
-                      <Link href={`/opportunities/${program}/${opportunity.id}/proposals/${proposal.id}?tab=${tab}`}>{teamProponentName(proposal)}</Link>
-                    </td>
-                    <td style={cell}>
-                      <ProposalStatusBadge status={proposal.status} />
-                    </td>
-                    <td style={cell}>{score === null ? "Not yet scored" : `${score}%`}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+            );
+          })}
+        </DataTable>
       )}
     </>
   );
