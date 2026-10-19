@@ -10,8 +10,8 @@ import { AlertTitle } from "./proposal-kit";
  * direction"): the page frame, the two account choices, a labelled group, the field grid, the
  * error summary, and the profile's own pieces — its section links, the account's facts and status
  * label, the read-only details, the capability rows and the status an immediate save reports into
- * (decision records 0074 and 0077). The user list's phone cards and the export dialog's body are
- * added when that screen is restyled.
+ * (decision records 0074 and 0077) — and the user list's toolbar, phone cards and export dialog
+ * body (decision record 0086).
  */
 
 const css = `
@@ -29,12 +29,21 @@ const css = `
   align-items: start;
 }
 .us-fields > * { margin: var(--layout-margin-none); }
-.us-group, .us-form, .us-row { display: flex; flex-direction: column; }
-.us-group > *, .us-form > *, .us-row > * { margin: var(--layout-margin-none); }
+.us-group, .us-form, .us-dialog, .us-row, .us-card { display: flex; flex-direction: column; }
+.us-group > *, .us-form > *, .us-dialog > *, .us-row > *, .us-card > * { margin: var(--layout-margin-none); }
 .us-group { gap: var(--layout-margin-small); align-items: flex-start; }
 .us-form { gap: var(--layout-margin-medium); }
 .us-group-label { font: var(--typography-regular-label); color: var(--typography-color-primary); }
-.us-rows {
+.us-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--layout-margin-medium);
+}
+.us-toolbar > * { margin: var(--layout-margin-none); }
+.op-regions .us-toolbar > .bcds-react-aria-TextField { flex: 0 1 320px; }
+.us-rows, .us-cards {
   list-style: none;
   margin: var(--layout-margin-none);
   padding: var(--layout-padding-none);
@@ -42,20 +51,22 @@ const css = `
   flex-direction: column;
   gap: var(--layout-margin-small);
 }
-.us-row {
+.us-row, .us-card {
   gap: var(--layout-margin-small);
   padding: var(--layout-padding-small) var(--layout-padding-medium);
   border: var(--layout-border-width-small) solid var(--surface-color-border-default);
   border-radius: var(--layout-border-radius-medium);
 }
-.us-row-line {
+.us-row-line, .us-card-facts {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--layout-margin-small);
 }
-.us-row-line > * { margin: var(--layout-margin-none); }
+.us-row-line { justify-content: space-between; }
+.us-row-line > *, .us-card-facts > * { margin: var(--layout-margin-none); }
+.us-card-facts { font: var(--typography-regular-small-body); color: var(--typography-color-secondary); }
+.us-dialog { gap: var(--layout-margin-medium); padding: var(--layout-padding-large); }
 .us-description { font: var(--typography-regular-small-body); color: var(--typography-color-secondary); margin: var(--layout-margin-none); }
 .us-errors { margin: var(--layout-margin-none); padding-inline-start: var(--layout-padding-large); }
 .us-saved { margin: var(--layout-margin-none); font: var(--typography-regular-small-body); color: var(--typography-color-secondary); }
@@ -63,6 +74,9 @@ const css = `
 .us-focus:focus {
   outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
   outline-offset: var(--layout-margin-hair);
+}
+@media (max-width: 767.98px) {
+  .us-dialog { padding: var(--layout-padding-medium); }
 }
 `;
 
@@ -178,6 +192,16 @@ export function DetailsRegion({ picture, fields, children }: { picture: ReactNod
       {children}
     </Region>
   );
+}
+
+/** The user list's search field and its export button on one line, the button at the far end. */
+export function Toolbar({ children }: { children: ReactNode }) {
+  return <div className="us-toolbar">{children}</div>;
+}
+
+/** A dialog's content, `medium` apart inside the dialog's own padding (`medium` on a phone). */
+export function DialogBody({ children }: { children: ReactNode }) {
+  return <div className="us-dialog">{children}</div>;
 }
 
 /**

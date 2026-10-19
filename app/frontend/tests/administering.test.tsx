@@ -305,3 +305,64 @@ describe("an administrator's powers on somebody else's profile (R-4.12, R-4.19, 
     expect(screen.queryByTestId("profile-admin-checkbox")).toBeNull();
   });
 });
+
+describe("the list of users follows the chosen direction (decision record 0086)", () => {
+  /** Makes the window read as a phone's, below the header's switch point. */
+  function asPhone() {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+  }
+
+  it("waits under its heading with the kit's waiting row", async () => {
+    serve(() => new Promise<Response>(() => {}));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/users");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Digital Marketplace Users" })).toBeTruthy();
+    expect(screen.getByText("Loading users…")).toBeTruthy();
+    expect(screen.queryByTestId("user-list-search")).toBeNull();
+  });
+
+  it("is a table on a wide screen, each status a coloured label in words", async () => {
+    serve(() => json(200, [deactivatedVendor, administrator]));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/users");
+
+    await screen.findAllByTestId("user-list-row");
+    const table = screen.getByRole("table");
+    expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
+      "Status",
+      "Account type",
+      "Name",
+      "Administrator",
+    ]);
+    expect(screen.getByRole("region", { name: /active accounts first/ })).toBeTruthy();
+    const [active, inactive] = screen.getAllByTestId("user-list-status-badge");
+    expect(active?.textContent).toBe("Active");
+    expect(inactive?.textContent).toBe("Inactive");
+    expect(active?.classList.contains("dm-label-green")).toBe(true);
+    expect(inactive?.classList.contains("dm-label-grey")).toBe(true);
+  });
+
+  it("is a card per account on a phone, the name first and each test ID once per account", async () => {
+    asPhone();
+    serve(() => json(200, [deactivatedVendor, vendor, staff, administrator]));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/users");
+
+    const rows = await screen.findAllByTestId("user-list-row");
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(rows).toHaveLength(4);
+    for (const testId of ["user-list-profile-link", "user-list-status-badge", "user-list-account-type", "user-list-admin-check"]) {
+      expect(screen.getAllByTestId(testId)).toHaveLength(4);
+    }
+    const list = screen.getByRole("list", { name: /active accounts first/ });
+    const first = within(list).getAllByRole("article")[0] as HTMLElement;
+    expect(within(first).getByRole("heading", { level: 2, name: "Casey Placeholder" })).toBeTruthy();
+    expect(first.textContent).toContain("Administrator: No");
+  });
+});

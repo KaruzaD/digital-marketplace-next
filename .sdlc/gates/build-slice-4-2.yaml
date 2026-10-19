@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Does slice 4 (an administrator can manage people's accounts) do what its criteria say? Approve. The verify result is current for this proposal: it was recorded against application tree cb90c9d, which matches app/ on the branch. 9 of the 10 criteria the slice claims passed and none failed. The one unasserted criterion, R-4.13 (no way to create the first administrator through the service), is recorded as not-testable for a real reason: it claims the absence of any route anywhere in the service, which no observation can establish. It is also a seed and data-level property this restyle does not touch, so I accept the slice on the strength of what was asserted. The diff changes presentation only: user-list.tsx moves to the shared DataTable on wide screens and to stacked cards below the header's switch point (each row test ID once per account); user-kit.tsx gains the Toolbar and DialogBody components and their styles; the export dialog is wrapped in DialogBody with its behaviour unchanged. The retained 'N of M people shown' status line and the export failure alert are justified in decision 0086 on accessibility grounds and go beyond no criterion. Nothing touches another slice or a protected path, no secret or personal data appears, and the new waiting, wide-table and phone-card paths each have unit tests in administering.test.tsx. The ruling would change if the verify result were stale against the tree, if any claimed criterion failed, or if evidence showed the service does offer a route to create an administrator.
+conditions: []
+cost: 0.3986006
+turns: 4
+session: "e683b204-b96b-477f-94b2-32cdc16aa672"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.302 (Claude Code)"
+isolation: "none"
+at: 2026-10-19T02:08:57.047Z
