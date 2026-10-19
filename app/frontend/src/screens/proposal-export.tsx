@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react";
-import { Button, Checkbox, Heading, Link, Text } from "@bcgov/design-system-react-components";
+import { Button, Checkbox, Link } from "@bcgov/design-system-react-components";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { anonymousNameAt, asksForAnonymous, copyIsAnonymous, exportedInOrder, mayExportAllProposals, type ExportProgram } from "@rules/exports";
 import { SERVICE_AREAS, SWU_PHASES, SWU_PHASE_NAMES } from "@rules/other-program-drafts";
@@ -9,25 +9,27 @@ import { fetchCwuOpportunity } from "../api/opportunities";
 import { OtherProgramOpportunity, StoredQuestion, fetchOtherProgramOpportunity } from "../api/other-programs";
 import { CwuProposal, fetchCwuProposal, listCwuProposals } from "../api/proposals";
 import { TeamProposal, fetchTeamProposal, listTeamProposals } from "../api/team-proposals";
-import { card } from "../app/layout";
-import { Loading, useLoadingShown } from "../app/loading";
+import { useLoadingShown } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Actions, Details, PageTitle, Panel, Region, Waiting, type Detail } from "../app/opportunity-kit";
+import { ProposalHead, ProposalPage } from "../app/proposal-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { useSession } from "../auth/session";
-import { Fact, momentLabel } from "./opportunity-parts";
+import { momentLabel } from "./opportunity-parts";
 import { proponentName } from "./proposal-cwu-view";
+import { hourlyBid } from "./proposal-team-edit";
 import { teamProponentName } from "./proposal-team-view";
 import { proposalStatusLabel } from "@rules/proposals";
 import { readDate } from "../lib/dates";
 
 /**
- * Taking proposals away (decision record 0066): the printable copy of one proposal at
+ * Taking proposals away (decision records 0066 and 0089): the printable copy of one proposal at
  * `/opportunities/<program>/:opportunityId/proposals/:proposalId/export`, for anyone the service
  * lets read it (R-2.37), and every proposal of an opportunity in one document at
  * `/opportunities/<program>/:opportunityId/proposals/export`, for public sector staff and
  * administrators, who choose whether it names the proponents (R-2.38). Each is one continuous
- * document with nothing to expand, so it reads and prints whole.
+ * document with nothing to expand, so it reads and prints whole. Both are drawn as the catalogue's
+ * proposal-*-export-one and proposal-*-export-all stories draw them.
  *
  * Neither asks anything new of the service: the copy is the proposal the service already gives its
  * reader, and the document is the list it gives the opportunity's author and administrators once
@@ -46,10 +48,12 @@ const CHALLENGE_NAMES: Readonly<Record<TeamProgram, string>> = {
   "team-with-us": "challenge",
 };
 
-type Level = 2 | 3 | 4;
+/** The level of a region's heading: 2 in a copy, 3 in a proposal of the document, 4 in the report. */
+export type Level = 2 | 3 | 4;
 const below = (level: Level) => (level + 1) as 3 | 4 | 5;
 
 const dollars = (amount: number) => `$${Math.round(amount).toLocaleString("en-CA")}`;
+const rate = (amount: number) => `$${amount.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const notEntered = (value: string) => (value.trim() === "" ? "Not entered" : value);
 const areaName = (key: string | null) => {
   const name = SERVICE_AREAS.find((area) => area.key === key)?.name ?? key ?? "Unknown service area";
@@ -61,84 +65,108 @@ function submittedDay(iso: string | null): string {
   return (iso && readDate(iso)?.label) || "Not submitted";
 }
 
-// ------------------------------------------------------------------------ the proposal's content
-
-function Section({ id, title, level, children }: { id: string; title: string; level: Level; children: ReactNode }) {
-  return (
-    <Stack as="section" gap="medium" aria-labelledby={id}>
-      <Heading level={level} id={id}>
-        {title}
-      </Heading>
-      {children}
-    </Stack>
-  );
+/** "Bid: $220.00 an hour, …": a Team With Us team's hourly bid, as its own manage page says it. */
+export function teamBid(proposal: TeamProposal): string {
+  return `${rate(hourlyBid(proposal.team))} an hour`;
 }
+
+// ------------------------------------------------------------------------ the proposal's content
 
 function Attachments({ id, level, attachments }: { id: string; level: Level; attachments: readonly { readonly id: string; readonly name: string }[] }) {
   return (
-    <Section id={id} title="Attachments" level={level}>
+    <Region id={id} title="Attachments" level={level}>
       {attachments.length === 0 ? (
-        <Text elementType="p">No attachments were added.</Text>
+        <p className="op-text">No attachments were added.</p>
       ) : (
-        <ul>
+        <ul className="op-list">
           {attachments.map((attachment) => (
             <li key={attachment.id}>{attachment.name}</li>
           ))}
         </ul>
       )}
-    </Section>
+    </Region>
   );
 }
 
 /**
- * A Code With Us proposal's content, under headings at `level`: who proposed, unless the document
- * withholds them, the proposal text, the comments and the attachments' names.
+ * A Code With Us proposal's content, as regions at `level`: who proposed, unless the document
+ * withholds them, the proposal text, the comments and the attachments' names. In a copy of the one
+ * proposal the proponent comes first; where the proposal is one of several (`listed`), its heading
+ * already names the proponent, so the proposal itself comes first, as "Proposal".
  */
-export function CwuExportContent({ proposal, level, anonymous, idPrefix }: { proposal: CwuProposal; level: Level; anonymous: boolean; idPrefix: string }) {
+export function CwuExportContent({
+  proposal,
+  level,
+  anonymous,
+  idPrefix,
+  listed = false,
+}: {
+  proposal: CwuProposal;
+  level: Level;
+  anonymous: boolean;
+  idPrefix: string;
+  listed?: boolean;
+}) {
   const { proponent } = proposal;
+  const details: Detail[] =
+    proponent.tag === "organization"
+      ? [
+          { term: "Proponent type", value: "Organization" },
+          { term: "Organization", value: notEntered(proponent.value.legalName) },
+          ...(proponent.value.contact
+            ? [{ term: "Contact", value: [proponent.value.contact.name, proponent.value.contact.email, proponent.value.contact.phone].filter(Boolean).join(", ") }]
+            : []),
+        ]
+      : [
+          { term: "Proponent type", value: "Individual" },
+          { term: "Email address", value: notEntered(proponent.value.email) },
+          ...(proponent.value.phone ? [{ term: "Phone number", value: proponent.value.phone }] : []),
+          {
+            term: "Address",
+            value: notEntered(
+              [proponent.value.street1, proponent.value.street2, proponent.value.city, `${proponent.value.region} ${proponent.value.mailCode}`.trim(), proponent.value.country]
+                .map((line) => line.trim())
+                .filter((line) => line !== "")
+                .join(", "),
+            ),
+          },
+        ];
+  const who = anonymous ? (
+    <p className="op-text">The proponent's name and contact details are withheld in this document.</p>
+  ) : (
+    <Region id={`${idPrefix}-proponent`} title="Proponent" level={level}>
+      <Details items={details} />
+    </Region>
+  );
+  const text = (
+    <Region id={`${idPrefix}-${listed ? "proposal" : "text"}`} title={listed ? "Proposal" : "Proposal text"} level={level}>
+      <p className="op-text">{notEntered(proposal.proposalText)}</p>
+    </Region>
+  );
   return (
     <>
-      {anonymous ? (
-        <Text elementType="p">The proponent's name and contact details are withheld in this document.</Text>
+      {listed && !anonymous ? (
+        <>
+          {text}
+          {who}
+        </>
       ) : (
-        <Section id={`${idPrefix}-proponent`} title="Proponent" level={level}>
-          {proponent.tag === "organization" ? (
-            <Stack as="dl" direction="row" gap="medium">
-              <Fact label="Proponent type">Organization</Fact>
-              <Fact label="Organization">{notEntered(proponent.value.legalName)}</Fact>
-              {proponent.value.contact ? <Fact label="Contact">{[proponent.value.contact.name, proponent.value.contact.email, proponent.value.contact.phone].filter(Boolean).join(", ")}</Fact> : null}
-            </Stack>
-          ) : (
-            <Stack as="dl" direction="row" gap="medium">
-              <Fact label="Proponent type">Individual</Fact>
-              <Fact label="Email address">{notEntered(proponent.value.email)}</Fact>
-              {proponent.value.phone ? <Fact label="Phone number">{proponent.value.phone}</Fact> : null}
-              <Fact label="Address">
-                {notEntered(
-                  [proponent.value.street1, proponent.value.street2, proponent.value.city, `${proponent.value.region} ${proponent.value.mailCode}`.trim(), proponent.value.country]
-                    .map((line) => line.trim())
-                    .filter((line) => line !== "")
-                    .join(", "),
-                )}
-              </Fact>
-            </Stack>
-          )}
-        </Section>
+        <>
+          {who}
+          {text}
+        </>
       )}
-      <Section id={`${idPrefix}-text`} title="Proposal text" level={level}>
-        <Text elementType="p">{notEntered(proposal.proposalText)}</Text>
-      </Section>
-      <Section id={`${idPrefix}-comments`} title="Additional comments" level={level}>
-        <Text elementType="p">{notEntered(proposal.additionalComments)}</Text>
-      </Section>
+      <Region id={`${idPrefix}-comments`} title="Additional comments" level={level}>
+        <p className="op-text">{notEntered(proposal.additionalComments)}</p>
+      </Region>
       <Attachments id={`${idPrefix}-attachments`} level={level} attachments={proposal.attachments} />
     </>
   );
 }
 
 /**
- * A Sprint With Us or Team With Us proposal's content, under headings at `level`: its team and
- * costs, its answers beside the opportunity's questions, its references and its attachments' names.
+ * A Sprint With Us or Team With Us proposal's content, as regions at `level`: its team and costs,
+ * its answers beside the opportunity's questions, its references and its attachments' names.
  * Nothing here names the organization, so the same content serves an anonymous document.
  */
 export function TeamExportContent({
@@ -156,76 +184,72 @@ export function TeamExportContent({
   const sub = below(level);
   return (
     <>
-      <Section id={`${idPrefix}-team`} title="Team" level={level}>
+      <Region id={`${idPrefix}-team`} title="Team" level={level}>
         {sprint ? (
           <>
             {SWU_PHASES.filter((phase) => proposal.phases[phase]).map((phase) => {
               const team = proposal.phases[phase]!;
               return (
-                <Stack gap="small" key={phase}>
-                  <Heading level={sub}>{`${SWU_PHASE_NAMES[phase]} phase`}</Heading>
+                <Region key={phase} id={`${idPrefix}-team-${phase.toLowerCase()}`} title={`${SWU_PHASE_NAMES[phase]} phase`} level={sub}>
                   {team.members.length === 0 ? (
-                    <Text elementType="p">Nobody was named.</Text>
+                    <p className="op-text">Nobody was named.</p>
                   ) : (
-                    <ul>
+                    <ul className="op-list">
                       {team.members.map((member) => (
                         <li key={member.member.id}>{`${member.member.name}${member.scrumMaster ? ", scrum master" : ""}`}</li>
                       ))}
                     </ul>
                   )}
-                  <Text elementType="p">{`Proposed cost: ${dollars(team.proposedCost)}`}</Text>
-                </Stack>
+                  <p className="op-text">{`Proposed cost: ${dollars(team.proposedCost)}`}</p>
+                </Region>
               );
             })}
-            <Text elementType="p">{`Total proposed cost: ${dollars(proposal.totalProposedCost ?? 0)} of the ${dollars(proposal.opportunity.budget)} maximum budget.`}</Text>
+            <p className="op-text">{`Total proposed cost: ${dollars(proposal.totalProposedCost ?? 0)} of the ${dollars(proposal.opportunity.budget)} maximum budget.`}</p>
           </>
         ) : (
           <>
             {proposal.team.length === 0 ? (
-              <Text elementType="p">Nobody was named.</Text>
+              <p className="op-text">Nobody was named.</p>
             ) : (
-              <ul>
+              <ul className="op-list">
                 {proposal.team.map((member) => (
                   <li key={`${member.resource.id}-${member.member.id}`}>
-                    {`${areaName(member.resource.serviceArea)}${member.resource.targetAllocation !== null ? `, ${member.resource.targetAllocation}% of full time` : ""}: ${member.member.name}, $${member.hourlyRate.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} an hour`}
+                    {`${areaName(member.resource.serviceArea)}${member.resource.targetAllocation !== null ? `, ${member.resource.targetAllocation}% of full time` : ""}: ${member.member.name}, ${rate(member.hourlyRate)} an hour`}
                   </li>
                 ))}
               </ul>
             )}
-            {proposal.totalProposedCost !== null ? (
-              <Text elementType="p">{`Estimated cost over the contract: ${dollars(proposal.totalProposedCost)} of the ${dollars(proposal.opportunity.budget)} maximum budget.`}</Text>
-            ) : null}
+            {proposal.team.length > 0 ? <p className="op-text">{`Bid: ${teamBid(proposal)}, each rate weighted by its resource's target allocation.`}</p> : null}
           </>
         )}
-      </Section>
-      <Section id={`${idPrefix}-questions`} title={sprint ? "Team questions" : "Resource questions"} level={level}>
+      </Region>
+      <Region id={`${idPrefix}-questions`} title={sprint ? "Team questions" : "Resource questions"} level={level}>
         {questions.length === 0 ? (
-          <Text elementType="p">This opportunity asks no questions.</Text>
+          <p className="op-text">This opportunity asks no questions.</p>
         ) : (
           questions.map((question, order) => {
             const response = proposal.responses.find((entry) => entry.order === order)?.response ?? "";
             return (
-              <Stack gap="small" key={order}>
-                <Heading level={sub}>{`Question ${order + 1}`}</Heading>
-                <Text elementType="p">{question.question}</Text>
-                <Text elementType="p">{response.trim() === "" ? "Not answered." : response}</Text>
-              </Stack>
+              <Region key={order} id={`${idPrefix}-question-${order + 1}`} title={`Question ${order + 1}`} level={sub}>
+                <p className="op-text">{question.question}</p>
+                <p className="op-text">{response.trim() === "" ? "Not answered." : response}</p>
+              </Region>
             );
           })
         )}
-      </Section>
+      </Region>
       {sprint ? (
-        <Section id={`${idPrefix}-references`} title="References" level={level}>
+        <Region id={`${idPrefix}-references`} title="References" level={level}>
           {proposal.references.length === 0 ? (
-            <Text elementType="p">No references were added.</Text>
+            <p className="op-text">No references were added.</p>
           ) : (
             proposal.references.map((reference, index) => (
-              <Text elementType="p" key={index}>
+              <p className="op-text" key={index}>
                 {[reference.name, reference.company, reference.email, reference.phone].filter((part) => part.trim() !== "").join(", ")}
-              </Text>
+              </p>
             ))
           )}
-        </Section>
+        </Region>
       ) : null}
       <Attachments id={`${idPrefix}-attachments`} level={level} attachments={proposal.attachments} />
     </>
@@ -249,10 +273,10 @@ function SignedIn({ title, loadingLabel, children }: { title: string; loadingLab
 
 function LoadingScreen({ title, label }: { title: string; label: string }) {
   return (
-    <Stack gap="large">
-      <Heading level={1}>{title}</Heading>
-      <Loading label={label} />
-    </Stack>
+    <ProposalPage>
+      <PageTitle>{title}</PageTitle>
+      <Waiting label={label} />
+    </ProposalPage>
   );
 }
 
@@ -276,7 +300,7 @@ export function ProposalExportOneScreen({ program, opportunityId, proposalId }: 
   const title = `Export a ${PROGRAM_NAMES[program]} proposal`;
   useScreenTitle(title);
   return (
-    <SignedIn title={title} loadingLabel="Loading proposal…">
+    <SignedIn title={title} loadingLabel="Loading proposal">
       {(account) => <OneLoader program={program} account={account} opportunityId={opportunityId} proposalId={proposalId} title={title} />}
     </SignedIn>
   );
@@ -302,7 +326,7 @@ function OneLoader({ program, account, opportunityId, proposalId, title }: { pro
   }, [program, proposalId, opportunityId]);
 
   const loadingShown = useLoadingShown(loaded.kind === "loading");
-  if (loaded.kind === "loading") return loadingShown ? <LoadingScreen title={title} label="Loading proposal…" /> : null;
+  if (loaded.kind === "loading") return loadingShown ? <LoadingScreen title={title} label="Loading proposal" /> : null;
   if (loaded.kind === "missing") return <NotFound />;
   // A proposal reached through another opportunity's address, and a draft to staff, are not there (R-2.25).
   if (loaded.proposal.opportunity.id !== opportunityId.toLowerCase()) return <NotFound />;
@@ -331,39 +355,37 @@ function ExportedOne({
   const anonymous = copyIsAnonymous(account, program, proposal.status);
   const name = team ? (anonymous ? anonymousNameAt(team.anonymousProponentName, 0) : teamProponentName(team)) : proponentName(proposal as CwuProposal);
   return (
-    <Stack gap="large">
-      <Stack direction="row" align="center" gap="medium">
+    <ProposalPage>
+      <Actions>
         {/* The vendor manages their proposal on its own page; staff read it on the proposal's page. */}
         <Link href={vendor ? `${base}/edit` : base}>Back to the proposal</Link>
         <PrintButton />
-      </Stack>
-      <Stack as="article" gap="medium" aria-labelledby="export-title" data-testid="proposal-export-document">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">
-            {`${PROGRAM_NAMES[program]} proposal`}
-          </Text>
-          <Heading level={1} id="export-title">
-            {proposal.opportunity.title || "Untitled opportunity"}
-          </Heading>
-        </Stack>
-        <Stack as="dl" direction="row" gap="medium">
-          <Fact label="Proponent" testId="proposal-proponent-name">
-            {name}
-          </Fact>
-          <Fact label="Status">{proposalStatusLabel(proposal.status)}</Fact>
-          {proposal.submittedAt && proposal.status !== "DRAFT" ? <Fact label="Submitted">{momentLabel(proposal.submittedAt)}</Fact> : null}
-          <Fact label="Proposal ID">{proposal.id}</Fact>
-        </Stack>
+      </Actions>
+      <article className="op-regions" aria-labelledby="export-title" data-testid="proposal-export-document">
+        <ProposalHead
+          eyebrow={`${PROGRAM_NAMES[program]} proposal`}
+          program={program}
+          status={proposalStatusLabel(proposal.status)}
+          statusTestId={null}
+          title={<span id="export-title">{proposal.opportunity.title || "Untitled opportunity"}</span>}
+        />
+        <Details
+          items={[
+            { term: "Proponent", value: name, testId: "proposal-proponent-name" },
+            ...(proposal.submittedAt && proposal.status !== "DRAFT" ? [{ term: "Submitted", value: momentLabel(proposal.submittedAt) }] : []),
+            { term: "Proposal ID", value: proposal.id },
+          ]}
+        />
         {team && anonymous ? (
-          <Text elementType="p">{`The proponent's name is withheld from evaluators until the proposal reaches the ${CHALLENGE_NAMES[team.program]}.`}</Text>
+          <p className="op-text">{`The proponent's name is withheld from evaluators until the proposal reaches the ${CHALLENGE_NAMES[team.program]}.`}</p>
         ) : null}
         {team ? (
           <TeamExportContent proposal={team} questions={opportunity?.questions ?? []} level={2} idPrefix="export" />
         ) : (
           <CwuExportContent proposal={proposal as CwuProposal} level={2} anonymous={false} idPrefix="export" />
         )}
-      </Stack>
-    </Stack>
+      </article>
+    </ProposalPage>
   );
 }
 
@@ -379,7 +401,7 @@ export function ProposalExportAllScreen({ program, opportunityId }: { program: E
   const title = `Export all ${PROGRAM_NAMES[program]} proposals`;
   useScreenTitle(title);
   return (
-    <SignedIn title={title} loadingLabel="Loading proposals…">
+    <SignedIn title={title} loadingLabel="Loading proposals">
       {(account) =>
         // A vendor is refused without anything being asked of the service (R-2.38).
         mayExportAllProposals(account) ? <AllLoader program={program} opportunityId={opportunityId} title={title} /> : <NotFound />
@@ -410,7 +432,7 @@ function AllLoader({ program, opportunityId, title }: { program: ExportProgram; 
   }, [program, opportunityId]);
 
   const loadingShown = useLoadingShown(loaded.kind === "loading");
-  if (loaded.kind === "loading") return loadingShown ? <LoadingScreen title={title} label="Loading proposals…" /> : null;
+  if (loaded.kind === "loading") return loadingShown ? <LoadingScreen title={title} label="Loading proposals" /> : null;
   // Staff the service does not answer — not the opportunity's author, or before it has closed — are shown the missing page.
   if (loaded.kind === "missing") return <NotFound />;
   return <ExportedAll program={program} loaded={loaded} title={title} />;
@@ -431,50 +453,51 @@ function ExportedAll({ program, loaded, title }: { program: ExportProgram; loade
   }
 
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          {title}
-        </Text>
-        <Heading level={1}>{opportunityTitle || "Untitled opportunity"}</Heading>
-      </Stack>
-      <Text elementType="p">Every submitted proposal you are entitled to see, in one document. Drafts are never included.</Text>
-      <Stack direction="row" align="center" gap="medium">
+    <ProposalPage>
+      <ProposalHead eyebrow={title} program={program} title={opportunityTitle || "Untitled opportunity"} />
+      <p className="op-text">Every submitted proposal you are entitled to see, in one document. Drafts are never included.</p>
+      <Actions>
         <Checkbox isSelected={anonymous} onChange={choose} data-testid="proposal-export-anonymous-toggle">
           Name proponents anonymously
         </Checkbox>
         <PrintButton />
-      </Stack>
-      <Stack gap="medium" data-testid="proposal-export-document">
-        {proposals.length === 0 ? <Text elementType="p">No proposals have been submitted to this opportunity.</Text> : null}
+      </Actions>
+      <div className="op-regions" data-testid="proposal-export-document">
+        {proposals.length === 0 ? <p className="op-text">No proposals have been submitted to this opportunity.</p> : null}
         {proposals.map((proposal, index) => {
           const id = `export-item-${index + 1}`;
           const team = "program" in proposal ? proposal : null;
           const name = anonymous ? anonymousNameAt(team?.anonymousProponentName ?? "", index) : team ? teamProponentName(team) : proponentName(proposal as CwuProposal);
+          const cost: Detail[] = !team
+            ? []
+            : team.program === "team-with-us"
+              ? team.team.length > 0
+                ? [{ term: "Bid", value: teamBid(team) }]
+                : []
+              : team.totalProposedCost !== null
+                ? [{ term: "Total proposed cost", value: dollars(team.totalProposedCost) }]
+                : [];
           return (
-            <article key={proposal.id} aria-labelledby={id} style={card} data-testid="proposal-export-item">
-              <Stack gap="medium">
-                <Heading level={2} id={id}>
-                  <span data-testid="proposal-proponent-name">{name}</span>
-                </Heading>
-                <Stack as="dl" direction="row" gap="medium">
-                  <Fact label="Status">{proposalStatusLabel(proposal.status)}</Fact>
-                  <Fact label="Submitted">{submittedDay(proposal.submittedAt)}</Fact>
-                  {team && team.totalProposedCost !== null ? <Fact label="Total proposed cost">{dollars(team.totalProposedCost)}</Fact> : null}
-                </Stack>
-                {team ? (
-                  <>
-                    {anonymous ? <Text elementType="p">The organization is withheld in this document.</Text> : null}
-                    <TeamExportContent proposal={team} questions={loaded.kind === "team" ? loaded.opportunity.questions : []} level={3} idPrefix={id} />
-                  </>
-                ) : (
-                  <CwuExportContent proposal={proposal as CwuProposal} level={3} anonymous={anonymous} idPrefix={id} />
-                )}
-              </Stack>
-            </article>
+            <Panel key={proposal.id} as="article" id={id} testId="proposal-export-item" title={<span data-testid="proposal-proponent-name">{name}</span>}>
+              <Details
+                items={[
+                  { term: "Status", value: proposalStatusLabel(proposal.status) },
+                  { term: "Submitted", value: submittedDay(proposal.submittedAt) },
+                  ...cost,
+                ]}
+              />
+              {team ? (
+                <>
+                  {anonymous ? <p className="op-text">The organization is withheld in this document.</p> : null}
+                  <TeamExportContent proposal={team} questions={loaded.kind === "team" ? loaded.opportunity.questions : []} level={3} idPrefix={id} />
+                </>
+              ) : (
+                <CwuExportContent proposal={proposal as CwuProposal} level={3} anonymous={anonymous} idPrefix={id} listed />
+              )}
+            </Panel>
           );
         })}
-      </Stack>
-    </Stack>
+      </div>
+    </ProposalPage>
   );
 }

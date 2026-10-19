@@ -163,13 +163,26 @@ export function ProposalPage({ testId, children }: { testId?: string; children: 
  * A proposal's head: the small line saying what the page is, the program as a grey label and the
  * proposal's status as a coloured one, then the H1 in the design system's H3 size.
  */
-export function ProposalHead({ eyebrow, program, status, title }: { eyebrow?: string; program: Program; status?: string; title: ReactNode }) {
+export function ProposalHead({
+  eyebrow,
+  program,
+  status,
+  statusTestId,
+  title,
+}: {
+  eyebrow?: string;
+  program: Program;
+  status?: string;
+  /** Left out to keep `proposal-status`; `null` for a status the stories draw without a test ID (a printable copy). */
+  statusTestId?: string | null;
+  title: ReactNode;
+}) {
   return (
     <div className="op-head">
       {eyebrow ? <p className="op-eyebrow">{eyebrow}</p> : null}
       <div className="op-labels">
         <Label>{PROGRAM_NAMES[program]}</Label>
-        {status ? <ProposalStatus>{status}</ProposalStatus> : null}
+        {status ? statusTestId === null ? <ProposalStatus bare>{status}</ProposalStatus> : <ProposalStatus testId={statusTestId}>{status}</ProposalStatus> : null}
       </div>
       <PageTitle>{title}</PageTitle>
     </div>

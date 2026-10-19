@@ -180,8 +180,8 @@ export function PageTitle({ id, children }: { id?: string; children: ReactNode }
   );
 }
 
-/** A section's heading: an H2 in the design system's H4 size, an H3 in bold body text. */
-export function SectionTitle({ level = 2, id, children }: { level?: 2 | 3; id?: string; children: ReactNode }) {
+/** A section's heading: an H2 in the design system's H4 size, an H3 or deeper in bold body text. */
+export function SectionTitle({ level = 2, id, children }: { level?: 2 | 3 | 4 | 5; id?: string; children: ReactNode }) {
   return (
     <Heading level={level} id={id} style={level === 2 ? look.section : look.title}>
       {children}
@@ -200,7 +200,8 @@ export function Region({
 }: {
   id: string;
   title: ReactNode;
-  level?: 2 | 3;
+  /** Deeper than 3 only inside a document that nests regions, such as the full report. */
+  level?: 2 | 3 | 4 | 5;
   testId?: string;
   /** The section's own `id`, where a link on the page leads to it. */
   anchor?: string;
