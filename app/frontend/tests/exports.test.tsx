@@ -221,6 +221,18 @@ describe("the printable copy of one Sprint With Us proposal (R-2.37)", () => {
     expect(document.textContent).toContain("Delivery approach.pdf");
   });
 
+  it("draws the copy as the catalogue does: its status a label without a test ID, its parts named regions", async () => {
+    aProposal({});
+    signedIn(vendor);
+    renderAt(COPY);
+    const document = await screen.findByTestId("proposal-export-document");
+    expect(within(document).getByText("Under review: questions")).toBeTruthy();
+    expect(within(document).queryByTestId("proposal-status")).toBeNull();
+    for (const name of ["Team", "Team questions", "References", "Attachments", "Prototype phase", "Question 1"]) {
+      expect(within(document).getByRole("region", { name })).toBeTruthy();
+    }
+  });
+
   it("names the organization to the vendor who wrote it, and sends them back to manage it", async () => {
     aProposal({});
     signedIn(vendor);
@@ -354,6 +366,34 @@ describe("every Code With Us proposal in one document, anonymously (R-2.38)", ()
     expect(document.textContent).not.toContain("alex@example.test");
     expect(document.textContent).not.toContain("Example Digital Co-operative");
     expect(document.textContent).toContain("I will add a status page.");
+    const first = within(document).getAllByTestId("proposal-export-item")[0]!;
+    expect(within(first).getByRole("region", { name: "Proposal" })).toBeTruthy();
+    expect(within(first).queryByRole("region", { name: "Proponent" })).toBeNull();
+  });
+});
+
+describe("every Team With Us proposal in one document (R-2.38)", () => {
+  it("states each team's hourly bid", async () => {
+    const TWU = "00000000-0000-4000-a020-000000000003";
+    const twuProposal = {
+      ...swuProposal({ id: "00000000-0000-4000-a020-000000000301" }),
+      program: "team-with-us",
+      opportunity: { id: TWU, title: "Data platform team", status: "EVAL_QUESTIONS_INDIVIDUAL", proposalDeadline: "2026-09-20", maxBudget: 900_000 },
+      team: [
+        { member: { id: "m-1", name: "Dana Placeholder" }, hourlyRate: 150, resource: { id: "r-1", serviceArea: "FULL_STACK_DEVELOPER", targetAllocation: 100, order: 0 } },
+        { member: { id: "m-2", name: "Jordan Placeholder" }, hourlyRate: 140, resource: { id: "r-2", serviceArea: "DATA_PROFESSIONAL", targetAllocation: 50, order: 1 } },
+      ],
+      resourceQuestionResponses: [],
+    };
+    serve((_method, path) => {
+      if (path === "/api/proposals/team-with-us") return json(200, [twuProposal]);
+      if (path === `/api/opportunities/team-with-us/${TWU}`) return json(200, { ...sprint({ id: TWU, title: "Data platform team" }), program: "team-with-us", resources: [], resourceQuestions: [] });
+      return json(404, {});
+    });
+    signedIn(staff);
+    renderAt(`/opportunities/team-with-us/${TWU}/proposals/export`);
+    const item = await screen.findByTestId("proposal-export-item");
+    expect(item.textContent).toContain("Bid$220.00 an hour");
   });
 });
 
@@ -392,6 +432,9 @@ describe("the full report of an opportunity (R-1.40)", () => {
     ]);
     expect(text).toContain("We would start with the renewal staff.");
     expect(text).toContain("team questions 30%");
+    expect(within(report).getByRole("region", { name: "History" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Modernize the licence renewal service");
+    expect(screen.getByText("Sprint With Us opportunity report")).toBeTruthy();
   });
 
   it("does the same for Code With Us", async () => {
@@ -400,7 +443,7 @@ describe("the full report of an opportunity (R-1.40)", () => {
     const { container } = renderAt(`/opportunities/code-with-us/${CWU}/complete`);
     const report = await screen.findByTestId("opportunity-full-report");
     expect(report.textContent).toContain("Alex Placeholder");
-    expect(report.textContent).toContain("Score: 91.5%");
+    expect(report.textContent).toContain("Score: 91.50%");
     expect(report.textContent).toContain("Reward");
     const results = await axe.run(container, { resultTypes: ["violations"], rules: { "color-contrast": { enabled: false } } });
     expect(results.violations.map((violation) => violation.id)).toEqual([]);
