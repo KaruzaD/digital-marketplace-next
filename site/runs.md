@@ -6,6 +6,11 @@
 - 17:00:51 propose bind-adapter-new-112 at G3
 - 17:01:13 drive: step 1: `sdlc rule bind-adapter-new-112 --by agent:reviewer` — bind-adapter-new-112 is open at G3, held by agent:reviewer
 - 17:01:23 rule bind-adapter-new-112 approve at G3 by runner:checks (agent)
+- 17:01:27 drive: stopped after 1 step — nothing left to run
+- 17:01:29 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 18 --revise`; reason: Takes up the return of build-slice-18-8, whose revision was interrupted before it ran. Its one condition, R-4.14 (slice 4), was the adapter's and not the application's: the adapter read the user list a cell at a time and took longer than the test waits once the list had grown, and the binding approved just before this run reads the list in one call. Nothing the application does needs to change for it: keep the restyle as it is and make no change for R-4.14.
+- 17:05:17 drive: step 1: `sdlc run verify --slice 18` — build-slice-18-9 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 17:40:57 verify slice 18 verified: every claimed criterion passes against the application in build-slice-18-9. Ready for G3.
+- 17:40:59 run verify: regenerated 3 files in .sdlc, site
 
 # Run record 2026-10-18
 
