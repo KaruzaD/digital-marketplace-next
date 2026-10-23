@@ -14,34 +14,42 @@ provider's address, which depends on the environment's domain:
 
 ## Deploying
 
-The workflow [deploy-azure.yml](../../.github/workflows/deploy-azure.yml) runs both passes, builds
-and pushes the four images to GHCR tagged with the commit, smoke-tests the result, and adds
-`rg-dmdev` to the SRE agent's managed resources. Run it manually from the Actions tab. It needs the
-one-time bootstrap below.
+The resource group `rg-dmdev` is created once, by hand, and the Bicep deploys into it at
+resource-group scope, so no subscription-level role is needed.
+
+```bash
+az group create -n rg-dmdev -l canadacentral
+```
+
+The workflow [deploy-azure.yml](../../.github/workflows/deploy-azure.yml) builds and pushes the four
+images to GHCR tagged with the commit, points the existing `dmdev-idp` and `dmdev-frontend` apps at
+them, and smoke-tests the result. Run it manually from the Actions tab. It creates nothing: the
+foundation, the apps and the SRE agent's access are created once by hand (below), and the
+workflow's identity can only update those two apps.
 
 To deploy by hand, set the variables read by [main.bicepparam](main.bicepparam)
 (`POSTGRES_ADMIN_PASSWORD`, `SDLC_SANDBOX_PASSWORD`, and for the second pass `DEPLOY_APPS=true`,
-`IMAGE_REGISTRY`, `IMAGE_TAG`, optionally `AGENT_PRINCIPAL_ID`) and run:
+`IMAGE_REGISTRY`, `IMAGE_TAG`, optionally `AGENT_PRINCIPAL_ID` to grant the SRE agent its read-only
+roles) and run:
 
 ```bash
-az deployment sub create --name dmdev-foundation --location canadacentral --parameters main.bicepparam
+az deployment group create -g rg-dmdev --name dmdev-foundation --parameters main.bicepparam
 ```
 
-## One-time bootstrap
+The images must be built and pushed between the two passes, with `VITE_OIDC_URL` set to
+`https://dmdev-idp.<environment domain>`. Attaching the group to the agent is the `agent` job's
+`az rest` PATCH in the workflow.
+
+## One-time bootstrap (workflow only)
 
 The workflow signs in to Azure through OIDC, with no stored credential. The identity it signs in as
-has to exist first, and creating it needs rights the pipeline does not have, so it is documented
-steps rather than automation. A user-assigned managed identity needs no Entra directory permission,
-unlike an app registration.
-
-Run these as someone who can assign roles at the subscription and on the agent's resource group.
+has to exist first. A user-assigned managed identity needs no Entra directory permission, unlike an
+app registration.
 
 ```bash
 SUB=bcca42e1-a0c9-4a0c-99dc-4c63e5728042
-REPO=bcgov/digital-marketplace-next
+REPO=KaruzaD/digital-marketplace-next
 BOOT_RG=rg-dmdev-bootstrap          # outside rg-dmdev, so tearing the environment down keeps it
-AGENT_RG=csbc-sdpr-document-intelligence
-AGENT=sdpr-di-agent-darian-test
 
 az group create -n "$BOOT_RG" -l canadacentral
 az identity create -g "$BOOT_RG" -n id-dmdev-deploy
@@ -54,31 +62,17 @@ az identity federated-credential create -g "$BOOT_RG" --identity-name id-dmdev-d
 PRINCIPAL=$(az identity show -g "$BOOT_RG" -n id-dmdev-deploy --query principalId -o tsv)
 ```
 
-Roles for the identity:
+The identity gets one role, on the two apps whose images change. It cannot create resources or
+touch the database. Both assignments go away if `rg-dmdev` is deleted, so redo them after a
+teardown, once the apps exist again.
 
 ```bash
-# Creates rg-dmdev and everything in it (the deployment is at subscription scope).
-az role assignment create --assignee-object-id "$PRINCIPAL" --assignee-principal-type ServicePrincipal \
-  --role Contributor --scope "/subscriptions/$SUB"
-
-# Creates the agent's read-only role assignments, and only those three roles.
-R="acdd72a7-3385-48ef-bd42-f606fba81ae7, 43d0d8ad-25c7-4714-9337-8ba259a9fe05, 73c42c96-874c-492b-b04d-ab87d138a893"
-az role assignment create --assignee-object-id "$PRINCIPAL" --assignee-principal-type ServicePrincipal \
-  --role "User Access Administrator" --scope "/subscriptions/$SUB" --condition-version 2.0 \
-  --condition "((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$R})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$R}))"
-
-# Reads the agent and its identity, and updates the agent's managed resources.
-az role assignment create --assignee-object-id "$PRINCIPAL" --assignee-principal-type ServicePrincipal \
-  --role Reader --scope "/subscriptions/$SUB/resourceGroups/$AGENT_RG"
-az role assignment create --assignee-object-id "$PRINCIPAL" --assignee-principal-type ServicePrincipal \
-  --role Contributor \
-  --scope "/subscriptions/$SUB/resourceGroups/$AGENT_RG/providers/Microsoft.App/agents/$AGENT"
+for app in dmdev-idp dmdev-frontend; do
+  az role assignment create --assignee-object-id "$PRINCIPAL" --assignee-principal-type ServicePrincipal \
+    --role "Container Apps Contributor" \
+    --scope "/subscriptions/$SUB/resourceGroups/rg-dmdev/providers/Microsoft.App/containerApps/$app"
+done
 ```
-
-Contributor on the agent can also change the agent's settings, including its mode. A custom role
-limited to `Microsoft.App/agents/write` would be tighter. Updating the agent's managed resources
-with this identity has not been tested; if it fails on authorisation for the agent's own
-user-assigned identity, also grant Managed Identity Operator on that identity.
 
 ### GitHub environment
 
@@ -88,9 +82,6 @@ Create an environment named `dev` in the repository (required reviewers recommen
 gh variable set AZURE_CLIENT_ID --env dev --body "$(az identity show -g $BOOT_RG -n id-dmdev-deploy --query clientId -o tsv)"
 gh variable set AZURE_TENANT_ID --env dev --body "$(az account show --query tenantId -o tsv)"
 gh variable set AZURE_SUBSCRIPTION_ID --env dev --body "$SUB"
-gh variable set SRE_AGENT_ID --env dev --body "$(az resource show -g $AGENT_RG -n $AGENT --resource-type Microsoft.App/agents --query id -o tsv)"
-gh secret set POSTGRES_ADMIN_PASSWORD --env dev     # prompts; generate a long random value
-gh secret set SDLC_SANDBOX_PASSWORD --env dev       # the synthetic users' shared password
 ```
 
 ### Image visibility

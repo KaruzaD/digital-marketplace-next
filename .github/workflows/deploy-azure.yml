@@ -1,6 +1,6 @@
-# Deploys the development and test environment on Azure Container Apps (decision record 0069),
-# then attaches it to the SRE agent. Manual for now; it later chains on the build workflow.
-# One-time setup of the Azure identity and GitHub environment: infra/azure/README.md.
+# Deploys new images to the development and test environment on Azure Container Apps (decision
+# record 0069). It only swaps image tags on the two existing apps, so its Azure identity needs no
+# right to create anything. The foundation is created once by hand: infra/azure/README.md.
 name: Deploy to Azure
 
 on:
@@ -13,54 +13,36 @@ concurrency:
 permissions: {}
 
 env:
-  AZURE_LOCATION: canadacentral
-  BICEP_VERSION: v0.48.1
+  RESOURCE_GROUP: rg-dmdev
+  IDP_APP: dmdev-idp
+  FRONTEND_APP: dmdev-frontend
 
 jobs:
-  foundation:
-    name: Foundation
+  resolve:
+    name: Find the identity provider
     runs-on: ubuntu-24.04
     environment: dev
     permissions:
       contents: read
       id-token: write
     outputs:
-      idp_url: ${{ steps.deploy.outputs.idp_url }}
-      agent_principal_id: ${{ steps.agent.outputs.principal_id }}
+      idp_url: ${{ steps.idp.outputs.idp_url }}
     steps:
-      - uses: actions/checkout@v7
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Find the SRE agent's identity
-        id: agent
-        env:
-          SRE_AGENT_ID: ${{ vars.SRE_AGENT_ID }}
+      - id: idp
         run: |
           set -euo pipefail
-          identity=$(az resource show --ids "$SRE_AGENT_ID" --api-version 2026-01-01 \
-            --query properties.knowledgeGraphConfiguration.identity -o tsv)
-          echo "principal_id=$(az identity show --ids "$identity" --query principalId -o tsv)" >> "$GITHUB_OUTPUT"
-      - name: Deploy everything except the applications
-        id: deploy
-        env:
-          DEPLOY_APPS: "false"
-          AGENT_PRINCIPAL_ID: ${{ steps.agent.outputs.principal_id }}
-          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
-          SDLC_SANDBOX_PASSWORD: ${{ secrets.SDLC_SANDBOX_PASSWORD }}
-        run: |
-          set -euo pipefail
-          az bicep install --version "$BICEP_VERSION"
-          idp_url=$(az deployment sub create --name dmdev-foundation --location "$AZURE_LOCATION" \
-            --parameters infra/azure/main.bicepparam \
-            --query properties.outputs.idpUrl.value -o tsv)
-          echo "idp_url=$idp_url" >> "$GITHUB_OUTPUT"
+          fqdn=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "$IDP_APP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          echo "idp_url=https://$fqdn" >> "$GITHUB_OUTPUT"
 
   images:
     name: Build and push images
-    needs: foundation
+    needs: resolve
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -74,7 +56,7 @@ jobs:
         id: build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IDP_URL: ${{ needs.foundation.outputs.idp_url }}
+          IDP_URL: ${{ needs.resolve.outputs.idp_url }}
         run: |
           set -euo pipefail
           registry="ghcr.io/${GITHUB_REPOSITORY,,}"
@@ -96,86 +78,51 @@ jobs:
 
   apps:
     name: Deploy applications
-    needs: [foundation, images]
+    needs: [resolve, images]
     runs-on: ubuntu-24.04
     environment: dev
     permissions:
       contents: read
       id-token: write
-    outputs:
-      frontend_url: ${{ steps.deploy.outputs.frontend_url }}
     steps:
-      - uses: actions/checkout@v7
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Deploy the applications
-        id: deploy
+      - name: Point the apps at the new images
         env:
-          DEPLOY_APPS: "true"
-          IMAGE_REGISTRY: ${{ needs.images.outputs.registry }}
-          IMAGE_TAG: ${{ needs.images.outputs.tag }}
-          AGENT_PRINCIPAL_ID: ${{ needs.foundation.outputs.agent_principal_id }}
-          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
-          SDLC_SANDBOX_PASSWORD: ${{ secrets.SDLC_SANDBOX_PASSWORD }}
+          SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          REGISTRY: ${{ needs.images.outputs.registry }}
+          TAG: ${{ needs.images.outputs.tag }}
         run: |
           set -euo pipefail
-          az bicep install --version "$BICEP_VERSION"
-          frontend_url=$(az deployment sub create --name dmdev-apps --location "$AZURE_LOCATION" \
-            --parameters infra/azure/main.bicepparam \
-            --query properties.outputs.frontendUrl.value -o tsv)
-          echo "frontend_url=$frontend_url" >> "$GITHUB_OUTPUT"
+          for app in "$IDP_APP" "$FRONTEND_APP"; do
+            url="https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/$app?api-version=2024-03-01"
+            # A PATCH replaces the template's arrays whole, so send the full template with only
+            # this registry's image tags changed; secrets and settings live outside the template.
+            body=$(az rest --method get --url "$url" | jq -c --arg reg "$REGISTRY/" --arg tag "$TAG" '
+              def retag: if (.image | startswith($reg)) then .image |= (sub(":[^:/]*$"; ":" + $tag)) else . end;
+              {properties: {template: (.properties.template
+                | .containers |= map(retag)
+                | if .initContainers then .initContainers |= map(retag) else . end)}}')
+            az rest --method patch --url "$url" --body "$body" --output none
+            for _ in $(seq 1 30); do
+              state=$(az rest --method get --url "$url" --query properties.provisioningState -o tsv)
+              [ "$state" != InProgress ] && break
+              sleep 10
+            done
+            [ "$state" = Succeeded ]
+          done
       - name: Smoke test
         env:
-          FRONTEND_URL: ${{ steps.deploy.outputs.frontend_url }}
-          IDP_URL: ${{ needs.foundation.outputs.idp_url }}
+          IDP_URL: ${{ needs.resolve.outputs.idp_url }}
         run: |
           set -euo pipefail
+          frontend_url="https://$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "$FRONTEND_APP" \
+            --query properties.configuration.ingress.fqdn -o tsv)"
           retry=(--fail --silent --show-error --retry 30 --retry-delay 10 --retry-all-errors)
-          curl "${retry[@]}" "$FRONTEND_URL/status" > /dev/null
+          curl "${retry[@]}" "$frontend_url/status" > /dev/null
           realm="$IDP_URL/realms/digital-marketplace"
           curl "${retry[@]}" "$realm/.well-known/openid-configuration" \
             | jq -e --arg issuer "$realm" '.issuer == $issuer' > /dev/null
-
-  agent:
-    name: Attach to the SRE agent
-    needs: apps
-    runs-on: ubuntu-24.04
-    environment: dev
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Add the resource group to the agent's managed resources
-        env:
-          SRE_AGENT_ID: ${{ vars.SRE_AGENT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-        run: |
-          set -euo pipefail
-          rg_id="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/rg-dmdev"
-          url="https://management.azure.com${SRE_AGENT_ID}?api-version=2026-01-01"
-          agent=$(az rest --method get --url "$url")
-          # The API rejects a managed-resources change that doesn't name the identity too.
-          body=$(jq -c --arg rg "$rg_id" '
-            .properties.knowledgeGraphConfiguration as $kg
-            | {properties: {knowledgeGraphConfiguration: {
-                identity: $kg.identity,
-                managedResources: ((($kg.managedResources // []) + [$rg]) | unique)}}}' <<< "$agent")
-          if jq -e --arg rg "$rg_id" '.properties.knowledgeGraphConfiguration.managedResources // [] | index($rg)' <<< "$agent" > /dev/null; then
-            echo "Already attached."
-            exit 0
-          fi
-          az rest --method patch --url "$url" --body "$body" --output none
-          for _ in $(seq 1 30); do
-            state=$(az rest --method get --url "$url" --query properties.provisioningState -o tsv)
-            [ "$state" != InProgress ] && break
-            sleep 10
-          done
-          [ "$state" = Succeeded ]

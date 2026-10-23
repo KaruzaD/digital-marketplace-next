@@ -1,14 +1,15 @@
 // A development and test environment on Azure Container Apps (decision record 0069).
-// Deployed in two passes: with deployApps false it creates the resource group, monitoring,
-// Container Apps environment and database, and outputs the environment's domain; the frontend is
-// built knowing where the identity provider will be, then deployApps true adds the applications.
-targetScope = 'subscription'
+// Deployed into the existing resource group rg-<environmentName> in two passes: with deployApps
+// false it creates monitoring, the Container Apps environment and database, and outputs the
+// environment's domain; the frontend is built knowing where the identity provider will be, then
+// deployApps true adds the applications.
+targetScope = 'resourceGroup'
 
 @minLength(2)
 @maxLength(12)
 param environmentName string = 'dmdev'
 
-param location string = 'canadacentral'
+param location string = resourceGroup().location
 
 param deployApps bool = false
 
@@ -33,14 +34,7 @@ var tags = {
   purpose: 'dev-test'
 }
 
-resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
-  name: 'rg-${environmentName}'
-  location: location
-  tags: tags
-}
-
 module monitoring 'modules/monitoring.bicep' = {
-  scope: rg
   params: {
     prefix: prefix
     location: location
@@ -49,7 +43,6 @@ module monitoring 'modules/monitoring.bicep' = {
 }
 
 module environment 'modules/environment.bicep' = {
-  scope: rg
   params: {
     prefix: prefix
     location: location
@@ -59,25 +52,22 @@ module environment 'modules/environment.bicep' = {
 }
 
 module database 'modules/database.bicep' = {
-  scope: rg
   params: {
     prefix: prefix
     location: location
     tags: tags
-    uniqueSuffix: uniqueString(rg.id)
+    uniqueSuffix: uniqueString(resourceGroup().id)
     administratorPassword: postgresAdminPassword
   }
 }
 
 module agentAccess 'modules/agent-access.bicep' = if (!empty(agentPrincipalId)) {
-  scope: rg
   params: {
     agentPrincipalId: agentPrincipalId
   }
 }
 
 module apps 'modules/apps.bicep' = if (deployApps) {
-  scope: rg
   params: {
     prefix: prefix
     location: location
@@ -96,7 +86,6 @@ module apps 'modules/apps.bicep' = if (deployApps) {
 }
 
 module alerts 'modules/alerts.bicep' = if (deployApps) {
-  scope: rg
   params: {
     prefix: prefix
     location: location
@@ -107,7 +96,7 @@ module alerts 'modules/alerts.bicep' = if (deployApps) {
   }
 }
 
-output resourceGroupName string = rg.name
+output resourceGroupName string = resourceGroup().name
 output defaultDomain string = environment.outputs.defaultDomain
 output idpUrl string = 'https://${prefix}-idp.${environment.outputs.defaultDomain}'
 output frontendUrl string = 'https://${prefix}-frontend.${environment.outputs.defaultDomain}'
