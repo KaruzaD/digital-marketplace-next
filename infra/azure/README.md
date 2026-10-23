@@ -54,10 +54,15 @@ BOOT_RG=rg-dmdev-bootstrap          # outside rg-dmdev, so tearing the environme
 az group create -n "$BOOT_RG" -l canadacentral
 az identity create -g "$BOOT_RG" -n id-dmdev-deploy
 
-# Only runs of the `dev` GitHub environment in this repository can use the identity.
+# Only runs of the `dev` GitHub environment in this repository can use the identity. GitHub
+# issues tokens whose subject carries the owner and repository IDs (repo:owner@ID/name@ID:...)
+# for this repository, so the plain repo:owner/name subject does not match.
+OWNER_ID=$(gh api "repos/$REPO" --jq .owner.id)
+REPO_ID=$(gh api "repos/$REPO" --jq .id)
 az identity federated-credential create -g "$BOOT_RG" --identity-name id-dmdev-deploy \
   -n github-dev --issuer https://token.actions.githubusercontent.com \
-  --subject "repo:$REPO:environment:dev" --audiences api://AzureADTokenExchange
+  --subject "repo:${REPO%/*}@$OWNER_ID/${REPO#*/}@$REPO_ID:environment:dev" \
+  --audiences api://AzureADTokenExchange
 
 PRINCIPAL=$(az identity show -g "$BOOT_RG" -n id-dmdev-deploy --query principalId -o tsv)
 ```
