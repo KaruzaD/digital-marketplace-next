@@ -1,27 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import { Checkbox, Heading, Link, Text } from "@bcgov/design-system-react-components";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { Checkbox, Link } from "@bcgov/design-system-react-components";
 import { Program, mayManageOpportunity } from "@rules/opportunities";
-import { mayWatch } from "@rules/opportunity-list";
-import { isAcceptingProposals } from "@rules/proposals";
+import { listStatusWords, mayWatch } from "@rules/opportunity-list";
+import { deadlineHasPassed, isAcceptingProposals } from "@rules/proposals";
 import { CwuOpportunity, fetchCwuOpportunity } from "../api/opportunities";
 import { listCwuProposals } from "../api/proposals";
 import { countView, setWatching } from "../api/watching";
 import { AttachmentList } from "../app/attachments";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Actions, Details, OpportunityHead, OpportunityPage, PageTitle, Region, Waiting, type Detail } from "../app/opportunity-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { useSession } from "../auth/session";
 import { FormattedText } from "../lib/formatted-text/formatted-text";
-import {
-  Fact,
-  StatusBadge,
-  SuccessfulProponentSection,
-  dayLabel,
-  deadlineLabel,
-  publishedLabel,
-  rewardLabel,
-} from "./opportunity-parts";
+import { SuccessfulProponentSection, dayLabel, deadlineLabel, publishedLabel, rewardLabel } from "./opportunity-parts";
 import { AddendaList } from "./opportunity-running";
 
 /**
@@ -67,112 +58,102 @@ export function OpportunityCwuViewScreen({ opportunityId }: { opportunityId: str
   if (loaded.kind === "missing") return <NotFound />;
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>Code With Us opportunity</Heading>
-        <Loading label="Loading opportunity…" />
-      </Stack>
+      <OpportunityPage>
+        <PageTitle>Code With Us opportunity</PageTitle>
+        <Waiting label="Loading opportunity" />
+      </OpportunityPage>
     );
   }
   const { opportunity } = loaded;
   const viewer = session.status === "signed-in" ? session.account : null;
+  const now = new Date();
   const manages = mayManageOpportunity(viewer, { status: opportunity.status, createdBy: opportunity.createdBy?.id ?? null });
+  const watches = mayWatch(viewer, { createdBy: opportunity.createdBy?.id ?? null });
+  const proposes = viewer?.type === "VENDOR" && isAcceptingProposals(opportunity, now);
+  // Staff see the stage; anyone else whether it is open, as the opportunity list says it.
+  const asStaff = viewer?.type === "GOV" || viewer?.type === "ADMIN";
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          Code With Us opportunity
-        </Text>
-        <Heading level={1}>{opportunity.title || "Untitled opportunity"}</Heading>
-      </Stack>
-      {opportunity.teaser ? (
-        <Text elementType="p" size="large">
-          {opportunity.teaser}
-        </Text>
-      ) : null}
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label="Status">
-          <StatusBadge status={opportunity.status} />
-        </Fact>
-        <Fact label="Proposal deadline" testId="opportunity-proposal-deadline">
-          {deadlineLabel(opportunity.proposalDeadline)}
-        </Fact>
-        <Fact label="Reward" testId="opportunity-reward">
-          {rewardLabel(opportunity.reward)}
-        </Fact>
-        <Fact label="Location">{opportunity.location || "Not entered"}</Fact>
-        <Fact label="Remote work">
-          {opportunity.remoteOk ? `Accepted. ${opportunity.remoteDesc}`.trim() : "Not accepted."}
-        </Fact>
-        <Fact label="Published" testId="opportunity-published-date">
-          {publishedLabel(opportunity.publishedAt)}
-        </Fact>
-        {opportunity.createdBy ? (
-          <Fact label="Created by" testId="opportunity-created-by">
-            {opportunity.createdBy.name}
-          </Fact>
-        ) : null}
-        {opportunity.updatedBy ? (
-          <Fact label="Last changed by" testId="opportunity-last-changed-by">
-            {opportunity.updatedBy.name}
-          </Fact>
-        ) : null}
-      </Stack>
-      <Text elementType="p" size="small" color="secondary">
-        Opportunity ID: <span data-testid="opportunity-identifier">{opportunity.id}</span>
-      </Text>
+    <OpportunityPage>
+      <OpportunityHead
+        program="code-with-us"
+        status={listStatusWords({ ...opportunity, program: "code-with-us" }, now, asStaff)}
+        title={opportunity.title || "Untitled opportunity"}
+        closes={{
+          text: deadlineLabel(opportunity.proposalDeadline),
+          testId: "opportunity-proposal-deadline",
+          closed: opportunity.proposalDeadline !== "" && deadlineHasPassed(opportunity.proposalDeadline, now),
+        }}
+        value={{ label: "Reward", text: rewardLabel(opportunity.reward), testId: "opportunity-reward" }}
+        location={opportunity.location}
+        remoteOk={opportunity.remoteOk === true}
+        summary={opportunity.teaser || undefined}
+      />
+      <Details items={viewDetails(opportunity)} />
+      {/* The one thing the viewer can do: a vendor watches and starts a proposal, the author and
+          administrators manage it, a visitor nothing. Once it is awarded, who won comes first. */}
       {opportunity.successfulProponent ? <SuccessfulProponentSection proponent={opportunity.successfulProponent} /> : null}
-      {mayWatch(viewer, { createdBy: opportunity.createdBy?.id ?? null }) ? (
-        <WatchControl key={opportunity.id} opportunity={opportunity} />
-      ) : null}
-      {viewer?.type === "VENDOR" && isAcceptingProposals(opportunity, new Date()) ? (
-        <StartProposal key={`${opportunity.id}-${viewer.id}`} opportunityId={opportunity.id} vendorId={viewer.id} />
+      {watches ? (
+        <WatchControl key={opportunity.id} opportunity={opportunity}>
+          {proposes ? <StartProposal key={`${opportunity.id}-${viewer.id}`} opportunityId={opportunity.id} vendorId={viewer.id} /> : null}
+        </WatchControl>
       ) : null}
       {manages ? (
-        <div>
+        <Actions>
           <Link href={`/opportunities/code-with-us/${opportunity.id}/edit`} isButton buttonVariant="secondary">
             Manage this opportunity
           </Link>
-        </div>
+        </Actions>
       ) : null}
-      <Stack as="section" gap="medium" aria-labelledby="view-description">
-        <Heading level={2} id="view-description">
-          Description
-        </Heading>
+      <Region id="view-description" title="Description">
         <FormattedText markup={opportunity.description} />
         <AttachmentList attachments={opportunity.attachments} />
-      </Stack>
-      <Stack as="section" gap="medium" aria-labelledby="view-skills">
-        <Heading level={2} id="view-skills">
-          Skills
-        </Heading>
+      </Region>
+      <Region id="view-skills" title="Skills">
         {opportunity.skills.length > 0 ? (
-          <ul>
+          <ul className="op-list">
             {opportunity.skills.map((skill) => (
               <li key={skill}>{skill}</li>
             ))}
           </ul>
         ) : (
-          <Text elementType="p">No skills have been named.</Text>
+          <p className="op-text">No skills have been named.</p>
         )}
-      </Stack>
-      <Stack as="section" gap="medium" aria-labelledby="view-dates">
-        <Heading level={2} id="view-dates">
-          Key dates
-        </Heading>
-        <ul>
-          <li>{`Assignment date: ${dayLabel(opportunity.assignmentDate)}`}</li>
-          <li>{`Start date: ${dayLabel(opportunity.startDate)}`}</li>
-          {opportunity.completionDate ? <li>{`Completion date: ${dayLabel(opportunity.completionDate)}`}</li> : null}
-        </ul>
-      </Stack>
-      <Stack as="section" gap="medium" aria-labelledby="view-addenda" data-testid="opportunity-addenda">
-        <Heading level={2} id="view-addenda">
-          Addenda
-        </Heading>
+      </Region>
+      {/* The contract records that this page shows no completion date; it is read on the manage
+          page (DESIGN.md, opportunities in the chosen direction, gap 32). */}
+      <Region id="view-dates" title="Key dates">
+        <Details
+          items={[
+            { term: "Assignment date", value: dayLabel(opportunity.assignmentDate), testId: "opportunity-assignment-date" },
+            { term: "Start date", value: dayLabel(opportunity.startDate), testId: "opportunity-start-date" },
+          ]}
+        />
+      </Region>
+      <Region id="view-addenda" title="Addenda" testId="opportunity-addenda">
         <AddendaList addenda={opportunity.addenda} showAuthor={false} />
-      </Stack>
-    </Stack>
+      </Region>
+    </OpportunityPage>
   );
+}
+
+/**
+ * The facts beyond the head's: remote work, the first publication (R-1.23), who created and last
+ * changed it where the service names them, which is only to its author and administrators
+ * (R-1.29), and its identifier.
+ */
+export function viewDetails(opportunity: CwuOpportunity): Detail[] {
+  return [
+    {
+      term: "Remote work",
+      value: opportunity.remoteOk ? `Accepted. ${opportunity.remoteDesc}`.trim() : "Not accepted.",
+    },
+    { term: "Published", value: publishedLabel(opportunity.publishedAt), testId: "opportunity-published-date" },
+    ...(opportunity.createdBy ? [{ term: "Created by", value: opportunity.createdBy.name, testId: "opportunity-created-by" }] : []),
+    ...(opportunity.updatedBy
+      ? [{ term: "Last changed by", value: opportunity.updatedBy.name, testId: "opportunity-last-changed-by" }]
+      : []),
+    { term: "Opportunity ID", value: opportunity.id, testId: "opportunity-identifier" },
+  ];
 }
 
 /**
@@ -193,7 +174,7 @@ function StartProposal({ opportunityId, vendorId }: { opportunityId: string; ven
   }, [opportunityId, vendorId]);
   const base = `/opportunities/code-with-us/${opportunityId}/proposals`;
   return (
-    <div>
+    <Actions>
       <Link
         href={held ? `${base}/${held}/edit` : `${base}/create`}
         isButton
@@ -202,20 +183,23 @@ function StartProposal({ opportunityId, vendorId }: { opportunityId: string; ven
       >
         {held ? "View your proposal" : "Start a proposal"}
       </Link>
-    </div>
+    </Actions>
   );
 }
 
 /**
  * Watching the opportunity, for anyone signed in who did not create it (R-1.5). Ticking or
- * unticking saves at once, and the change is announced; a refusal puts the box back.
+ * unticking saves at once, and the change is announced; a refusal puts the box back. Its region
+ * also holds what else the viewer can do there, such as Start a proposal.
  */
 export function WatchControl({
   opportunity,
   program = "code-with-us",
+  children,
 }: {
   opportunity: { readonly id: string; readonly subscribed: boolean };
   program?: Program;
+  children?: ReactNode;
 }) {
   const [watching, setWatched] = useState(opportunity.subscribed);
   const [saving, setSaving] = useState(false);
@@ -240,10 +224,8 @@ export function WatchControl({
   }
 
   return (
-    <Stack gap="small">
-      <Text elementType="p" size="small" color="secondary">
-        Watching sends you an email whenever this opportunity changes.
-      </Text>
+    <div className="op-region">
+      <p className="op-note">Watching sends you an email whenever this opportunity changes.</p>
       <Checkbox
         isSelected={watching}
         onChange={(value) => (saving ? undefined : void change(value))}
@@ -251,7 +233,8 @@ export function WatchControl({
       >
         Watch this opportunity
       </Checkbox>
-      <div role="status">{status ? <Text elementType="p">{status}</Text> : null}</div>
-    </Stack>
+      <div role="status">{status ? <p className="op-text">{status}</p> : null}</div>
+      {children}
+    </div>
   );
 }

@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
+import { Link, Text } from "@bcgov/design-system-react-components";
 import { PROGRAM_NAMES, Program } from "@rules/opportunities";
 import { ownsOrAdministers } from "@rules/organizations";
 import type { Account } from "../api/accounts";
 import { fetchOwnMemberships } from "../api/organizations";
 import { CwuProposal, listCwuProposals } from "../api/proposals";
 import { TeamProposal, listTeamProposals } from "../api/team-proposals";
-import { Loading } from "../app/loading";
-import { Stack } from "../app/page-layout";
+import { Label } from "../app/marketplace";
+import { Actions, DataTable, PageTitle, Region, Waiting } from "../app/opportunity-kit";
+import { ProposalPage } from "../app/proposal-kit";
 import { TitledAlert } from "../app/titled-alert";
 import { readDate } from "../lib/dates";
 import { ProposalStatusBadge } from "./proposal-cwu-form";
 
 /**
- * The dashboard as a vendor sees it (proposal-vendor-dashboard): the proposals they wrote, and,
- * under a heading of its own, the proposals put forward for organizations they own or administer —
- * never another vendor's (R-2.24). Each list that is empty says so in words; a vendor who owns and
- * administers no organization has no organizations' heading at all. Each row links to the
- * proposal's manage page. All three programs are listed together, each row naming its program.
+ * The dashboard as a vendor sees it (proposal-vendor-dashboard), as its stories draw it: the H1,
+ * the section links, then the proposals they wrote and, under a heading of its own, the proposals
+ * put forward for organizations they own or administer — never another vendor's (R-2.24). Each
+ * list that is empty says so in words; a vendor who owns and administers no organization has no
+ * organizations' heading at all. Each row links to the proposal's manage page. All three programs
+ * are listed together, each row naming its program as a grey label and its status as a coloured one.
  */
 
 /** One proposal as the dashboard lists it, in any of the three programs. */
@@ -74,14 +76,15 @@ export function vendorDashboardRows(
   };
 }
 
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-
 const manageAddress = (proposal: DashboardProposal) => `/opportunities/${proposal.program}/${proposal.opportunity.id}/proposals/${proposal.id}/edit`;
+
+function OpportunityLink({ proposal }: { proposal: DashboardProposal }) {
+  return (
+    <Link href={manageAddress(proposal)} data-testid="dashboard-proposal-link">
+      {proposal.opportunity.title || "Untitled opportunity"}
+    </Link>
+  );
+}
 
 export function VendorDashboard({ account }: { account: Account }) {
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
@@ -118,156 +121,103 @@ export function VendorDashboard({ account }: { account: Account }) {
 
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>Dashboard</Heading>
-        <Loading label="Loading your proposals…" />
-      </Stack>
+      <ProposalPage>
+        <PageTitle>Dashboard</PageTitle>
+        <Waiting label="Loading your proposals" />
+      </ProposalPage>
     );
   }
   if (loaded.kind === "failed") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>Dashboard</Heading>
+      <ProposalPage>
+        <PageTitle>Dashboard</PageTitle>
         <TitledAlert variant="danger" role="alert" title="Your proposals could not be loaded">
           <Text elementType="p">Reload the page to try again.</Text>
         </TitledAlert>
-      </Stack>
+      </ProposalPage>
     );
   }
 
   const administersAny = loaded.managed.size > 0;
   const { mine, organizations } = vendorDashboardRows(account, loaded.proposals, loaded.managed);
   return (
-    <Stack gap="large">
-      <Heading level={1}>Dashboard</Heading>
+    <ProposalPage>
+      <PageTitle>Dashboard</PageTitle>
       <nav aria-label="Dashboard sections">
-        <Stack as="ul" direction="row" gap="medium">
-          <li>
-            <Link href="#my-proposals" data-testid="dashboard-show-my-proposals">
-              My proposals
-            </Link>
-          </li>
+        <Actions>
+          <Link href="#my-proposals" data-testid="dashboard-show-my-proposals">
+            My proposals
+          </Link>
           {administersAny ? (
-            <li>
-              <Link href="#organization-proposals" data-testid="dashboard-show-org-proposals">
-                My organizations' proposals
-              </Link>
-            </li>
+            <Link href="#organization-proposals" data-testid="dashboard-show-org-proposals">
+              My organizations' proposals
+            </Link>
           ) : null}
-        </Stack>
+        </Actions>
       </nav>
-      <Stack as="section" gap="medium" id="my-proposals" tabIndex={-1} aria-labelledby="my-proposals-heading">
-        <Heading level={2} id="my-proposals-heading">
-          My proposals
-        </Heading>
+      <Region id="my-proposals" title="My proposals">
         {mine.length === 0 ? (
           <div data-testid="dashboard-empty-my-proposals">
-            <Text elementType="p">
+            <p className="op-text">
               You have not started any proposals. <Link href="/opportunities">Browse opportunities</Link> to find one to bid on.
-            </Text>
+            </p>
           </div>
         ) : (
-          <div role="region" aria-labelledby="my-proposals-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="dashboard-my-proposals-table">
-              <caption id="my-proposals-caption" style={{ textAlign: "start" }}>
-                <Text size="small" color="secondary">
-                  Proposals you wrote, most recently updated first
-                </Text>
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" style={cell}>
-                    Opportunity
-                  </th>
-                  <th scope="col" style={cell}>
-                    Program
-                  </th>
-                  <th scope="col" style={cell}>
-                    Status
-                  </th>
-                  <th scope="col" style={cell}>
-                    Last updated
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {mine.map((proposal) => (
-                  <tr key={proposal.id} data-testid="dashboard-proposal-row">
-                    <td style={cell}>
-                      <Link href={manageAddress(proposal)} data-testid="dashboard-proposal-link">
-                        {proposal.opportunity.title || "Untitled opportunity"}
-                      </Link>
-                    </td>
-                    <td style={cell}>{PROGRAM_NAMES[proposal.program]}</td>
-                    <td style={cell}>
-                      <ProposalStatusBadge status={proposal.status} />
-                    </td>
-                    <td style={cell}>{readDate(proposal.updatedAt)?.label ?? ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            captionId="my-proposals-caption"
+            caption="Proposals you wrote, most recently updated first"
+            columns={["Opportunity", "Program", "Status", "Last updated"]}
+            testId="dashboard-my-proposals-table"
+          >
+            {mine.map((proposal) => (
+              <tr key={proposal.id} data-testid="dashboard-proposal-row">
+                <td>
+                  <OpportunityLink proposal={proposal} />
+                </td>
+                <td>
+                  <Label>{PROGRAM_NAMES[proposal.program]}</Label>
+                </td>
+                <td>
+                  <ProposalStatusBadge status={proposal.status} />
+                </td>
+                <td>{readDate(proposal.updatedAt)?.label ?? ""}</td>
+              </tr>
+            ))}
+          </DataTable>
         )}
-      </Stack>
+      </Region>
       {administersAny ? (
-        <Stack as="section" gap="medium" id="organization-proposals" tabIndex={-1} aria-labelledby="org-proposals-heading">
-          <Heading level={2} id="org-proposals-heading">
-            My organizations' proposals
-          </Heading>
+        <Region id="organization-proposals" title="My organizations' proposals">
           {organizations.length === 0 ? (
             <div data-testid="dashboard-empty-org-proposals">
-              <Text elementType="p">No one has started a proposal for an organization you own or administer.</Text>
+              <p className="op-text">No one has started a proposal for an organization you own or administer.</p>
             </div>
           ) : (
-            <div role="region" aria-labelledby="org-proposals-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-              <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="dashboard-org-proposals-table">
-                <caption id="org-proposals-caption" style={{ textAlign: "start" }}>
-                  <Text size="small" color="secondary">
-                    Proposals written for organizations you own or administer
-                  </Text>
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col" style={cell}>
-                      Opportunity
-                    </th>
-                    <th scope="col" style={cell}>
-                      Organization
-                    </th>
-                    <th scope="col" style={cell}>
-                      Program
-                    </th>
-                    <th scope="col" style={cell}>
-                      Written by
-                    </th>
-                    <th scope="col" style={cell}>
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {organizations.map((proposal) => (
-                    <tr key={proposal.id} data-testid="dashboard-proposal-row">
-                      <td style={cell}>
-                        <Link href={manageAddress(proposal)} data-testid="dashboard-proposal-link">
-                          {proposal.opportunity.title || "Untitled opportunity"}
-                        </Link>
-                      </td>
-                      <td style={cell}>{proposal.organization?.legalName ?? ""}</td>
-                      <td style={cell}>{PROGRAM_NAMES[proposal.program]}</td>
-                      <td style={cell}>{proposal.createdBy?.name ?? ""}</td>
-                      <td style={cell}>
-                        <ProposalStatusBadge status={proposal.status} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              captionId="org-proposals-caption"
+              caption="Proposals written for organizations you own or administer"
+              columns={["Opportunity", "Organization", "Program", "Written by", "Status"]}
+              testId="dashboard-org-proposals-table"
+            >
+              {organizations.map((proposal) => (
+                <tr key={proposal.id} data-testid="dashboard-proposal-row">
+                  <td>
+                    <OpportunityLink proposal={proposal} />
+                  </td>
+                  <td>{proposal.organization?.legalName ?? ""}</td>
+                  <td>
+                    <Label>{PROGRAM_NAMES[proposal.program]}</Label>
+                  </td>
+                  <td>{proposal.createdBy?.name ?? ""}</td>
+                  <td>
+                    <ProposalStatusBadge status={proposal.status} />
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
           )}
-        </Stack>
+        </Region>
       ) : null}
-    </Stack>
+    </ProposalPage>
   );
 }

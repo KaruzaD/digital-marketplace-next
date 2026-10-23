@@ -1,21 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, ProgressCircle, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { EVALUATOR, EvaluationLoading, WIDTHS } from "./evaluation-kit";
 
 // evaluation-panel-dashboard · loading — the lists have not arrived yet
-const meta: Meta = { title: "evaluation/evaluation-panel-dashboard/loading" };
+const meta: Meta = { title: "evaluation/evaluation-panel-dashboard/loading", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Loading: StoryObj = {
-  render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Dashboard</Heading>
-        <Stack direction="row" align="center" gap="small" role="status">
-          <ProgressCircle isIndeterminate aria-label="Loading your opportunities" />
-          <Text>Loading your opportunities…</Text>
-        </Stack>
-      </Stack>
-    </PageContainer>
-  ),
+  render: () => <EvaluationLoading viewer={EVALUATOR} title="Dashboard" label="Loading your opportunities" />,
 };

@@ -1,0 +1,16 @@
+gate: G3
+verdict: return
+by: agent:tech-lead
+held_by: agent
+rationale: |2-
+  Question: does slice 7 do what its criteria say, given runner:verify escalated after three failed verifies? Ruling: return. The account's point that the fault might not be the application's is what decided it, and the evidence settles which part is at fault. Both failing reads come from the adapter, not the app: .sdlc/evidence/slice-7/R-1.14.txt and R-1.22.txt show the head's status ('Code With Us Published') and 'Closes October 31, 2026 at 4:00 p.m. Pacific time' on the page, but opportunityCwuView.status() and proposalDeadline() return ''. The rebind that answered build-slice-7-11's condition ignored the test IDs it was told to use. It reads the head as text instead, and cwuHeadLines() (tests/adapters/new/index.ts:8308) ends the head at the first line that equals any definition-list label. 'Published' is both a label and the status of a published opportunity, so the head is cut off before the deadline line and cwuHeadStatus() skips the status as a label. A draft has no such collision, which is why R-1.21 passed. The build has nothing to change, so this proposal comes back unchanged once bind-adapter's revision is approved and re-verified. R-1.51 is accepted as not observable on the running service (a migration property) and would not on its own block approval. What would change the ruling: R-1.14 and R-1.22 passing against tree 7e29391 or a successor, with status and deadline read by test ID.
+conditions:
+  - "addressed-to bind-adapter: opportunityCwuView.status() and opportunityCwuView.proposalDeadline() in tests/adapters/new/index.ts still read '' on a published Code With Us opportunity. Their fallbacks go through cwuHeadLines(), which ends the head at the first line equal to any definition-list label. 'Published' is both the status in the head's label and the term of the 'Published' date detail, so the head is cut off at the status line: the 'Closes ... at 4:00 p.m. Pacific time' line is dropped, and cwuHeadStatus() skips 'Published' as a label. Read status from data-testid opportunity-status and the deadline from data-testid opportunity-proposal-deadline, as the earlier request asked, rather than by matching head text. Check reward() against data-testid opportunity-reward too. Shown by verify on build-slice-7-12 (application tree 7e29391): R-1.14 (tests/acceptance/opportunities/R-1.14.spec.ts:109) and R-1.22 (R-1.22.spec.ts:50) read '' while .sdlc/evidence/slice-7/R-1.14.txt and R-1.22.txt show 'Code With Us Published' and the 4:00 p.m. deadline on the page. R-1.21 passes only because 'Draft' is not a label on that page. Before proposing, run the rebound reads against a published opportunity as well as a draft."
+cost: 0.8461844000000001
+turns: 10
+session: "71b45f17-39a8-4116-92bf-4916be6929f7"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T01:56:46.032Z

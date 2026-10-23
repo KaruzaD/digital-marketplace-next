@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  The question is whether slice 6 does what its seven criteria say. I approve it. Verify recorded a pass against the current application tree for this proposal: R-7.13, R-6.18, R-6.23, R-6.24, R-6.28, R-4.16 and R-4.33 were all exercised and met, and none was left unasserted. The diff only restyles the screen. It redraws terms-broadcast.tsx inside the existing shared components (Region, Actions, NotificationStyles), and I checked that each one exists and renders the structure the new unit test asserts: Actions renders a div with the class op-actions. Test IDs, alert wording, the confirmation step and the call to the service are unchanged. The one new secondary button leaves Edit page as the only primary action. The diff contains no secrets or personal data and touches no protected path. The new unit test covers the one structural change this build made: the region, its order after the current wording, and the secondary button in the actions row. Where the build kept the profile section links that the terms-updated story leaves out, decision record 0088 says why, and no criterion asks for them to be removed. Any of these would change the ruling: a later verify result that no longer passes on this tree, evidence that removing the links is required by a criterion or by the design rationale, or a regression in the existing changed-terms tests.
+conditions: []
+cost: 0.31586420000000004
+turns: 2
+session: "d3a58975-3c2a-4682-bb20-482e839fb578"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.302 (Claude Code)"
+isolation: "none"
+at: 2026-10-19T03:38:56.623Z

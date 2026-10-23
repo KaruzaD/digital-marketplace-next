@@ -1775,3 +1775,669 @@ requests:
     at: 2026-10-04T20:54:42.054Z
     taken: 2026-10-04T20:59:32.963Z
     taken_by: bind-adapter-new-90
+  - stage: bind-adapter
+    target: new
+    why: "R-7.19: contentFooter scopes every read to siteFooter(), which is
+      `getByRole(\"contentinfo\").or(getByText(\"Owned and operated by the B.C.
+      Government.\", {exact:true}).locator(\"xpath=..\")).last()`. On / the page
+      now draws that line in its own small block inside the footer, so `.last()`
+      picks the line's parent rather than the whole footer. presentWhenSignedOut
+      read only \"Owned and operated by the B.C. Government.\" and aboutLink
+      read \"\". The page does show the five links, labelled About, Disclaimer,
+      Privacy, Accessibility and Copyright, in the footer's link list beside
+      that block (evidence .sdlc/evidence/slice-1/R-7.19.png). Scope the footer
+      to the whole footer region (the outermost match, or the contentinfo
+      landmark on its own), not to the parent of the ownership line."
+    from: build-slice-1-8
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-17T20:01:32.481Z
+    taken: 2026-10-17T20:03:39.804Z
+    taken_by: bind-adapter-new-91
+  - stage: bind-adapter
+    target: new
+    why: the new target's opportunityList group readers (opportunityGroup in
+      tests/adapters/new/index.ts) must read a group's rows from inside that
+      group's own section on the page, not as the text lines that follow its
+      heading up to the next group heading, and must open a collapsed group
+      before reading it. On the slice 8 run the Closed Opportunities group was
+      collapsed and was the last group, so the reader took the program
+      descriptions panel that follows it as its rows, never opened it, and
+      reported the seeded closed Sprint With Us opportunity missing for an
+      administrator.
+    from: build-slice-8-12
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T00:30:29.230Z
+    taken: 2026-10-18T00:33:28.740Z
+    taken_by: bind-adapter-new-92
+  - stage: bind-adapter
+    target: new
+    why: "R-1.3: in both cases (public sector staff; administrator)
+      opportunityList.openGroup() read '' at /opportunities, but the page shows
+      'Seeded published Code With Us opportunity' as a level-3 heading inside
+      the region whose heading is 'Open Opportunities 3' (evidence R-1.3.txt and
+      R-1.3-2.txt). The open group's heading name includes its count, and
+      OPPORTUNITY_GROUPS in tests/adapters/new/index.ts (/^open(?:
+      opportunities)?$/i and its siblings) is anchored so that it does not match
+      'Open Opportunities 3', so groupSection and the heading fallback both find
+      nothing and opportunityGroup returns ''. Match a group heading or region
+      whose name is followed by a count, e.g. /^open(?:
+      opportunities)?(?:\\s+\\d+)?$/i, for all three groups."
+    from: build-slice-8-13
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T00:43:27.027Z
+    taken: 2026-10-18T00:45:30.629Z
+    taken_by: bind-adapter-new-93
+  - stage: bind-adapter
+    target: new
+    why: "R-1.38: opportunityList.openGroup() read '' at /opportunities after
+      publishing, but the page shows 'R-1.38 open opportunity whose deadline is
+      sooner' (closes December 17, 2026) and then 'R-1.38 open opportunity whose
+      deadline is later' (closes February 15, 2027) inside the region headed
+      'Open Opportunities 5' (evidence R-1.38.txt). This is the same cause as
+      R-1.3: the OPPORTUNITY_GROUPS pattern for the open group does not allow
+      the count that follows the heading's words, so the adapter never finds the
+      open group's section."
+    from: build-slice-8-13
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T00:43:27.027Z
+    taken: 2026-10-18T00:45:30.629Z
+    taken_by: bind-adapter-new-93
+  - stage: bind-adapter
+    target: new
+    why: "opportunityCwuView.status() and opportunityCwuView.proposalDeadline() in
+      tests/adapters/new/index.ts look up definition-list terms labelled
+      'Status' and 'Proposal deadline'. The Code With Us view, restyled to the
+      catalogue approved at G-DESIGN, no longer has either label. Status is now
+      an unlabelled label in the page head (data-testid opportunity-status), and
+      the deadline is a head fact reading 'Closes <date> at 4:00 p.m. Pacific
+      time', or 'Closed' once passed (data-testid
+      opportunity-proposal-deadline). Rebind both reads to those test IDs, and
+      check reward(), which still finds its 'Reward' label but now carries
+      data-testid opportunity-reward. Shown by verify on build-slice-7-11
+      (application tree 7e29391): R-1.14, R-1.21 and R-1.22 all read '' from
+      these members, while the page snapshot .sdlc/evidence/slice-7/R-1.21.txt
+      shows 'Draft' and the 4:00 p.m. deadline on the page."
+    from: build-slice-7-11
+    gate: G3
+    by: agent:tech-lead
+    at: 2026-10-18T01:40:05.484Z
+    taken: 2026-10-18T01:42:59.305Z
+    taken_by: bind-adapter-new-94
+  - stage: bind-adapter
+    target: new
+    why: "opportunityCwuView.status() and opportunityCwuView.proposalDeadline() in
+      tests/adapters/new/index.ts still read '' on a published Code With Us
+      opportunity. Their fallbacks go through cwuHeadLines(), which ends the
+      head at the first line equal to any definition-list label. 'Published' is
+      both the status in the head's label and the term of the 'Published' date
+      detail, so the head is cut off at the status line: the 'Closes ... at 4:00
+      p.m. Pacific time' line is dropped, and cwuHeadStatus() skips 'Published'
+      as a label. Read status from data-testid opportunity-status and the
+      deadline from data-testid opportunity-proposal-deadline, as the earlier
+      request asked, rather than by matching head text. Check reward() against
+      data-testid opportunity-reward too. Shown by verify on build-slice-7-12
+      (application tree 7e29391): R-1.14
+      (tests/acceptance/opportunities/R-1.14.spec.ts:109) and R-1.22
+      (R-1.22.spec.ts:50) read '' while .sdlc/evidence/slice-7/R-1.14.txt and
+      R-1.22.txt show 'Code With Us Published' and the 4:00 p.m. deadline on the
+      page. R-1.21 passes only because 'Draft' is not a label on that page.
+      Before proposing, run the rebound reads against a published opportunity as
+      well as a draft."
+    from: build-slice-7-12
+    gate: G3
+    by: agent:tech-lead
+    at: 2026-10-18T01:56:46.052Z
+    taken: 2026-10-18T01:59:57.845Z
+    taken_by: bind-adapter-new-96
+  - stage: bind-adapter
+    target: new
+    why: "R-2.12: proposalCwuEdit.status() read \"\" from a 'Status' term in the
+      details list on
+      /opportunities/code-with-us/:opportunityId/proposals/:proposalId/edit; the
+      page no longer has a Status term and shows the status as the label beside
+      the program in the page head ('Code With Us Draft' in the outline), the
+      element carrying test ID proposal-status, which is what the contract
+      surface binds proposal-cwu-edit status to; read it from there."
+    from: build-slice-14-4
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T02:55:02.406Z
+    taken: 2026-10-18T02:59:20.216Z
+    taken_by: bind-adapter-new-97
+  - stage: bind-adapter
+    target: new
+    why: "R-2.15: in the case 'a draft submitted after the deadline',
+      proposalCwuEdit.status() read \"\" for the same reason: the manage page
+      shows 'Draft' as the head's status label carrying test ID proposal-status,
+      not as a 'Status' term in the details list; bind status to proposal-status
+      as the contract surface says."
+    from: build-slice-14-4
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T02:55:02.406Z
+    taken: 2026-10-18T02:59:20.216Z
+    taken_by: bind-adapter-new-97
+  - stage: bind-adapter
+    target: new
+    why: "R-8.22, R-8.31, R-1.35, R-1.36, R-2.2, R-2.3, R-2.4, R-2.13, R-2.23:
+      proposal-cwu-create.choose_proponent_individual and
+      choose_proponent_organization were reported unbound because
+      chooseProponent looks for a radio named exactly 'An individual' / 'An
+      organization' under 'Who is submitting this proposal?'; the create page
+      now offers the radios labelled 'Individual' and 'Organization' under 'Will
+      you be submitting a proposal for this opportunity as an Individual or
+      Organization?' (the manage page's edit form keeps 'An individual' / 'An
+      organization'), and both carry the test IDs proposal-proponent-individual
+      and proposal-proponent-organization that the contract surface binds these
+      members to; locate them by those test IDs, or by a label that accepts both
+      wordings."
+    from: build-slice-14-4
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T02:55:02.406Z
+    taken: 2026-10-18T02:59:20.216Z
+    taken_by: bind-adapter-new-97
+  - stage: bind-adapter
+    target: new
+    why: attachmentRegion() in tests/adapters/new/index.ts (line 9442,
+      regionNamed(page, /^attachments$/i)) only finds a region or heading named
+      exactly 'Attachments'. The Code With Us proposal create and edit forms
+      draw that part as a section named '3. Attachments', which is the approved
+      design (design/catalogue/proposal-cwu-create-page.tsx:418 and
+      proposal-cwu-edit.editing.stories.tsx:114). As a result,
+      proposal-cwu-create.add_attachment in R-8.31's case 'removing an
+      attachment from a proposal withdraws the read path the file held through
+      that proposal' finds no row and fails with 'no row naming it', although
+      the page shows the row with its 'Download R-8.31 removed from a
+      proposal.pdf' link. Make the region lookup accept the numbered part title
+      (for example /^(\d+\.\s*)?attachments$/i) for every proposal form's
+      add_attachment and remove step.
+    from: build-slice-14-6
+    gate: G3
+    by: agent:tech-lead
+    at: 2026-10-18T03:32:03.779Z
+    taken: 2026-10-18T03:33:35.911Z
+    taken_by: bind-adapter-new-99
+  - stage: derive-tests
+    why: Rewrite tests/acceptance/organizations/R-3.28.spec.ts so its two cases
+      cannot change each other's state. Both cases change the approved service
+      areas of the same seeded organization (seed.organizations.qualified,
+      00000000-0000-4000-8000-000000000301), and verify runs seven instances in
+      parallel. In slice 14's run, case 1 failed at line 74 while the page
+      showed exactly Data professional + Full stack developer, which is what it
+      was waiting for. Case 2 failed at line 51 while the page showed exactly
+      Agile coach + Full stack developer, which is what it was waiting for. Each
+      poll saw the other case's write. Run the two cases serially, or give each
+      case an organization the other does not change. Do not let either rely on
+      another case leaving the seed's approvals in place.
+    from: build-slice-14-7
+    gate: G3
+    by: agent:tech-lead
+    at: 2026-10-18T04:24:57.724Z
+    taken: 2026-10-18T04:27:00.269Z
+    taken_by: derive-tests-organizations-11
+  - stage: bind-adapter
+    target: new
+    why: "R-1.43: on
+      /opportunities/sprint-with-us/00000000-0000-4000-a011-000000000001/edit?t\
+      ab=evaluationPanel at the consensus stage, the page shows a region
+      \"Evaluation panel\" holding the note \"The evaluation panel can no longer
+      be changed — The consensus stage has begun, so the panel is fixed.\"
+      (inside `evaluation-panel-locked-message`), with a read-only table region
+      \"Members of the evaluation panel\" nested inside it.
+      evaluationPanelPage's section() ends in `.last()`, so it resolves to the
+      nested members-table region (it holds the member rows), which does not
+      contain the note. lockNote() therefore counts 0, editable() returns true,
+      and addPanelMember waits on a member chooser the locked page never draws
+      until the 15s timeout. section() has to resolve to the outermost
+      \"Evaluation panel\" region, or lockNote() has to look across the whole
+      panel, so the lock is read as a refusal."
+    from: build-slice-1-10
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T06:57:02.334Z
+    taken: 2026-10-18T07:00:45.879Z
+    taken_by: bind-adapter-new-102
+  - stage: bind-adapter
+    target: new
+    why: "R-5.16: the same fault in evaluationPanelSwu.addPanelMember on
+      /opportunities/sprint-with-us/00000000-0000-4000-8000-000000000701/edit?t\
+      ab=evaluationPanel. The page shows status \"Team questions: consensus\"
+      and the note \"The evaluation panel can no longer be changed\" in the
+      outer \"Evaluation panel\" region. section()'s `.last()` picks the nested
+      \"Members of the evaluation panel\" table region, the lock note is missed,
+      and the adapter tries to click a member chooser that is not on the page
+      (locator.click timeout) instead of noting the refusal."
+    from: build-slice-1-10
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T06:57:02.334Z
+    taken: 2026-10-18T07:00:45.879Z
+    taken_by: bind-adapter-new-102
+  - stage: bind-adapter
+    target: new
+    why: "R-1.40: opportunityCwuComplete.fullReport on
+      /opportunities/code-with-us/00000000-0000-4000-a008-000000000001/complete
+      (as an administrator) returned text starting \"Opportunity Status Awarded
+      Reward $5,000 …\". It read only the element carrying
+      `opportunity-full-report`, which starts at the \"Opportunity\" section.
+      The page shows the opportunity's title \"Seeded awarded Code With Us
+      opportunity\" as the report's H1, just above that element, and the report
+      article is named by that title. fullReport has to include the report's
+      heading (the H1 that labels the document), not only the body below it."
+    from: build-slice-1-10
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T06:57:02.334Z
+    taken: 2026-10-18T07:00:45.879Z
+    taken_by: bind-adapter-new-102
+  - stage: bind-adapter
+    target: new
+    why: "R-1.43: evaluationPanelSwu.panelMemberRow() read \"\" on
+      /opportunities/sprint-with-us/00000000-0000-4000-a011-000000000001/edit?t\
+      ab=evaluationPanel at the consensus stage. The page shows the lock note
+      and, in the 'Evaluation panel' region, a list 'Members of the evaluation
+      panel' whose items (data-testid evaluation-panel-member-row) read 'Casey
+      Placeholder Role : Evaluator' and 'Robin Placeholder Role : Evaluator and
+      chair'. rows() passes these list items to rowsText(), which reads only
+      role=cell children, and list items have none; read each row's own text
+      (name, then the role after the visually hidden 'Role:')."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
+  - stage: bind-adapter
+    target: new
+    why: "R-5.18: evaluationPanelSwu.panelMemberRow() never read non-empty on
+      /opportunities/sprint-with-us/00000000-0000-4000-a023-000000000001/edit?t\
+      ab=evaluationPanel as the administrator. The panel now opens read-only:
+      the list 'Members of the evaluation panel' shows 'Robin Placeholder Role :
+      Evaluator and chair' and 'Devon Placeholder Role : Evaluator', followed by
+      the 'Edit evaluation panel' button (evaluation-panel-edit). For a panel
+      without a lock note, rows() reads each name from a chooser inside the row,
+      which a read-only row lacks, so every row is skipped. Read the read-only
+      rows' text, and use the chooser only once editing has started."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
+  - stage: bind-adapter
+    target: new
+    why: "R-1.55: after a fresh draft is saved, evaluationPanelSwu.open then
+      panelMemberRow() times out reading \"\"
+      (tests/acceptance/opportunities/R-1.55.spec.ts:131), while the page shows
+      the read-only list item 'Robin Placeholder Role : Evaluator and chair' and
+      'Edit evaluation panel'. Same cause as R-5.18: rows() needs a member
+      chooser, and the read-only panel has none."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
+  - stage: bind-adapter
+    target: new
+    why: "R-5.1: evaluationPanelSwu.panelMemberRow() times out reading \"\"
+      (tests/acceptance/evaluation/R-5.1.spec.ts:94) on a fresh Sprint With Us
+      draft's panel tab, which shows the read-only item 'Casey Placeholder Role
+      : Evaluator and chair' and 'Edit evaluation panel'. Same cause as R-5.18:
+      rows() reads names only from choosers."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
+  - stage: bind-adapter
+    target: new
+    why: "R-5.17: evaluationPanelSwu.panelMemberRow() times out reading \"\"
+      (tests/acceptance/evaluation/R-5.17.spec.ts:91) on a published
+      opportunity's panel tab, which shows the read-only items 'Casey
+      Placeholder Role : Evaluator' and 'Emery Placeholder Role : Evaluator and
+      chair' and 'Edit evaluation panel'. Same cause as R-5.18: rows() reads
+      names only from choosers."
+    from: build-slice-10-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T08:44:30.925Z
+    taken: 2026-10-18T08:47:54.851Z
+    taken_by: bind-adapter-new-103
+  - stage: bind-adapter
+    target: new
+    why: 'R-1.55: evaluation-panel-swu.add_panel_member clicked "Add an evaluator"
+      and timed out because the Evaluation panel section was still read-only:
+      the page shows the members list and an "Edit evaluation panel" button
+      (data-testid evaluation-panel-edit) that has to be pressed first, as
+      start_editing already does. Once editing, the person is picked in one
+      "Public sector employee to add" chooser (evaluation-panel-member-choice),
+      with entries reading "Name (email)", and then "Add an evaluator"
+      (evaluation-panel-add-member) seats them as a new evaluator row; member
+      rows no longer have their own chooser. Seen in
+      .sdlc/evidence/slice-10/R-1.55.txt and R-1.55-2.txt at
+      /opportunities/sprint-with-us/<id>/edit?tab=evaluationPanel.'
+    from: build-slice-10-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T09:09:46.746Z
+    taken: 2026-10-18T09:14:05.551Z
+    taken_by: bind-adapter-new-104
+  - stage: bind-adapter
+    target: new
+    why: 'R-5.1: same cause as R-1.55. add_panel_member was called on the read-only
+      Evaluation panel section (members listed, "Edit evaluation panel" button
+      shown) without pressing that button, then waited for "Add an evaluator"
+      until it timed out. It must enter editing first, then add through the
+      single "Public sector employee to add" chooser and "Add an evaluator".
+      Seen in .sdlc/evidence/slice-10/R-5.1.txt and R-5.1-2.txt.'
+    from: build-slice-10-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T09:09:46.746Z
+    taken: 2026-10-18T09:14:05.551Z
+    taken_by: bind-adapter-new-104
+  - stage: bind-adapter
+    target: new
+    why: 'R-5.17: in the published case, chair_field read "" and
+      mark_member_as_chair reported no evaluator named "Emery Placeholder"
+      ("nobody chosen, nobody chosen") although the read-only section lists
+      "Casey Placeholder, Role: Evaluator" and "Emery Placeholder, Role:
+      Evaluator and chair" above an "Edit evaluation panel" button. The adapter
+      looked for per-row choosers and the Chair chooser without entering
+      editing. Once editing, each seated member is a fieldset whose paragraph
+      reads "Name (email)" beside a Chair checkbox
+      (evaluation-panel-member-chair). In the draft case, add_panel_member timed
+      out on "Add an evaluator" for the same reason as R-1.55. Seen in
+      .sdlc/evidence/slice-10/R-5.17.txt and R-5.17-2.txt.'
+    from: build-slice-10-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T09:09:46.746Z
+    taken: 2026-10-18T09:14:05.551Z
+    taken_by: bind-adapter-new-104
+  - stage: derive-tests
+    why: "Rewrite tests/acceptance/organizations/R-3.28.spec.ts so nothing another
+      test does can change what it reads. It sets its scenario up on
+      seed.organizations.qualified (00000000-0000-4000-8000-000000000301), which
+      other tests also read and change while verify runs the suite in parallel
+      across copies of the application, so it passes or fails by timing: it
+      passed in the verifies of build-slice-14-8, build-slice-1-11 and
+      build-slice-2-17, and failed in build-slice-10-8's at line 58 ('the
+      organization does not stand approved for exactly FULL_STACK_DEVELOPER and
+      AGILE_COACH') while the page showed exactly Full stack developer and Agile
+      coach approved. Give the test an organization of its own that no other
+      test reads or changes, created in the test through the surface and
+      approved for the service areas it needs, and read and change only that
+      organization."
+    from: build-slice-10-8
+    gate: G3
+    by: tech-lead
+    at: 2026-10-18T09:52:39.772Z
+    taken: 2026-10-18T09:55:15.705Z
+    taken_by: derive-tests-organizations-12
+  - stage: bind-adapter
+    target: new
+    why: "R-2.7: proposalSwuCreate.setScrumMaster threw 'Charlie Placeholder is not
+      on the implementation phase's team' because tickScrumMaster
+      (tests/adapters/new/index.ts:13451-13461) only matches a radio named
+      /^scrum master: <name>,/; the page (.sdlc/evidence/slice-15/R-2.7.txt
+      lines 44-51) shows Charlie Placeholder in the phase's team list and a
+      radiogroup named 'Scrum master for the implementation phase (required)'
+      holding a radio named 'Charlie Placeholder', with test ID
+      proposal-scrum-master. Find the radio by the member's name inside the
+      phase's 'Scrum master for the <phase> phase' radiogroup (or by
+      proposal-scrum-master within the phase group), and change onPhase
+      (index.ts:13448) to match the same way."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
+  - stage: bind-adapter
+    target: new
+    why: "R-2.9: same failure as R-2.7. proposalSwuCreate.setScrumMaster looks for a
+      radio named 'Scrum master: Charlie Placeholder, implementation phase', but
+      the page (.sdlc/evidence/slice-15/R-2.9.txt) names the radio 'Charlie
+      Placeholder' inside the radiogroup 'Scrum master for the implementation
+      phase (required)'."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
+  - stage: bind-adapter
+    target: new
+    why: "R-2.11: same failure as R-2.7. proposalSwuCreate.setScrumMaster looks for
+      'Scrum master: Charlie Placeholder, implementation phase', but the page
+      (.sdlc/evidence/slice-15/R-2.11.txt) names the radio 'Charlie Placeholder'
+      inside the radiogroup 'Scrum master for the implementation phase
+      (required)'."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
+  - stage: bind-adapter
+    target: new
+    why: "R-2.16: same failure as R-2.7 for 'Blake Placeholder'.
+      proposalSwuCreate.setScrumMaster looks for 'Scrum master: Blake
+      Placeholder, implementation phase', but the page
+      (.sdlc/evidence/slice-15/R-2.16.txt) names the radio 'Blake Placeholder'
+      inside the radiogroup 'Scrum master for the implementation phase
+      (required)'."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
+  - stage: bind-adapter
+    target: new
+    why: "R-2.18: proposalSwuCreate.pendingTeamMember read '' because
+      addPhaseTeamMember never added the pending person. pickListed
+      (tests/adapters/new/index.ts:13342) accepts an option only as '<Name>' or
+      '<Name> (pending)', but the phase's chooser offers 'Quinn Placeholder
+      (membership pending)', the catalogue's wording
+      (design/catalogue/proposal-swu-create.default.stories.tsx:21,
+      DESIGN.md:4314). Accept '<Name> (membership pending)'. The second R-2.18
+      case failed on the same scrum master name as R-2.7
+      (.sdlc/evidence/slice-15/R-2.18-2.txt: radio 'Blake Placeholder' in
+      radiogroup 'Scrum master for the implementation phase (required)')."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
+  - stage: bind-adapter
+    target: new
+    why: "R-2.19: same failure as R-2.7. setScrumMaster looks for 'Scrum master:
+      <Name>, <phase> phase', but the page names each radio by the member alone
+      inside 'Scrum master for the <phase> phase (required)'
+      (.sdlc/evidence/slice-15/R-2.19.txt, R-2.19-2.txt, R-2.19-3.txt). The
+      three cases verify did not describe (missing phase capability, phase cost
+      over budget, total cost over budget) run through the same step; re-check
+      them once it binds."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
+  - stage: bind-adapter
+    target: new
+    why: "R-2.22: same failure as R-2.7, on both proposalSwuEdit.setScrumMaster and
+      proposalSwuCreate.setScrumMaster. The adapter looks for 'Scrum master:
+      Blake Placeholder, implementation phase', but the create and edit forms
+      (.sdlc/evidence/slice-15/R-2.22.txt, R-2.22-2.txt, R-2.22-3.txt) name the
+      radio 'Blake Placeholder' inside the radiogroup 'Scrum master for the
+      implementation phase (required)'."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:44:19.862Z
+    taken_by: bind-adapter-new-105
+  - stage: design
+    why: "DESIGN.md lines 3017-3020 say each scrum master radio carries an
+      aria-label 'Scrum master: Test Designer, implementation phase', but the
+      approved catalogue story
+      design/catalogue/proposal-swu-create.default.stories.tsx (line 99 onward)
+      draws a RadioGroup labelled 'Scrum master for the <phase> phase' whose
+      radios are named by the person alone. The built screen followed the
+      catalogue, and the test adapter was bound to the prose, which failed seven
+      slice-15 criteria. Make DESIGN.md and the catalogue say the same thing."
+    from: build-slice-15-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T15:40:14.668Z
+    taken: 2026-10-18T15:52:12.603Z
+    taken_by: design-proposals-4
+  - stage: bind-adapter
+    target: new
+    why: "R-2.19: proposalSwuCreate.phaseRequirements (phaseRequirementLines,
+      tests/adapters/new/index.ts:14011-14032) read 'Prototype | complete' for a
+      prototype phase with no team. It only counts a phase as incomplete when a
+      line starts 'Incomplete:'. The page's phase group 'Prototype phase' says
+      'This phase’s team is incomplete. Name at least one team member. Not yet
+      held: Frontend Development.' (.sdlc/evidence/slice-15/R-2.19.txt line 52).
+      Count a phase as incomplete when its requirements line says 'is
+      incomplete', and complete when it says 'meets its requirements'."
+    from: build-slice-15-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T16:04:39.921Z
+    taken: 2026-10-18T16:06:49.437Z
+    taken_by: bind-adapter-new-106
+  - stage: bind-adapter
+    target: new
+    why: "R-2.19: in the missing-capability case phaseRequirementLines read both
+      phases as complete with nothing missing. It looks for missing capabilities
+      only in lines ending ': not held' (index.ts:14022, 14028). Each phase now
+      gives them in one sentence: 'This phase’s team is incomplete. Not yet
+      held: Frontend Development.' and 'This phase’s team is incomplete. Not yet
+      held: Backend Development.' (.sdlc/evidence/slice-15/R-2.19-2.txt lines
+      59, 84). Read the missing capabilities from the comma-separated list after
+      'Not yet held:'."
+    from: build-slice-15-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T16:04:39.921Z
+    taken: 2026-10-18T16:06:49.437Z
+    taken_by: bind-adapter-new-106
+  - stage: bind-adapter
+    target: new
+    why: "R-2.19: proposalSwuCreate.costErrors (costErrorLines,
+      tests/adapters/new/index.ts:13945) read '' for a total cost over the
+      opportunity's budget. It looks for a region named exactly 'Cost', but the
+      page names the region '4. Cost', and inside it, under 'Total proposed
+      cost: $480,000 of the $400,000 maximum budget.', it shows 'The proposed
+      cost exceeds the maximum budget for this opportunity.'
+      (.sdlc/evidence/slice-15/R-2.19-3.txt lines 99-103). Accept a numbered
+      part name such as '4. Cost' when finding the cost region."
+    from: build-slice-15-7
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T16:04:39.921Z
+    taken: 2026-10-18T16:06:49.437Z
+    taken_by: bind-adapter-new-106
+  - stage: bind-adapter
+    target: new
+    why: "R-3.28: organizationEdit.serviceAreaCheckbox, read as the administrator on
+      /organizations/<id>/edit with the Team With Us qualification section
+      closed, did not report the approvals the page shows.
+      .sdlc/evidence/slice-12/R-3.28.png shows the region 'Approved service
+      areas' listing exactly 'Agile coach' and 'Full stack developer', with an
+      'Edit service areas' button beneath it. Because that button is present,
+      the member skips the listed approvals and opens the edit form to read
+      ticked checkboxes, and that read did not yield both areas. Read the
+      approvals from the 'Approved service areas' list whenever the form is not
+      already open, whether or not an 'Edit service areas' button is offered."
+    from: build-slice-12-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T19:23:01.591Z
+    taken: 2026-10-18T19:25:31.386Z
+    taken_by: bind-adapter-new-109
+  - stage: bind-adapter
+    target: new
+    why: "R-8.31: opportunityCwuEdit.deleteOpportunity returned before the deletion
+      had finished. The outline captured at failure
+      (.sdlc/evidence/slice-12/R-8.31.txt) is still
+      /opportunities/code-with-us/<id>/edit, with the Edit, Submit for review
+      and Delete actions all disabled, meaning the delete was still in flight.
+      The screenshot taken afterwards (.sdlc/evidence/slice-12/R-8.31.png) is
+      the Dashboard, so the deletion did complete. The fileDownload read that
+      followed ran before the delete finished and was let through. After
+      confirming the delete, wait until the management page has been left (the
+      URL is no longer the opportunity's edit page) before returning."
+    from: build-slice-12-6
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T19:23:01.591Z
+    taken: 2026-10-18T19:25:31.386Z
+    taken_by: bind-adapter-new-109
+  - stage: bind-adapter
+    target: new
+    why: "R-5.24: evaluationIndividualListSwu.evaluationStatus() read \"\" on
+      /opportunities/sprint-with-us/00000000-0000-4000-8000-000000000701/edit?t\
+      ab=evaluation, while the page's Evaluation region shows a list labelled
+      'Your evaluations, by anonymous proponent name' whose li items carry
+      evaluation-proponent-row and read 'Proponent 1 Your evaluation :
+      Submitted' (and Proponents 2 and 3 likewise), each status in a span
+      carrying evaluation-status. rowsText (tests/adapters/new/index.ts:5611)
+      keeps only rows having ARIA cell descendants and skips these li rows, so
+      proponentRows returns nothing. Read rows found by evaluation-proponent-row
+      that have no cell role by their children or their evaluation-status /
+      proposal-proponent-name test IDs."
+    from: build-slice-17-3
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T21:45:48.802Z
+    taken: 2026-10-18T21:48:36.965Z
+    taken_by: bind-adapter-new-110
+  - stage: bind-adapter
+    target: new
+    why: "R-5.27: evaluationIndividualListTwu.evaluationStatus() and
+      evaluationIndividualListSwu.evaluationStatus() read \"\" on
+      /opportunities/team-with-us/00000000-0000-4000-8000-000000000801/edit?tab\
+      =evaluation and
+      /opportunities/sprint-with-us/00000000-0000-4000-a041-000000000001/edit?t\
+      ab=evaluation, while both pages show the proponent list as li items
+      carrying evaluation-proponent-row ('Proponent 1 Your evaluation :
+      Submitted', and 2 and 3 likewise) with the status in evaluation-status.
+      The same rowsText cell-role filter at tests/adapters/new/index.ts:5611
+      drops every li row."
+    from: build-slice-17-3
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T21:45:48.802Z
+    taken: 2026-10-18T21:48:36.965Z
+    taken_by: bind-adapter-new-110
+  - stage: bind-adapter
+    target: new
+    why: "R-5.35: evaluationIndividualListSwu.evaluationStatus() read \"\" both
+      before and after the move on
+      /opportunities/sprint-with-us/00000000-0000-4000-8000-000000000701/edit?t\
+      ab=evaluation, while the page after the move shows li rows carrying
+      evaluation-proponent-row reading 'Proponent 1 Your evaluation : Draft:
+      complete', 'Proponent 2 Your evaluation : Not started', 'Proponent 3 Your
+      evaluation : Not started'. The empty reads come from rowsText at
+      tests/adapters/new/index.ts:5611 skipping rows with no ARIA cell role,
+      which made the test's not.toBe(before) compare two empty strings."
+    from: build-slice-17-3
+    gate: G3
+    by: agent:reviewer
+    at: 2026-10-18T21:45:48.802Z
+    taken: 2026-10-18T21:48:36.965Z
+    taken_by: bind-adapter-new-110

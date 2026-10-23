@@ -41,6 +41,13 @@
 #
 # Each member's reason is written out in full beside it (no anchors or aliases), so a page's
 # members that share a reason repeat it word for word.
+#
+# Since 2026-10-17 every member finds its element by the test ID spec/contract/surface.yaml
+# gives it (page.getByTestId) wherever the running page carries it, and falls back to the
+# role, label, visible text or address described in the comments below only where it does
+# not. What each member hands back is unchanged in form: the element's own words, the same
+# items in the same order. The descriptions of wording below are what was seen on the
+# screens; on a redrawn screen the test ID, not the wording, is what is looked for.
 target: new
 pages:
   home:
@@ -287,8 +294,11 @@ pages:
       delete_opportunity: bound
       add_addendum: bound
       edit_evaluation_panel: bound
-      finalize_question_consensuses: "unbound: the management screen offers no 'Consensus' section and no control to finalize question consensuses, walked as the administrator on the seeded Sprint With Us opportunities at consensus (one consensus outstanding, every consensus agreed, six proponents) and as their owning public sector employee; its sections are Summary, Opportunity, Addenda, History, Proposals (a list of proponents, added on the current build) and Evaluation panel (the panel locked, 'The evaluation panel can no longer be changed'), its only action is 'Cancel opportunity', and ?tab=consensus falls back to the Summary"
-      start_team_scenario: "unbound: the management screen offers no 'Team scenario' section and no control to start the team scenario, walked as the administrator on the seeded Sprint With Us opportunities at the code challenge (with and without a proponent screened in) and at the team scenario; its sections are Summary, Opportunity, Addenda, History, Proposals (a list of proponents, added on the current build) and Evaluation panel and its only action is 'Cancel opportunity'"
+      # Re-walked as the administrator on the current build: "finalize-consensus-button" at
+      # consensus (confirmed by "evaluation-finalize-confirm") and "start-team-scenario-button"
+      # at the code challenge sit in the screen's actions; each is pressed by its test ID.
+      finalize_question_consensuses: bound
+      start_team_scenario: bound
     observations:
       opportunity_identifier: bound
       created_by_name: bound
@@ -303,8 +313,10 @@ pages:
       # Code With Us screen.
       proposals_tab: bound
       team_questions_tab: bound
-      code_challenge_tab: "unbound: the management screen offers no 'Code challenge' section, walked as the administrator on the seeded Sprint With Us opportunities at the code challenge, at the team scenario, in processing and awarded; its sections are Summary, Opportunity, Addenda, History, Proposals (a list of proponents, added on the current build) and Evaluation panel"
-      team_scenario_tab: "unbound: the management screen offers no 'Team scenario' section, walked as the administrator on the seeded Sprint With Us opportunities at the team scenario, in processing and awarded; its sections are Summary, Opportunity, Addenda, History, Proposals (a list of proponents, added on the current build) and Evaluation panel"
+      # The current build links "Code challenge" and "Team scenario" sections
+      # ("opportunity-tab-code-challenge", "opportunity-tab-team-scenario"), read as their text.
+      code_challenge_tab: bound
+      team_scenario_tab: bound
       evaluation_panel_tab: bound
       # Since 2026-10-04 the screen draws "Consensus" (to the owner off the panel too),
       # "Instructions" and "Evaluation" (to the panel's members) as sections; each reads as its
@@ -388,7 +400,8 @@ pages:
       delete_opportunity: bound
       add_addendum: bound
       edit_evaluation_panel: bound
-      finalize_question_consensuses: "unbound: the management screen offers no 'Consensus' section and no control to finalize question consensuses, walked as the administrator on the seeded Team With Us opportunities at consensus (five proponents, every consensus agreed) and as their owning public sector employee; its sections are Summary, Opportunity, Addenda, History, Proposals (a list of proponents, added on the current build) and Evaluation panel (the panel locked, 'The evaluation panel can no longer be changed'), its only action is 'Cancel opportunity', and ?tab=consensus falls back to the Summary"
+      # As on Sprint With Us: "finalize-consensus-button", confirmed by "evaluation-finalize-confirm".
+      finalize_question_consensuses: bound
     observations:
       opportunity_identifier: bound
       created_by_name: bound
@@ -404,7 +417,8 @@ pages:
       # before the opportunity closes reads empty.
       proposals_tab: bound
       resource_questions_tab: bound
-      challenge_tab: "unbound: the management screen offers no 'Challenge' section, walked as the administrator on the seeded Team With Us opportunity at the challenge; its sections are Summary, Opportunity, Addenda, History, Proposals (a list of proponents, added on the current build) and Evaluation panel"
+      # The current build links a "Challenge" section ("opportunity-tab-challenge").
+      challenge_tab: bound
       evaluation_panel_tab: bound
       # Since 2026-10-04 the screen draws "Consensus" (to the owner off the panel too),
       # "Instructions" and "Evaluation" (to the panel's members) as sections; each reads as its
@@ -499,7 +513,9 @@ pages:
       history_tab: bound
       proponent: bound
       score: bound
-      rank: "unbound: the Code With Us proposal's screen shows no rank or ranking: walked on the current build as the administrator on the seeded opportunity in processing with two evaluated proposals (...a007...101 at 82%, ...a007...102 at 74%) and on the awarded one (...a008...101 at 91%, ...a008...102 at 77%), it carries only the terms Opportunity, Status, Submitted, Proposal ID and Score, and the management screen's Proposals table is Proponent | Status | Submitted, with no rank column"
+      # The current build carries "proposal-rank" ("1 of 2") beside the score; read as shown,
+      # and as nothing on a proposal that is scored but not ranked.
+      rank: bound
       export_link: bound
 
   # Seen 2026-10-04 on every program. .../proposals/:proposalId/export: "Back to the
@@ -1053,9 +1069,14 @@ pages:
       # Pressed on the form 'Edit profile' opens; it fails naming the inert 'Choose a profile
       # picture' button (see file-image-picker).
       change_avatar: bound
-      toggle_admin_permission: "unbound: walked signed in as the administrator, its own /users/<id> says 'You have administrator permissions.' with no box, and another account's /users/:userId (the organization owner's) opens with the account facts and 'Details' and no control at all — no administrator box, switch or button"
+      # Re-walked as the administrator on the current build: another account's profile carries
+      # the "Administrator" box ("profile-admin-checkbox"; for the organization-owner vendor the
+      # service refuses it, "Vendors cannot be granted administrator permissions") and
+      # "Deactivate account" or, on the deactivated vendor's, "Reactivate account"
+      # ("profile-reactivate-button", opening "Reactivate this account?", cancelled while walking).
+      toggle_admin_permission: bound
       deactivate_account: bound
-      reactivate_account: "unbound: walked signed in as the administrator, another account's /users/:userId (the organization owner's) opens with the account facts and 'Details' and no control at all, and one's own profile offers only 'Deactivate account' (to a vendor); no reactivate control is drawn anywhere on the profile"
+      reactivate_account: bound
       confirm_activation_change: bound
       cancel_activation_change: bound
     observations:
@@ -1107,8 +1128,10 @@ pages:
   user-profile-notifications:
     actions:
       toggle_new_opportunity_notifications: bound
-      confirm_unsubscribe: "unbound: walked signed in as the organization-owner vendor and the administrator, the Notifications section's only control is the 'Email me when new opportunities are posted' box; pressing it while ticked left it ticked, opened no dialog and sent nothing to the service, and /users/me?tab=notifications&unsubscribe draws the same section with no dialog, so there is no unsubscribe dialog to confirm or cancel"
-      cancel_unsubscribe: "unbound: walked signed in as the organization-owner vendor and the administrator, the Notifications section's only control is the 'Email me when new opportunities are posted' box; pressing it while ticked left it ticked, opened no dialog and sent nothing to the service, and /users/me?tab=notifications&unsubscribe draws the same section with no dialog, so there is no unsubscribe dialog to confirm or cancel"
+      # The current build asks before unsubscribing: unticking the box opens a dialog whose
+      # "unsubscribe-confirm-button" and "unsubscribe-cancel-button" these press.
+      confirm_unsubscribe: bound
+      cancel_unsubscribe: bound
     observations:
       new_opportunities_checkbox: bound
       notification_email_address: bound
@@ -1121,8 +1144,13 @@ pages:
   user-profile-legal:
     actions:
       open_app_terms: bound
-      accept_updated_terms: "unbound: walked signed in as the vendor whose terms were reset (and the organization-owner vendor), the Legal section says 'You last agreed to terms and conditions on January 5, 2026 at 5:00 p.m.' and offers only links (the privacy policy, the terms and conditions and the three program terms): no warning, no control to accept updated terms and no dialog"
-      confirm_accept_updated_terms: "unbound: walked signed in as the vendor whose terms were reset (and the organization-owner vendor), the Legal section says 'You last agreed to terms and conditions on January 5, 2026 at 5:00 p.m.' and offers only links (the privacy policy, the terms and conditions and the three program terms): no warning, no control to accept updated terms and no dialog"
+      # Re-walked as the vendor whose terms were reset on the current build: the warning "The
+      # terms and conditions have changed" with "Review and agree to the updated terms"
+      # ("legal-accept-updated-terms-button"), which opens "Agree to the updated terms and
+      # conditions?" ("Not now", "I agree" = "legal-accept-terms-confirm-button"; not confirmed
+      # while walking, so the seeded reset stands).
+      accept_updated_terms: bound
+      confirm_accept_updated_terms: bound
     observations:
       privacy_policy: bound
       app_terms_link: bound
@@ -1190,15 +1218,17 @@ pages:
 
   # Walked signed in as the organization-owner vendor and the administrator: "Notifications"
   # over "Notifications are sent to <address>. If this is wrong, correct it on your profile."
-  # and one box, "Email me when new opportunities are posted" (ticked for both). Pressing the
-  # box leaves it as it was, opens no dialog and sends nothing to the service; the toggle then
-  # reports that at once rather than claiming it changed. The address is read from that
-  # sentence; with no dialog ever open, unsubscribe_modal reads empty.
+  # and one box, "Email me when new opportunities are posted" (ticked for both). On the
+  # current build unticking it opens the unsubscribe dialog, which unsubscribe_modal reads and
+  # confirm_unsubscribe / cancel_unsubscribe answer by their test IDs; with no dialog open,
+  # unsubscribe_modal reads empty. The address is read from that sentence.
   user-profile-self-notifications:
     actions:
       toggle_new_opportunity_notifications: bound
-      confirm_unsubscribe: "unbound: walked signed in as the organization-owner vendor and the administrator, the Notifications section's only control is the 'Email me when new opportunities are posted' box; pressing it while ticked left it ticked, opened no dialog and sent nothing to the service, and /users/me?tab=notifications&unsubscribe draws the same section with no dialog, so there is no unsubscribe dialog to confirm or cancel"
-      cancel_unsubscribe: "unbound: walked signed in as the organization-owner vendor and the administrator, the Notifications section's only control is the 'Email me when new opportunities are posted' box; pressing it while ticked left it ticked, opened no dialog and sent nothing to the service, and /users/me?tab=notifications&unsubscribe draws the same section with no dialog, so there is no unsubscribe dialog to confirm or cancel"
+      # The current build asks before unsubscribing: unticking the box opens a dialog whose
+      # "unsubscribe-confirm-button" and "unsubscribe-cancel-button" these press.
+      confirm_unsubscribe: bound
+      cancel_unsubscribe: bound
     observations:
       new_opportunities_checkbox: bound
       notification_email_address: bound
@@ -1210,14 +1240,20 @@ pages:
   # created."), "Terms and conditions" ("Read the Digital Marketplace terms and conditions" →
   # /content/terms-and-conditions, "You agreed to the terms and conditions on January 5, 2026
   # at 5:00 p.m." — "You last agreed …" for the reset vendor) and "Program terms" (links to
-  # the Code With Us, Sprint With Us and Team With Us terms and conditions). Nothing on it,
-  # for the reset vendor either, warns that terms were updated or asks to accept them, so
-  # terms_updated_warning and accept_updated_terms_modal reach it and read empty.
+  # the Code With Us, Sprint With Us and Team With Us terms and conditions). To the reset
+  # vendor the current build adds the warning "The terms and conditions have changed"
+  # ("legal-terms-updated-warning", read without its button's label) and the accept dialog
+  # ("legal-accept-terms-modal"); to anybody else both read empty.
   user-profile-self-legal:
     actions:
       open_app_terms: bound
-      accept_updated_terms: "unbound: walked signed in as the vendor whose terms were reset (and the organization-owner vendor), the Legal section says 'You last agreed to terms and conditions on January 5, 2026 at 5:00 p.m.' and offers only links (the privacy policy, the terms and conditions and the three program terms): no warning, no control to accept updated terms and no dialog"
-      confirm_accept_updated_terms: "unbound: walked signed in as the vendor whose terms were reset (and the organization-owner vendor), the Legal section says 'You last agreed to terms and conditions on January 5, 2026 at 5:00 p.m.' and offers only links (the privacy policy, the terms and conditions and the three program terms): no warning, no control to accept updated terms and no dialog"
+      # Re-walked as the vendor whose terms were reset on the current build: the warning "The
+      # terms and conditions have changed" with "Review and agree to the updated terms"
+      # ("legal-accept-updated-terms-button"), which opens "Agree to the updated terms and
+      # conditions?" ("Not now", "I agree" = "legal-accept-terms-confirm-button"; not confirmed
+      # while walking, so the seeded reset stands).
+      accept_updated_terms: bound
+      confirm_accept_updated_terms: bound
     observations:
       privacy_policy: bound
       app_terms_link: bound
@@ -1282,10 +1318,11 @@ pages:
   # only public sector people are offered, so a vendor named as a member is refused (thrown).
   evaluation-panel-swu:
     actions:
-      # Walked as the administrator on the seeded closed opportunity: the tab opens already
-      # changeable (choosers, "Add an evaluator", "Save evaluation panel"); the "Edit" under
-      # "Opportunity actions" leaves for ?tab=opportunity, so start_editing reaches the
-      # changeable panel and presses an "Edit" only if the section itself draws one.
+      # Walked as the administrator on the seeded closed opportunity: the tab opens read-only
+      # (members listed over "Edit evaluation panel"); start_editing and every change press
+      # that button first, then add through the one "Public sector employee to add" chooser
+      # and "Add an evaluator". The "Edit" under "Opportunity actions" leaves for
+      # ?tab=opportunity and is never pressed.
       start_editing: bound
       add_panel_member: bound
       remove_panel_member: bound
@@ -1612,10 +1649,10 @@ pages:
     actions:
       # Seen 2026-10-04 as the administrator: "Email Notification Reference", one region per
       # event under its level-2 heading, one article per message with "Subject" and "Who
-      # receives it and why". Opened by its address the page shows only the alert "The sample
-      # emails could not be loaded" (its request for its samples, to the same address, is
-      # answered with the page's HTML from the browser's cache); the readers report that as
-      # the page's own failure, not as unbound and not as an empty reading.
+      # receives it and why". Re-walked on the current build: opened by its address it loads
+      # its samples, and the group titles, subjects, summaries and bodies are read by their
+      # test IDs. Were it again to show only the alert "The sample emails could not be
+      # loaded", the readers report that as the page's own failure, not as unbound.
       open_reference: bound
     observations:
       message_group_title: bound

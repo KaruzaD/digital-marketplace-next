@@ -139,7 +139,10 @@ describe("the addresses the application answers for", () => {
     await waitFor(() =>
       expect(screen.getByTestId("service-status-message").textContent).toBe("The Digital Marketplace is up."),
     );
-    expect(screen.getByTestId("service-status-page")).toBeTruthy();
+    // The opportunity kit's page, as the scheduled-transition-trigger story draws it.
+    expect(screen.getByTestId("service-status-page").classList.contains("op-regions")).toBe(true);
+    expect(screen.getByRole("heading", { level: 1, name: "Service status" })).toBeTruthy();
+    expect(screen.getByTestId("service-status-message").classList.contains("op-text")).toBe(true);
     expect(asked.mock.calls.some(([input]) => String(input instanceof Request ? input.url : input).endsWith("/status"))).toBe(true);
   });
 });

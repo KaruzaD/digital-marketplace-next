@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-18-7 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-18-7</h1>
+<p class="lede">G3 · <span class="chip return">return</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 22:34</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.302 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 18 (The chair agrees a consensus and the questions stage is finalised) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> ## Slice 18 restyle: consensus screens now match the design catalogue</p>
+<p>All of slice 18&#39;s criteria were already built in an earlier run (decision record 0063); this run only changed how the consensus s…</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.302 (Claude Code))</p>
+<h3>Slice 18 restyle: consensus screens now match the design catalogue</h3>
+<p>All of slice 18&#39;s criteria were already built in an earlier run (decision record 0063); this run only changed how the consensus screens look. I restyled them to the approved design catalogue and kept every test ID, route, message and behaviour. <code>npm --prefix app run check</code> passes: 16 + 862 + 643 tests across the three workspaces, and the typecheck is clean.</p>
+<p><strong>How each criterion is reached is unchanged:</strong></p>
+<ul><li><strong>The Consensus tab</strong> is on the Sprint and Team With Us manage pages at <code>?tab=consensus</code>.</li><li><strong>The chair&#39;s per-proponent consensus pages</strong> are under <code>…/proposals/:id/team-questions/consensus/create</code> and <code>…/:chairId/edit</code> (<code>resource-questions</code> for Team With Us).</li><li><strong>Finalise consensus scores</strong> is in the manage page&#39;s action bar, offered only to the owner and to administrators.</li><li><strong>Behind the screens:</strong> the finalise rules, screening in the top proponents, and the submitted and finalised notices sent as blind copies all work as decision 0063 describes. Who may read individual evaluations (R-5.28) and the one evaluation flow shared by both programs (R-5.36) are reached through the same consensus pages.</li></ul>
+<p><strong>What changed on screen:</strong></p>
+<ul><li><strong>Shared component:</strong> the evaluation kit in <code>app/frontend/src/app/evaluation-kit.tsx</code> gained one shared piece, <code>PanelScores</code>, which shows each question&#39;s evaluators&#39; scores as rows. I added it there once rather than per screen.</li><li><strong>Consensus tab</strong> (<code>screens/evaluation-consensus-tab.tsx</code>):</li><li>The table is now the kit&#39;s rows, which become stacked cards on a phone. Each status is a coloured label: grey for not started, blue for a draft, green for submitted.</li><li>The owner who is not on the panel sees the explanation in the kit&#39;s notice box.</li><li>A refused submission takes focus again after each attempt.</li><li>The submit button sits in the standard actions area.</li><li>While loading, the tab shows a waiting indicator inside the page frame.</li><li><strong>Finalise refusal:</strong> it now has the catalogue&#39;s focus-taking wrapper. The manage page counts refused attempts, so a second refusal is drawn fresh and takes focus again.</li><li><strong>Consensus forms</strong> (<code>screens/evaluation-consensus-form.tsx</code>):</li><li>Both forms now use the same head as the individual scoring forms: what the page is, the program and status labels, the anonymous name as the main heading, then the opportunity title and the proponent&#39;s place.</li><li>Each question is the kit&#39;s question box, with the evaluators&#39; scores as rows.</li><li>The read-only view (a panel member who is not the chair, or after finalising) is one panel per question.</li><li><strong>Removed:</strong> two old helpers that only this form still used, <code>Heading1</code> and <code>OpportunityLine</code> in the individual evaluation form.</li></ul>
+<p><strong>One visible difference to know about:</strong> I followed the stories exactly, so the proponent&#39;s response now appears only on the create page. The edit page and the read-only view no longer repeat it. A later reader who wants it back can re-add one component.</p>
+<p><strong>Tests added:</strong> six unit tests in <code>app/frontend/tests/consensus.test.tsx</code>. They cover:</p>
+<ul><li>rows drawn as list items under a labelled list;</li><li>the colour of each status label;</li><li>the submit button&#39;s placement;</li><li>the notice wrapper for the owner off the panel;</li><li>focus moving to the finalise refusal on the first and the second attempt;</li><li>the head, question boxes, response and panel-score rows on the create page;</li><li>the status in the head and no response on the edit page;</li><li>one panel per question in the chair-only view.</li></ul>
+<p>The earlier tests for this slice still pass unchanged.</p>
+<p><strong>Things to watch:</strong></p>
+<ul><li>Rows are now <code>&lt;li&gt;</code> items instead of <code>&lt;tr&gt;</code>, under the same test IDs. A row&#39;s text now includes a column name that is hidden on screen, for example &quot;Consensus: Submitted&quot;.</li><li>On the edit page the status moved from a &quot;Status:&quot; line into the head and kept its test ID.</li></ul>
+<p>These are recorded in <code>docs/decisions/0084-the-consensus-tab-and-forms-follow-the-chosen-direction.md</code>.</p>
+<p>I had nothing to build outside this slice and touched nothing outside <code>app/</code> and <code>docs/decisions/</code>. I could not check the screens in a browser here, so the layout has been checked only through these unit tests. The next slice (19, the challenge stages) can reuse <code>PanelScores</code> and the rows from the kit.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip return">return</span> by runner:verify (the runner, automatically) on 2026-10-18 23:07.</p>
+<div class="body"><p>This build breaks 1 criterion that passed when an earlier slice was approved. Each condition is the criterion and what the running application did.</p></div>
+<h3>Conditions</h3><ol class="conditions"><li>R-3.10 (passed when slice 12 was approved): Error: expect(received).not.toContain(expected) // indexOf — Expected substring: not &quot;Cormorant Bay Membership Ends Ltd.&quot; — Received string:        &quot;Cormorant Bay Membership Ends Ltd. | Member | Leave&quot; — at tests/acceptance/organizations/R-3.10.spec.ts:52 — its last steps: signIn(persona organization-member) at /dashboard → organizationUserMemberships.open({userId}) at /users/00000000-0000-4000-8000-000000000204?tab=organizations → organizationUserMemberships.leaveOrganization({organization}) at /users/00000000-0000-4000-8000-000000000204?tab=organizations → organizationUserMemberships.affiliatedOrganizationsTable() at /users/00000000-0000-4000-8000-000000000204?tab=organizations read &quot;Cormorant Bay Membership Ends Ltd. | Member | Leave&quot; — the page as it failed: .sdlc/evidence/slice-18/R-3.10.png, .sdlc/evidence/slice-18/R-3.10.txt</li></ol>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Heading, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
-import { Stack } from "../app/page-layout";
-import { Loading } from "../app/loading";
+import { InlineAlert, Link } from "@bcgov/design-system-react-components";
+import { PageTitle, Waiting } from "../app/opportunity-kit";
+import { UserPage } from "../app/user-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { type SignOutOutcome, signOut, useSession } from "../auth/session";
 
@@ -30,8 +30,8 @@ export function SignOutScreen() {
 
   if (failed) {
     return (
-      <Stack gap="large">
-        <Heading level={1}>Sign Out Failed</Heading>
+      <UserPage>
+        <PageTitle>Sign Out Failed</PageTitle>
         <div data-testid="sign-out-failed">
           <InlineAlert
             variant="danger"
@@ -40,28 +40,28 @@ export function SignOutScreen() {
             description="You may still be signed in. Try signing out again."
           />
         </div>
-      </Stack>
+      </UserPage>
     );
   }
 
   if (!done) {
     return (
-      <Stack gap="large">
-        <Heading level={1}>Signing Out</Heading>
-        <Loading label="Signing you out…" />
-      </Stack>
+      <UserPage>
+        <PageTitle>Signing Out</PageTitle>
+        <Waiting label="Signing you out" />
+      </UserPage>
     );
   }
 
   return (
-    <Stack gap="large">
-      <Heading level={1}>Signed Out</Heading>
+    <UserPage>
+      <PageTitle>Signed Out</PageTitle>
       <div data-testid="sign-out-success">
         <InlineAlert variant="success" role="status" title="You have successfully signed out" />
       </div>
-      <Text elementType="p">
+      <p className="op-text">
         <Link href="/sign-in">Sign in again</Link>
-      </Text>
-    </Stack>
+      </p>
+    </UserPage>
   );
 }

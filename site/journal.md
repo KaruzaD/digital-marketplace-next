@@ -1,5 +1,1478 @@
 # Journal
 
+## 584 · build · 2026-10-19
+
+cost $1.4966654 · turns 35 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I brought the slice 14 screens back in line with the design catalogue. Only two wording differences were left, both on the proposal forms. `npm --prefix app run check` passes: typechecks, then 16 + 862 + 659 unit tests across migrations, backend and frontend.
+
+**What I found.** These screens had already been restyled once, the previous time this stage ran (decision record 0072). Since then the design notes have gained a section called "Corrections after the build", which changes two things on these screens. I checked every story for the Code With Us create page, its manage page and the vendor dashboard against the app: the words, the order of things and the test IDs. Only those two corrections were missing. Everything else the stories draw is already in the screens, or is left out on purpose for reasons decision record 0072 already gives.
+
+**What I changed:**
+- **Manage page form.** When a vendor presses Edit, the form now asks the create page's question: "Will you be submitting a proposal for this opportunity as an Individual or Organization?", with the choices "Individual" and "Organization". It used to ask "Who is submitting this proposal?" with "An individual" and "An organization". The test IDs on the two choices are unchanged.
+- **Create page.** The second street field is now labelled "Street Address line 2", so the two street fields no longer share a name, which the accessibility guideline WCAG 2.2 requires. Its test ID `proposal-street-2-field` is unchanged.
+- **Shared proposal kit.** I added one style rule so the kit's styles match the catalogue's copy exactly. It only matters to the scoring screens a later slice builds.
+- **Decision record.** `docs/decisions/0091-the-code-with-us-proposal-forms-take-the-catalogues-corrections.md` records these changes and replaces 0072's line about the question.
+
+**Kept on purpose.** At the end of the manage form the story says "Save changes keeps this proposal as a draft"; I kept the app's "keeps this proposal as it is". Edit is also offered on proposals that have been submitted or withdrawn, and saving one of those does not turn it back into a draft, so the story's sentence would be wrong there. The earlier omissions also stand: no evaluation-criteria section, because the contract gives Code With Us opportunities no evaluation criteria, and no "format with Markdown" sentence, because proposals are shown as plain text.
+
+**Tests.** I added checks to the existing unit tests in `app/frontend/tests/proposals.test.tsx` rather than writing new tests. The manage-page editing test now checks the corrected question, both choice labels and the "Street address line 2" label. The create-page test now checks that "Street Address line 2" labels the second street field.
+
+**Effect on the acceptance tests.** No test ID changed. An acceptance test that finds the manage form's choices by "Who is submitting this proposal?", or the create page's second street field by "Street Address", will need the new words.
+
+**Not done here.** I changed no behaviour and nothing in the slice's criteria. As before, the rules that also cover the Sprint With Us and Team With Us screens are answered for in Slice 15, and scoring and awarding in Slice 16. Nothing outside `app/` and `docs/decisions/` was touched. I could not view the pages in a browser here, so the checks rely on the unit tests and the comparison against the stories.
+
+## 583 · build · 2026-10-19
+
+cost $1.1653067999999998 · turns 27 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I restyled slice 21's one screen, the email notification reference at `/admin/email-notification-reference`, to match its catalogue stories (`default`, `loading`, `not-found`). Nothing it shows or who may see it has changed. `npm --prefix app run check` passes: the migrations, backend and frontend packages ran 16, 862 and 659 tests, none failing. The error lines in its output come from tests that exercise failure paths on purpose.
+
+**What was already there.** The slice had been built before, as decision records 0067 and 0068 describe. The service builds every message from invented sample data using the same functions that build it for sending: 62 messages under 45 events (R-6.13). A backend test fails if any message builder is missing from the reference, so a message added later without a sample breaks `check` (R-6.19). Anyone who is not an administrator gets the shared missing page. The only thing out of step with the approved catalogue was how the screen looked: it was still drawn with plain stacks, the design system's headings and text, and inline styles.
+
+**What I changed.**
+- **Shared pieces, added once in `app/frontend/src/app/notification-kit.tsx`:**
+  - a page frame for this domain's screens, built on the opportunity kit's page;
+  - the "Events that send email" list of in-page links;
+  - one section per event, holding one article per message. Each article has the recipient as its H3, the Subject (and "Who receives it and why" only where a summary is written) as a list of terms, and the bordered email preview.
+
+  Its style sheet now includes the catalogue's rules for the contents list, the message rule and the preview frame. The terms broadcast and the opportunity list already used that style sheet and still do.
+- **The screen**, `app/frontend/src/screens/email-notification-reference.tsx`, is now built from those pieces. Its width and spacing come from the shell's page container, like every other restyled screen. The loading state is the heading plus the kit's spinner ("Loading sample emails…"). The failure alert has no story, so I kept it and placed it in the same page frame.
+- **One difference from the catalogue.** The catalogue's sample type is a simple list of paragraphs, a link and a footer. The kit instead draws the shape the service actually returns (blocks of text and links), so the preview stays exactly the message as sent. Decision record 0090 explains this.
+
+Every test ID from `surface.yaml` and the stories is still on the same element:
+- `email-reference-page` on the page;
+- `email-reference-group-title` on the event's words;
+- `email-reference-subject` and `email-reference-summary` on the fact values;
+- `email-reference-body` on the preview frame;
+- `not-found-page` on the refusal.
+
+**Tests.** The existing frontend tests for this page still pass. They cover the grouping, the subjects, a summary row left out where none is written, the endings of each message, the refusal for vendors, public sector staff and visitors, and the request that skips the browser's cache. I added one test of the catalogue's structure: a section per event with its H2, an article per message, the fact terms, and the preview frame's accessible name.
+
+**R-6.6 is not built as literally written.** R-6.6 says every message ends with an Unsubscribe offer. R-6.16 says a message the notification preference does not govern must not offer to unsubscribe. The plan reads R-6.16 as narrowing R-6.6, and the catalogue story draws that split. So Unsubscribe ends only the three new-opportunity announcements, opening `/users/me?tab=notifications&unsubscribe` with the question already asked. Every other sample ends with "Manage your notification settings". The page starts with the Code With Us announcement, so the first sample does end with Unsubscribe. If R-6.6's acceptance test expects the offer on every sample, it will fail on those other messages. The plan says to raise that rather than satisfy it, so I've raised it here. Settling it would take a ruling on the spec, which is not this stage's to change. If R-6.6 were ruled to stand as written, one change to the shared message footer would end every message with Unsubscribe, and the reference would follow on its own.
+
+**For the next slice.** Nothing is missing from this one. Every message built in slices 2 to 19 is on the page, and the completeness test will catch any new message added without a sample.
+
+## 582 · build · 2026-10-19
+
+cost $2.0283071999999995 · turns 36 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I restyled slice 20's screens to match the design catalogue approved at G-DESIGN. The slice's behaviour was already built (decision record 0066), and none of it changed. `npm --prefix app run check` passes: typecheck plus 1,536 unit tests across the three packages.
+
+**What the slice covers**
+- **R-2.37, printable copy of one proposal:** at `/opportunities/<program>/:opportunityId/proposals/:proposalId/export`.
+  - Staff reading a Sprint With Us or Team With Us copy see "Proponent 1" until the proposal reaches the code challenge (or, for Team With Us, the challenge). The vendor always sees their organization's name.
+  - A visitor, or anyone the service won't show the proposal to, gets the shared missing page.
+- **R-2.38, all proposals in one document:** at `/opportunities/<program>/:opportunityId/proposals/export`.
+  - A vendor is refused without the service being asked.
+  - Staff and administrators get every submitted proposal, never drafts. The "Name proponents anonymously" checkbox puts `?anonymous=true` in the address, so that version can be reopened or shared.
+- **R-1.40, full report:** at `/opportunities/<program>/:opportunityId/complete`. Only administrators can open it; everyone else, the opportunity's own author included, gets the missing page and nothing is asked of the service.
+
+**What the restyle changed**
+- **Layout pieces:** all three kinds of page are now built from the existing shared opportunity and proposal components in `app/frontend/src/app/`. The pages use the shared page frame, so they get the same width and spacing as every other screen. Every test ID from the stories and from `surface.yaml` is kept.
+- **Shared components:** I extended two, once, instead of adding pieces per screen:
+  - Section headings and regions now go down to levels 4 and 5, because the report nests a proposal's parts and their phases or questions under each proposal.
+  - The proposal header can show its status with no `proposal-status` test ID, which is how the printable-copy stories draw it.
+- **Printable copy:** the Back link and Print come first. The status moved from the facts list into the header as a label.
+- **All-proposals document:** each proposal is its own bordered panel.
+  - A Team With Us proposal now states its hourly bid ("$220.00 an hour", worked out as on its manage page) instead of an estimated contract cost.
+  - A Code With Us proposal's text comes first under the heading "Proposal".
+- **Report:** scores now show two decimal places ("91.50%"), and the Opportunity ID fact is gone, both to match the stories.
+
+**Where I kept the app's version over the story** (recorded in `docs/decisions/0089-…`):
+- **Status wording:** I kept the shared wording ("Under review: questions" where a story says "Under review: team questions") so it matches every other proposal screen.
+- **Team With Us contract dates:** the report still shows them, because it is meant to hold the whole record.
+- **Opportunity description:** it is still shown as formatted text rather than one plain paragraph.
+
+**Tests:** I updated `app/frontend/tests/exports.test.tsx` for the two-decimal score and added tests for:
+- the copy's status label having no test ID, and its parts being named regions;
+- the Code With Us document putting "Proposal" first and leaving out the Proponent section when anonymous;
+- the Team With Us document stating the bid;
+- the report's header and History region.
+
+I had to run `npm ci` under `app/` first because dependencies weren't installed; `node_modules` is git-ignored there.
+
+**Not done or left open**
+- I couldn't view the pages in a browser, so the visual result is checked only through unit tests.
+- Nothing outside `app/` and `docs/decisions/` needed changing.
+- The next slice won't find anything missing from slice 20.
+
+## 581 · build · 2026-10-19
+
+cost $1.3414104000000002 · turns 36 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+Slice 6 was already working, so this run only restyled its screens to the approved catalogue. One section needed changing: the "Notify vendors of updated terms" section on the terms page's managing screen. No behaviour, wording or test ID changed. `npm --prefix app run check` passes for all three packages. I couldn't look at the pages in a browser here, so the new look is proven by unit tests only.
+
+**Where the slice's criteria are reached in the app**
+- **R-7.13:** the announcement is offered only on the managing screen for the page at `terms-and-conditions` (`/content/terms-and-conditions/edit`). That screen is for administrators only.
+- **R-6.23:** the administrator is asked to confirm first. Confirming sends `POST /api/emailNotifications` with the tag `updateTerms`.
+- **R-6.24:** the service withdraws every vendor's acceptance and answers before any email goes out. The success message claims no more than that.
+- **R-6.18 and R-6.28:** each active vendor gets their own email naming all three programs. A vendor with no address is skipped, and one the mail server can't reach is logged and passed over while the rest still go. All of this is backend work from the original build.
+- **R-4.16 and R-4.33:** the vendor's legal section sets out the privacy policy, the terms with the date and time they agreed, and the three programs' terms. Only the vendor sees it. When their acceptance has been withdrawn, it shows the "terms have changed" warning and lets them agree again.
+
+The rules and reasons for all of this are in decision record 0027.
+
+**What changed:** `app/frontend/src/screens/terms-broadcast.tsx` is now drawn the way the catalogue's `TermsBroadcastPage` draws it:
+- It is a region under the heading "Notify vendors of updated terms", placed after the "Current wording" region.
+- The success or failure message comes first, then the two explanatory sentences.
+- The button is secondary and sits in the shared actions row, so it goes full width on a phone. Edit page stays the screen's only primary button.
+- It reuses the shared kits already in `app/frontend/src/app` (`Region`, `Actions`, the notification style sheet), so nothing new was added there.
+
+The rest of that screen and the legal section had already been restyled in slices 5 and 3 (records 0087 and 0077). I compared the legal section with its stories and it matches region for region, so I left it alone.
+
+**One place I didn't follow a story:** the `terms-updated` story draws the legal section without the profile section links. DESIGN.md gives no reason and no criterion asks for it. Taking them away would leave the vendor no way to reach their other profile sections from that page, so I kept them. Record 0088 says so.
+
+**Tests:** I added one to `app/frontend/tests/changed-terms.test.tsx`. It checks that the broadcast is a region with that heading, that it comes after "Current wording", and that its button is a secondary button inside the actions row. The existing tests for this slice (which page offers it, who may use it, confirm/cancel, success and failure, re-agreeing) still pass.
+
+**Records:** I added decision record 0088. `app/compose/compose.yaml` already publishes the app at port 4300 and the identity provider's realm at port 8080, so I didn't touch it. Nothing outside `app/` and `docs/decisions/` needed changing, and the next slice should find nothing missing from this one.
+
+## 580 · build · 2026-10-19
+
+cost $3.0390286 · turns 66 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I restyled slice 5's three screens to the approved catalogue: the list of pages, the create form and a page's managing screen. Typecheck and `npm --prefix app run check` pass across all workspaces, including six new frontend tests. Nothing has been looked at in a browser, because this environment has none.
+
+**What the slice already had.** All eighteen criteria were built in this slice's first pass (decision record 0025) and their tests still pass unchanged. Page requests, permissions, versions, the needed-page protection, authorship, the editor and image upload all behave as before. The only behaviour changes in this pass are layout and the duplicate-address state described below.
+
+**What changed on screen.** Each screen now uses the shared page frame and heading sizes, and the shared pieces went into the app's content kit once, not per screen.
+- **List of pages:** the title bar with Create page, then a table with a caption that counts the pages: "Every page, in order of title (N pages)". The number carries the one new test ID, `content-list-count`. "Needed by the service: Yes" is now a grey label. On a phone each page is a card instead of a table row, with the same test IDs once each. While the list loads, only the heading and "Loading pages…" show, as the loading story draws it, so Create page appears with the rows.
+- **Managing screen:** "Manage a page" sits over the page's title. The facts are laid out as columns of labels and values, the needed-page warning and actions follow, then the current wording with title and address side by side. Editing happens in an "Edit the page" section.
+- **Form:** title and address share a line where they fit. The image control's rule, upload progress, inserted message and refusal follow the files design.
+- **Duplicate address:** while the refused address is still in the field, the form shows only the refusal: no intro sentence and no hint before Publish, as both duplicate-address stories draw it. Both come back once the address is changed, and the refusal still takes focus each time it appears.
+- **Signed-in check:** the wait while the app checks who is signed in now looks the same as each screen's own loading state.
+- **Kept where the stories are silent:** the alerts for a list that fails to load, a publish failure and a removal failure stay, since no story draws them.
+
+Every existing test ID and all wording are unchanged. One thing a later test could trip on: on a phone, `content-list-table` is now on the list of cards, not on a table.
+
+**Tests.** The new tests cover the list's loading state, the page count in the caption, the grey label, the phone cards in title order, the managing screen's heading and facts, the warning's title being shown, and the focused duplicate-address state with the hint coming back afterwards. The design system's check reported no problems on the restyled screens.
+
+**Not mine to settle.** The brief says a fresh installation lists sixteen needed pages (decision record 0007), but decision record 0026 and DESIGN.md say twenty-two. The count on screen is whatever the database holds, which slice 1's migration and the seed decide. If the acceptance suite expects one figure and the data gives the other, the fix belongs there, not in these screens.
+
+**Left for the next slice.** The "Notify vendors of updated terms" section on the terms page's managing screen belongs to slice 6 and is still drawn the old way.
+
+The choices are recorded in `docs/decisions/0087-the-content-list-create-form-and-managing-screen-follow-the-chosen-direction.md`. The main code is in `app/frontend/src/app/content-kit.tsx` and the three screens under `app/frontend/src/screens/`.
+
+## 579 · build · 2026-10-19
+
+cost $1.6068795999999996 · turns 46 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I restyled the user list at `/users` and its contact-list export to match the approved design catalogue. That was the one part of slice 4 still in the older layout. `npm --prefix app run check` passes: typecheck plus 16 + 862 + 649 unit tests across the three packages.
+
+**State going in.** All ten criteria were already built in earlier passes, with the choices recorded in `docs/decisions/0024`:
+- **R-4.14 and R-4.21:** the user list, with search, shown to administrators only; anyone else gets the missing page and the service refuses them with a 401.
+- **R-4.32:** the contact-list export.
+- **R-4.12, R-4.19, R-4.20, R-4.30 and R-4.31:** the administrator's view of someone else's profile, with administrator rights, deactivate and reactivate, and the messages each sends.
+- **R-4.4:** the sign-in refusal and its notice.
+- **R-4.13:** the first administrator, put in by the seed.
+
+The administrator's profile view had already been restyled under decision 0077, and the notices under 0074. I changed no behaviour in this pass.
+
+**What changed.**
+- **Shared user kit** (`app/frontend/src/app/user-kit.tsx`): it now carries the catalogue's toolbar, phone-card and export-dialog styles, plus two small components, `Toolbar` and `DialogBody`. They are defined once there and not inside the screen.
+- **Wide screens** (`app/frontend/src/screens/user-list.tsx`): the list uses the shared `DataTable` with its caption. Each account's status is the kit's coloured label: green for Active, grey for Inactive.
+- **Phones:** each account becomes a card, with its name as a heading link and status, account type and "Administrator: Yes/No" on one line beneath. The switch is made in script, as the site header's is, so each row and its test IDs appear only once.
+- **Loading:** the wait is the kit's waiting row under the page heading.
+- **Export dialog:** it uses the kit's body and heading size, and works exactly as before.
+
+**Two things kept that the stories don't show.** Both are recorded in the new `docs/decisions/0086`:
+- The "N of M people shown" line stays as a status message. The design leaves an empty search undesigned (DESIGN.md's gap 1), and without the line a screen reader hears nothing as the list narrows.
+- The export's failure alert stays, because the stories draw no failure state.
+
+**Tests.** I added three tests to `app/frontend/tests/administering.test.tsx`:
+- the wait under the heading;
+- the wide table's column headings and the status label colours;
+- the phone layout: no table, one card per account, each of the four row test IDs once per account, the name as a heading, and the administrator line.
+
+The existing tests for the list, the export, the profile controls and the accessibility (axe) checks still pass. A script confirmed every test ID in the `user-list`, `user-profile` and `user-notice` stories is present in the app's markup.
+
+**Left alone.** `user-list-request` is a reference page for an API address, not a screen, so it needed no markup. The compose file already publishes the application at http://localhost:4300 and the identity provider's realm at http://localhost:8080/realms/digital-marketplace; I did not change it. Nothing in this slice required changing the spec, plan or design, and I couldn't look at the page in a browser here, so the visual result is proven only by the unit tests.
+
+**For the next slice.** Every slice-4 screen now follows the chosen direction. The profile's organizations section and the shared sign-in wait are still in the older layout, as 0077 notes; they belong to the organizations stories and slice 2's restyle.
+
+## 578 · build · 2026-10-19
+
+cost $3.1362110000000007 · turns 69 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I restyled slice 19's screens to the approved design catalogue, and `npm --prefix app run check` passes: typecheck plus 862 backend, 646 frontend and 16 migration tests. I could not open the pages in a browser here, so the new look has only been checked by unit tests.
+
+**The slice's behaviour.** R-1.25, R-1.42, R-1.49, R-2.28, R-2.30, R-2.31 and R-2.35 were built in an earlier pass and are recorded in decision record 0065. The service's behaviour (the scoring routes, screening, the guard on starting the team scenario, price scores, the move to processing, award and proposal history) is unchanged. This pass changed only the screens, plus one fix described below.
+
+**The read-only proposal page** for Sprint With Us and Team With Us (`frontend/src/screens/proposal-team-view.tsx`) is now drawn the same way as the Code With Us one:
+- **Layout and order:** the shared page frame, then the heading with the program and coloured status labels, the details, the Scores section, the printable-copy link, the shared action bar, the tabs, and the open tab's content.
+- **Stage tabs:** each one shows a sentence about the stage and the stage's score. The score button now sits in a `proposal-score-actions` wrapper that is always there and empty when no score is offered. Screen in and Screen out are in a button group of their own.
+- **Wrong-stage refusal:** shown as a titled alert that takes focus. Each refused attempt is counted, so a second refusal is drawn again and takes focus again.
+- **Questions:** the Team questions and Resource questions tabs list the responses in the shared table. The Proposal tab no longer repeats them and ends with a note saying which tab holds them.
+
+**Three small changes outside that page:**
+- The shared tab links in `frontend/src/app/proposal-kit.tsx` can now use an address that differs from their test ID, as the catalogue's do. `proposal-tab-team-questions` still links to `?tab=teamQuestions`.
+- The shared proposal details can leave the questions out. The vendor's manage page still shows them.
+- The manage page's Code challenge, Team scenario and Challenge tabs now list proponents in the shared table, with coloured status labels and the shared loading spinner. They keep their test IDs. No story draws these tabs, so they now match the page's other tables.
+
+The manage page's Start team scenario button and its refusal already matched the stories, so I left them alone.
+
+**One fix that matters for the acceptance tests.** The contract says `proposal-rank` reads empty when a proposal has no rank, but the page used to leave the element out entirely, so a test looking for it would not find it. It is now always present: "1st", "2nd" and so on once fully evaluated, otherwise empty beside "Not yet ranked". "Total score" is now "Total", as the stories have it. I updated the two existing tests that expected the old wording and the missing element.
+
+**New unit tests** in `frontend/tests/stage-evaluation.test.tsx` cover:
+- the empty rank beside "Not yet ranked";
+- the score wrapper staying present and empty when nothing is offered;
+- the page layout: status label, heading, tab addresses and the current tab;
+- responses appearing on the questions tab and not on the Proposal tab.
+
+**Where the page still differs from the stories**, all carried over from decision record 0065:
+- A stage the opportunity has not reached offers no score button, following criterion R-2.28 rather than the older design.
+- The questions table has no Score column, because the service doesn't send each question's agreed score with the proposal.
+- The page names the proponent by organization rather than as "Proponent 1". Hiding the name is criterion R-2.37's rule, and I didn't change it.
+
+I recorded all of this in `docs/decisions/0085-…`. No test IDs, routes or service behaviour changed, and nothing outside `app/` and `docs/decisions/` was touched. The compose file still publishes the app at :4300 and the identity provider's realm at :8080.
+
+**For the next slice (20):** the printable and export pages are its own, and still need restyling on the same frame.
+
+## 577 · build · 2026-10-19
+
+cost $0.24305259999999998 · turns 7 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I made no changes to the application in this revision.
+
+**Why R-4.14 needed no fix.** The ruling sent this build back for one criterion from slice 4, R-4.14: an administrator browsing the people registered with the service, with each person's status, account kind, name and whether they are an administrator. The test timed out on the user list at `/users`. I opened the page outline the failure left (`.sdlc/evidence/slice-18/R-4.14.txt`). The page had loaded fully for the administrator:
+- the heading "Digital Marketplace Users", the name search and the "Export contact list" button were all drawn;
+- the table had the columns Status, Account type, Name and Administrator, with active accounts first and then sorted by account type and name;
+- every row was filled in and each name linked to that person's profile.
+
+So the page does what the criterion asks. This agrees with the operator's note: the timeout came from the test adapter reading the list one cell at a time, which took longer than the test waits once the list had grown. A binding approved just before this run reads the list in one call. As instructed, I left the restyle and everything else alone.
+
+**Slice 18 itself is unchanged** from the version that was returned. That covers:
+- the chair's consensus tab and the per-proponent consensus screens;
+- reopening and resubmitting until the stage is finalised;
+- the explanation shown to an owner who is not on the panel;
+- the single finalise action, and its refusals that name the right next stage;
+- screening in the top proponents who met every minimum;
+- the submitted and finalised notices.
+
+It also still carries the criteria the plan places here for testing although earlier slices built them (R-6.15, R-5.28, R-5.36).
+
+**Checks.** This workspace had no dependencies installed, so I installed them from the existing lockfile and ran `npm --prefix app run check`. It passed: typechecks were clean and all 1,521 unit tests passed (16, 862 and 643 across the three test runs). I wrote no new tests because no code changed.
+
+**Not done here.** Nothing outside `app/` and `docs/decisions/` needed touching. If R-4.14 fails again once the new binding is in place, the next thing to look at is the adapter's reading of the list, not this page.
+
+## 576 · bind-adapter · 2026-10-19
+
+cost $0.5794822 · turns 17 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I've changed the user-list reader in `tests/adapters/new/index.ts` so it reads every row and its four cells in a single call to the browser. Against the running application it returns exactly what the old reader did. I could not run the TypeScript compiler here, because the command needed an approval that nobody was present to give.
+
+**What I changed.** One function, `userListMarked`, sits behind the user list's `user_row`, `status_badge`, `account_type` and `admin_check` readings. It used to loop over the visible `user-list-row` rows, looking up each row's four cells (status, account type, name, administrator) one after another. That cost several browser round trips per row. Now one `evaluateAll` over the visible rows reads the four cells by their test IDs inside the page and hands them all back in one answer.
+
+**Keeping the output the same.** A cell still counts only where it is visible, which repeats the visibility rule the old lookup used. The first visible match is read, with whitespace collapsed and trimmed, and a row without a cell gives an empty string. The fallback reader still returns null when the page has no `user-list-row` or `user-list-status-badge` at all. Nothing that builds the four readings' text was touched, so what each one hands back is unchanged.
+
+**Checked against the running application.** I signed in as the administrator persona, typing the password variable's name as instructed, and opened `/users`, which listed 147 accounts. I ran the old per-cell reads and the new single read side by side on that list:
+- **Same output:** both produced the same rows in the same order (compared as JSON).
+- **Faster:** the old reads took about 1.65 seconds and the new read about 19 milliseconds.
+
+The 1.65 seconds is from a local browser session; in a full suite run each round trip costs more. That is consistent with the explanation given for R-4.14 failing: the old per-row read on a long list outran its 5-second poll. I could not see that test file here, so I did not confirm that link directly.
+
+**Not verified.** No type check ran. I read the change against the surrounding code by eye:
+- It returns the same declared type.
+- It uses DOM types the same way the file already does elsewhere (`HTMLTableElement`, `innerText`).
+- It passes the existing `as const` test-ID map into the page.
+
+**Not touched.** No other member or page, and not `tests/adapters/new/bindings.yaml`. The four readings were already `bound` and still are, so that file needed no change. Nothing outside `tests/adapters/new/` was edited, and this run found no route that failed to resolve.
+
+## 575 · bind-adapter · 2026-10-18
+
+cost $2.0821136000000005 · turns 79 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I fixed the race: `organizationUserMemberships.leaveOrganization` now returns only after the organization's row has changed in the table. The same fix covers the other membership actions that had the same gap. I tested the new waiting logic in the browser against the running target, but I couldn't type-check or run the adapter file itself. Installing the TypeScript toolchain and running `node --check` both needed permission I didn't have.
+
+**What I saw on the running target.** I didn't want to change the seeded memberships, so I made a throwaway organization, "Binding Walk Leave Check Ltd.", as the organization owner. I invited the organization member and the vendor to it, then walked each answer:
+
+- **Accept:** the dialog has the test ID `membership-accept-dialog`. About 100 ms after "Join organization", the status reads "You have joined <org>." and the row turns from "Pending" to "Member | Leave".
+- **Leave:** the dialog has the test ID `membership-leave-dialog`. After "Leave organization", the status reads "You have left <org>." and the row disappears from the table.
+- **Decline:** after "Decline invitation", the status reads "You have declined the invitation from <org>." The row disappears, or the table gives way to the "You do not belong to any other organizations…" message.
+- **Owner removing a pending member** on the organization's team tab: "Remove from team" takes the row away with no status line. A refusal is drawn as an alert instead.
+
+These records stay on the target after my walk: the organization I made and its owner membership, plus one ended membership of the member persona and one declined invitation of the vendor persona, both on that organization. Nothing in the seed was changed.
+
+**What changed in `tests/adapters/new/index.ts`.**
+
+- **The organizations tab** (`organizationUserMemberships` and `organizationUserMembershipsSelf`): accept, decline and leave now wait after confirming. Before pressing, the adapter records how the organization's rows read. Afterwards it waits, for up to ten seconds, until those rows have changed: gone, or reading differently.
+  - It doesn't count anything while the confirmation dialog is still open.
+  - When the answer came from an invitation email with the dialog already open and no row to watch, the status line naming the organization is the signal instead.
+  - If neither happens, the method returns anyway and leaves the screen for the test to read. It doesn't throw.
+  - I didn't use "the status says you have left" alone as the signal. The failure the operator described matches a status line appearing before the table is redrawn, and waiting on the row itself avoids that.
+- **The leave dialog** is now recognised by its test ID, `membership-leave-dialog`, rather than by its wording, matching how the accept and decline dialogs were already found.
+- **The owner's team tab** (`organizationEdit.removeTeamMember` and `approvePendingMember`): these already waited for the server's answer but not for the table to be redrawn. They now also wait until the person's row is gone or has changed, or a refusal alert shows, for up to five seconds. This replaces a flat two-second wait for an alert that only a refusal ever shows.
+
+What each method hands back is unchanged: the actions still return nothing, and no observation was touched.
+
+**Checking it.** I ran the new waiting steps in the browser as the member persona: accept, then leave, reading the affiliated table immediately after each. Both returned about 105 ms after confirming. The read after leaving showed only "Northern Pines Digital Ltd. | Member | Leave", without the row that had been left.
+
+**`bindings.yaml`** needed no change: all five members were already `bound`, and every route I visited resolved.
+
+**Other.** Once, while inviting as the owner, an email typed into the "Add team members" dialog was lost before "Send invitations", and the dialog said "Enter an email address". It worked when retried with the box clicked first. That points to a possible timing weakness in `organizationEdit.addTeamMembers`, which I left alone because it is outside this run's scope. Nothing outside `tests/adapters/new/` was changed.
+
+## 574 · build · 2026-10-18
+
+cost $0 · turns 0
+
+The application build-slice-17-3 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Each of its 3 conditions went to another stage:
+
+- to bind-adapter: R-5.24: evaluationIndividualListSwu.evaluationStatus() read "" on /opportunities/sprint-with-us/00000000-0000-4000-8000-000000000701/edit?tab=evaluation, while the page's Evaluation region shows a list labelled 'Your evaluations, by anonymous proponent name' whose li items carry evaluation-proponent-row and read 'Proponent 1 Your evaluation : Submitted' (and Proponents 2 and 3 likewise), each status in a span carrying evaluation-status. rowsText (tests/adapters/new/index.ts:5611) keeps only rows having ARIA cell descendants and skips these li rows, so proponentRows returns nothing. Read rows found by evaluation-proponent-row that have no cell role by their children or their evaluation-status / proposal-proponent-name test IDs.
+- to bind-adapter: R-5.27: evaluationIndividualListTwu.evaluationStatus() and evaluationIndividualListSwu.evaluationStatus() read "" on /opportunities/team-with-us/00000000-0000-4000-8000-000000000801/edit?tab=evaluation and /opportunities/sprint-with-us/00000000-0000-4000-a041-000000000001/edit?tab=evaluation, while both pages show the proponent list as li items carrying evaluation-proponent-row ('Proponent 1 Your evaluation : Submitted', and 2 and 3 likewise) with the status in evaluation-status. The same rowsText cell-role filter at tests/adapters/new/index.ts:5611 drops every li row.
+- to bind-adapter: R-5.35: evaluationIndividualListSwu.evaluationStatus() read "" both before and after the move on /opportunities/sprint-with-us/00000000-0000-4000-8000-000000000701/edit?tab=evaluation, while the page after the move shows li rows carrying evaluation-proponent-row reading 'Proponent 1 Your evaluation : Draft: complete', 'Proponent 2 Your evaluation : Not started', 'Proponent 3 Your evaluation : Not started'. The empty reads come from rowsText at tests/adapters/new/index.ts:5611 skipping rows with no ARIA cell role, which made the test's not.toBe(before) compare two empty strings.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 573 · bind-adapter · 2026-10-18
+
+cost $0.687251 · turns 24 · claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+I fixed all three conditions with one change to the row reader, in `tests/adapters/new/index.ts` only. I didn't touch `bindings.yaml`, because `evaluation_status` was already recorded as bound on both pages. I couldn't run the type checker, because running it needed an approval nobody was here to give. I also didn't run the acceptance tests against the change.
+
+**What was wrong.** The Evaluation section of both proponent-list pages (Sprint With Us and Team With Us) draws its proponents as plain list items. Each item carries the `evaluation-proponent-row` test ID, but nothing in it has a cell role. The shared row reader `rowsText` dropped any row with no cell, so the proponent rows came back empty. That made `evaluationStatus()` read an empty string on both pages. In the third condition, the test compared two empty reads before and after the move.
+
+**What I changed.**
+- `rowsText` now takes an optional second argument that reads a row with no cell role. Without that argument it behaves exactly as before. I did it this way so the three other places that call `rowsText` keep their current behaviour, rather than changing the shared reader for everyone.
+- `proponentRows` is the only caller that passes the new argument. A new function, `bareProponentRow`, builds each line from the row's test IDs, joined with " | ": the name (`proposal-proponent-name`), the status (`evaluation-status`) and the link (`evaluation-open-proponent`). If a row carries none of those, it falls back to the text of each of the row's child elements.
+- The lines come out in the form a table row already gives on this target, for example "Proponent 1 | Submitted | Start evaluation". So the member that reads only the names, which takes the first part of each line, still works when the page doesn't carry the name test ID. The member that picks a single row is also unaffected.
+
+**How I checked it.** I signed in through the identity provider as the administrator, who chairs and evaluates the panel on the seeded closed Sprint With Us opportunity (`…000701`), and opened its Evaluation section. The rows there are list items with no cell role, as the conditions say. I ran the new test-ID reading in the browser against those rows. It returned "Proponent 1 | Not started | Start evaluation" and the same for Proponents 2 and 3 (in this seed state every evaluation was "Not started"). I did not walk the Team With Us page or the second Sprint With Us opportunity named in the second condition. The reviewer's rulings describe the same list items carrying the same test IDs on both, and both pages use this same reader.
+
+Every route I opened resolved. Nothing outside `tests/adapters/new/` was changed, and no request is deferred.
+
+## 572 · build · 2026-10-18
+
+cost $2.6792032000000003 · turns 64 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Slice 16's two screens that still had the old look now match the design catalogue: the Code With Us proposal page where staff score, disqualify and award a proposal, and the `/status` page. `npm --prefix app run check` passes in every workspace (frontend 634 tests, backend 862). I could not open either page in a browser here, so the look is checked by unit tests, not by sight.
+
+**Behaviour was already in place.** An earlier run of this slice built everything its 12 criteria need, as decision record 0060 describes:
+- the deadline hook in front of `/api` and `/status`, which closes lapsed opportunities in all three programs and sends the notices to the opportunity's author or evaluation panel;
+- scoring, disqualifying with a reason, the automatic move to processing, and the award;
+- the winner on the public opportunity page, and the vendor's own score and rank once the decision is made;
+- proposal history, and the submit, award, decision and withdrawal notices.
+
+I changed none of that.
+
+**What I restyled:**
+- **The proposal page staff evaluate from** (`app/frontend/src/screens/proposal-cwu-view.tsx`) now uses the shared proposal and opportunity components from slices 7 and 14, in the order the catalogue shows: the heading with the proponent's name and a coloured status label, the details, the Score section, the "Printable copy" link, the action buttons, the tabs, then the tab's content. The loading state follows the catalogue too.
+- **The action buttons and the three dialogs** (`proposal-evaluation-actions.tsx`) now use the catalogue's markup. When nothing can be done, the button area is empty; the sentence "There is nothing to do with this proposal now." is gone. When a score or disqualification reason is refused, focus moves to that field and what was typed stays, as the "invalid" catalogue states require. A refusal from the service now takes focus as it appears, as on the vendor's proposal page.
+- **The `/status` page** is now the catalogue's page: a "Service status" heading and one sentence, with its existing test IDs.
+
+The remaining states of this slice already matched their catalogue entries from earlier restyles: the awarded opportunity page (decision 0071) and the vendor's awarded proposal page (decision 0072). `proposal-evaluation-request` is a description of an API answer and has no screen. Every test ID is kept.
+
+**Effect on the other two programs.** The Sprint With Us and Team With Us proposal pages use the same buttons and score dialog. So they have also lost the "nothing to do" sentence, and their dialogs now look like the catalogue's even though those pages themselves have not been restyled yet. Because those pages don't load the proposal components' styles, the score dialog loads them itself. I chose not to load those styles on every page instead: one of their rules would change spacing on screens this slice doesn't own.
+
+**Tests.** I added unit tests for:
+- the page's frame and the order of its sections;
+- the empty button area when nothing can be done;
+- focus moving to a refused score (with "104" still in the field) and to a missing disqualification reason;
+- the loading state;
+- the `/status` page's layout.
+
+The reasons for these choices are in `docs/decisions/0082-the-code-with-us-evaluate-page-and-service-status-follow-the-chosen-direction.md`.
+
+**Nothing left out.** No criterion in this slice needed a change outside `app/` or `docs/decisions/`, and none went unbuilt. For the next slice: the Sprint With Us and Team With Us proposal pages that staff evaluate from (`proposal-team-view.tsx`) still use the old layout. They will be restyled with those programs' scoring stages, and once they use the shared page component, the score dialog's own copy of the styles becomes redundant.
+
+## 571 · build · 2026-10-18
+
+cost $2.3286305999999994 · turns 44 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I restyled slice 13's screens to match the approved design catalogue. Behaviour, wording and test IDs are unchanged apart from two small additions, and `npm --prefix app run check` passes for every workspace.
+
+**What this run was.** Slice 13 had already been built (decision record 0053), so this pass only changes how its screens look. The service side of R-3.25 to R-3.28 is untouched: the requirement checks, accepting the program terms once, refusing a second acceptance, and service-area approvals that only an administrator may set and that replace the earlier ones when saved. The qualified marks on the organization list and on a vendor's own organizations section were already restyled with slices 11 and 12 (records 0079 and 0080), and they still use the same test IDs.
+
+**Shared pieces.** I added the two pieces the slice still needed to the shared organization kit (`app/frontend/src/app/organization-kit.tsx`), once, so the screens don't each draw their own:
+- **Requirement list:** each item starts with a "Met" label in green or "Not met" in yellow, always in words.
+- **Terms page frame:** the organization's name in small grey text above the page heading, the acceptance line, any refusal, the terms text in a bordered panel (`organization-terms-body`), then the buttons.
+
+Both screens now use the shared page frame, regions and button rows, so they no longer set their own spacing or use the old circular badge and inline-styled card.
+
+**Qualification tabs** (`/organizations/<id>/edit?tab=swu-qualification` and `twu-qualification`), in `screens/organization-qualification.tsx`:
+- Each tab is a region under its heading, in the stories' order: the not-qualified notice, the requirements, then the approved service areas and the terms as sub-regions.
+- "Edit service areas" is offered to a service administrator only. While editing, the tab shows only the checkboxes with Save and Cancel, as the `service-areas-editing` story does.
+
+**Terms pages** (`/organizations/<id>/sprint-with-us-terms-and-conditions` and `…/team-with-us-terms-and-conditions`), in `screens/organization-terms.tsx`:
+- The owner sees the sentence about what accepting means, then Accept and Cancel.
+- Anyone else, or anyone once the terms are accepted, sees a single "Back to the organization" button.
+- The loading state uses the design's shared waiting indicator.
+
+**The two additions:**
+- After saving service areas, a status line says "Service areas saved." The design asks for this change to be announced, but the story's status line disappears when the form closes. Mine stays on the tab, so the message survives.
+- The loading line now reads "Loading terms and conditions".
+
+**Where I kept the earlier behaviour over the stories** (recorded in the new decision record 0081, `docs/decisions/0081-the-qualification-tabs-and-terms-pages-follow-the-chosen-direction.md`):
+- The terms text is the service's own page, not the story's placeholder.
+- Accept is still offered to the owner only. The design's gap 12 would offer it to organization administrators too, but the service refuses them (record 0053).
+- The refusal messages use the alert style the other organization screens use.
+
+**Tests.** The existing qualification tests in `app/frontend/tests/qualification.test.tsx` still pass. I added tests that check:
+- the Met and Not met labels and their colours;
+- the tab's region and its Terms and conditions sub-region;
+- the terms page's name line, heading and panel, with a single Accept button;
+- the "Service areas saved." status line.
+
+Before checking I had to install the app's dependencies with `npm ci`. I couldn't start the app or look at a page here, so nothing has been checked visually. The compose file is unchanged and still publishes the app at :4300 and the identity provider's realm at :8080.
+
+**Not done.** Nothing in the slice was outside what I'm allowed to change. I also updated `app/README.md` to describe where the qualification tabs and terms pages live. Every organizations-domain screen through slice 13 is now restyled, so the next slice inherits a complete organization kit.
+
+## 570 · build · 2026-10-18
+
+cost $0 · turns 0
+
+The application build-slice-12-6 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Each of its 2 conditions went to another stage:
+
+- to bind-adapter: R-3.28: organizationEdit.serviceAreaCheckbox, read as the administrator on /organizations/<id>/edit with the Team With Us qualification section closed, did not report the approvals the page shows. .sdlc/evidence/slice-12/R-3.28.png shows the region 'Approved service areas' listing exactly 'Agile coach' and 'Full stack developer', with an 'Edit service areas' button beneath it. Because that button is present, the member skips the listed approvals and opens the edit form to read ticked checkboxes, and that read did not yield both areas. Read the approvals from the 'Approved service areas' list whenever the form is not already open, whether or not an 'Edit service areas' button is offered.
+- to bind-adapter: R-8.31: opportunityCwuEdit.deleteOpportunity returned before the deletion had finished. The outline captured at failure (.sdlc/evidence/slice-12/R-8.31.txt) is still /opportunities/code-with-us/<id>/edit, with the Edit, Submit for review and Delete actions all disabled, meaning the delete was still in flight. The screenshot taken afterwards (.sdlc/evidence/slice-12/R-8.31.png) is the Dashboard, so the deletion did complete. The fileDownload read that followed ran before the delete finished and was let through. After confirming the delete, wait until the management page has been left (the URL is no longer the opportunity's edit page) before returning.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 569 · bind-adapter · 2026-10-18
+
+cost $0.4937298000000001 · turns 14 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I made both changes the rulings asked for in `tests/adapters/new/index.ts` and changed nothing else. `bindings.yaml` is unchanged because both members were already `bound`. I could not run the type check: the tool refused to run `tsc` without approval. I checked the new code by hand against the helpers it calls (`actionControl`, `isDisabled`, `settle`, `ready`, `carried`, `regionNamed`), and their signatures match. I did not open the target in the browser again for this revision.
+
+**Condition 1 (R-3.28, `organizationEdit.serviceAreaCheckbox`).** Before, the member skipped the "Approved service areas" list whenever an "Edit service areas" button was offered. It opened the editor instead and read the ticked boxes, and that read did not give back both areas. Now the order is:
+- If the service-area form is already open, the member reads the ticked boxes, as before.
+- If the form is closed, it reads the approved areas first: the elements with the `organization-service-area` test ID where the page has them, otherwise the items of the "Approved service areas" region. It does this whether or not "Edit service areas" is offered.
+- Only when the section draws no such list at all does it open the editor to read the ticked boxes (and cancel it afterwards). If there is no editor either, it returns empty.
+
+What it returns has the same form as before: one area per line, approved areas only.
+
+**Condition 2 (R-8.31, `opportunityCwuEdit.deleteOpportunity`).** This used to return as soon as the existing confirm step finished, while the delete was still running. It now goes on waiting, for up to 30 seconds, until the page is no longer `/opportunities/code-with-us/<id>/edit`. It then lets the next page settle before returning.
+
+One case would otherwise have waited out the full time: the service refusing the delete and leaving the page where it was. So if the Delete control stays enabled on that same page for three seconds in a row, the member takes that as a refusal and returns, and the test's own next reading decides the outcome. The three seconds stop it from mistaking the brief moment before the button disables for a refusal. If the page is still the edit page with its actions disabled after 30 seconds, the member throws an error naming that state, instead of letting the next read run against a delete that has not finished.
+
+The ruling named the Code With Us page, so I changed only that one. The Sprint With Us and Team With Us delete members use a separate helper (`programManage.act`), which I left as I found it.
+
+No condition was deferred, and nothing outside `tests/adapters/new/` was touched or needed changing.
+
+## 568 · build · 2026-10-18
+
+cost $2.7868304000000004 · turns 63 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I changed no code in this revision. I couldn't find a defect in the application that the R-4.14 evidence points to, and I didn't want to make a change I couldn't tie to the failure.
+
+**What the evidence shows.** The test read "Zinnia Quillfeather" as a vendor's name on `/users/me`. It then signed in as the administrator, opened `/users`, and waited 5 seconds for something that never became true. When it failed, the page was fully loaded: the screenshot and outline show all 160 or so accounts, every row carrying its status badge, account type, name link and administrator Yes/No. The order is right: active before inactive, public sector employees before vendors, then by name. "Active · Vendor · Zinnia Quillfeather · No" is there, and the seeded deactivated vendor, Ellis Placeholder, is last as "Inactive". All the `user-list-*` test IDs from the contract are on the right elements.
+
+**What doesn't fit.** Comparing the list with the seed shows two vendors renamed during the run:
+- Account …0201 (the `vendor` persona, seeded as Alex Placeholder) now reads "Aldous Quillfeather". The outline's link confirms the id.
+- Finley Placeholder (…0206, the `file-uploader` persona) is missing, so it must be the account now called "Zinnia Quillfeather".
+
+So the account the test read as Zinnia is not account 0201. The test would naturally sign in as the `vendor` persona, which is 0201. If it then looked up that account's row expecting "Zinnia", it got "Aldous" and timed out. That fits either of two explanations, and I couldn't settle on one:
+- **Concurrent renames.** Other acceptance tests give shared personas made-up "… Quillfeather" names and ran alongside this one, possibly including slice 11's new ones. A test renaming 0201 while this one ran would break it, and the application can't prevent that.
+- **The sign-in landed on the wrong person.** The vendor sign-in could have reused an earlier sandbox identity-provider session for test-vendor-6. I found no sign of that in the code:
+  - Accounts are looked up by exact `idpId` (`backend/src/users/prisma-account.store.ts:73`).
+  - `/users/me` shows the account from a freshly fetched session.
+  - Saving the profile writes to the signed-in person's own id.
+  - Sign-out and refused sign-ins both end the identity provider's session.
+  - The list query is a single `findMany` with nothing slow behind it.
+
+I didn't add `prompt=login` to the sign-in request to force a fresh identity-provider login every time. It would change sign-in for every criterion, and nothing shows it's the cause.
+
+**Checks.** `npm --prefix app run check` passes: typechecks plus every unit-test package (16, 862 and 621 tests). The error lines in its output come from tests that deliberately exercise failure paths. Installing dependencies to run it only added `node_modules` under `app/`.
+
+**Not mine to change.** If the cause is tests renaming shared personas at the same time, the fix belongs to the acceptance suite or the seed, not `app/`: give R-4.14 a vendor nobody else renames, or run tests that rename shared personas one at a time. If a re-run shows R-4.14 failing again with the vendor's own row reading a different name than its `/users/me` page did, the sign-in path is worth checking next.
+
+**Slice 11.** I left everything else from slice 11 as it was. That covers the public organization list, registering an organization with its logo, the organization tab at `/organizations/:orgId/edit` with edit and archive for owners and administrators, the archive notice, the list of organizations a vendor may act for, and the image rules R-8.13, R-8.21, R-8.28 and R-8.30.
+
+## 567 · bind-adapter · 2026-10-18
+
+cost $0.9076326 · turns 33 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed `organizationEdit.serviceAreaCheckbox` in `tests/adapters/new/index.ts:7757`. I couldn't confirm the fix on the restyled tab, because the target running at http://localhost:4300 doesn't draw that tab. I also couldn't type-check the file or run the suite, because shell commands weren't permitted in this session.
+
+**What was wrong.** The member decided whether the service areas were being edited before it opened the Team With Us qualification tab. It was still on the Organization tab at that point, which has no checkboxes, so the answer was always no. On the restyled tab, an administrator sees the checkboxes straight away, with no "Edit service areas" button to press. The member therefore took its read-only branch, looked for list items under "Approved service areas", found none, and returned "". That matches the R-3.28 failure verify reported on build-slice-11-7.
+
+**The fix.**
+- If checkboxes are already showing, the member reads them where they are without reopening the tab, so ticks an earlier step left unsaved are kept.
+- Otherwise it opens the tab, and only then decides whether it is being edited.
+- If checkboxes are showing on the open tab, it reads them as they stand and does not press Cancel, since it opened no editor.
+- The result is unchanged: the names of the ticked areas, one per line, in the order the page draws them.
+- The test ID `organization-service-area-checkbox` is still tried first, then the group named for service areas. That group falls back to any checkbox in the main region, and the restyled heading "Service areas this organization is approved for" also fits it.
+- For a tab that has an "Edit service areas" button, or a read-only list, the member behaves as before.
+
+**Checked against the running application** (seeded qualified organization, Northern Pines Digital Ltd.):
+- **Administrator:** the tab still draws the earlier style: "Approved service areas" listing Agile coach and Full stack developer, with an "Edit service areas" button. I replayed the member's new steps in the browser, which can't stand in for type-checking or running the suite. It found no checkboxes on the open tab and opened the editor with the button. Five boxes appeared, all carrying their test ID, with only Full stack developer and Agile coach ticked. It read "Full stack developer\nAgile coach" and pressed Cancel, which closed the editor.
+- **Owner:** the tab shows the same two areas as read-only items with their test ID, "Only an administrator can change which service areas an organization is approved for.", and no checkboxes or buttons. The member's read-only branch returns those two names.
+
+The new branch should therefore make R-3.28 pass on the restyled build. This read is unconfirmed until verify runs against that build.
+
+**Other notes.**
+- The old binding returns the ticked areas as stored codes ("FULL_STACK_DEVELOPER"). The new binding returns display names ("Full stack developer"), and I kept that because changing the form is outside this fix.
+- `tests/adapters/new/bindings.yaml` still lists `service_area_checkbox` as bound, and nothing else in it changed.
+- No other member or file was edited, and every route I visited loaded.
+
+## 566 · bind-adapter · 2026-10-18
+
+cost $0.7363912 · turns 21 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I changed `regionNamed` so every lookup that names a screen section from its start also matches when the screen numbers it ("4. Cost"). On the running app, sections that failed before because of their numbers are now found, and sections without numbers are found as before. I couldn't type-check the file: the workspace wouldn't let me run the TypeScript compiler without approval.
+
+**Why.** `regionNamed` in `tests/adapters/new/index.ts` finds a section by its name, or by the heading it holds, using a pattern anchored at the start. I signed in through the identity provider as the administrator and as a vendor and opened the seeded records. Only the vendor proposal forms number their sections:
+- **Code With Us proposal form** (seeded published opportunity): "1. Proponent", "2. Proposal", "3. Attachments".
+- **Sprint With Us proposal form** (seeded open opportunity): "1. Organization", "2. Team", "3. Capabilities", "4. Cost", "5. Team questions", "6. References", "7. Attachments".
+
+The Code With Us, Sprint With Us and Team With Us opportunity forms, the opportunity view page and the profile's legal tab don't number theirs. On the numbered forms, every anchored lookup came back empty.
+
+**The change.** A small helper, `partNumbered`, now runs inside `regionNamed` itself, so it covers every lookup at once rather than member by member. When a pattern begins with `^`, the helper lets a part number such as "4. " or "4) " come first and leaves the rest of the pattern untouched. Patterns without the anchor already match anywhere and are not changed. Nothing about what any member hands back has changed, and no member moved between bound and unbound, so `bindings.yaml` didn't need editing.
+
+**How I checked it.** I ran the old and new versions side by side in the browser:
+- **Now found** (missed before): "attachments", "proposal" and "proponent" on the Code With Us proposal form; "attachments" and "team" on the Sprint With Us proposal form.
+- **Unchanged:**
+  - "Terms and conditions" on the profile's legal tab and "Key dates" and "Addenda" on the opportunity page still match exactly one section each.
+  - A pattern that already allowed a number for Attachments still matches one.
+  - A near-miss like "dates" still matches none.
+
+**Left for another run.** The Sprint With Us proposal form calls its capabilities section "3. Capabilities", not "Team capabilities", and it has no section headed "Terms and conditions". So those two name lookups still find nothing on that page. That's a difference in wording, not numbering, and outside this run's scope. Members that find their section by test ID first may not depend on these lookups, but I didn't check that. A later binding run should look at them.
+
+All routes I opened resolved, except that `/organizations/create` showed the application's "Page not found" when signed in as the administrator. I didn't try it as a vendor, because it wasn't part of this change. I only edited `tests/adapters/new/index.ts`.
+
+## 565 · build · 2026-10-18
+
+cost $0 · turns 0
+
+The application build-slice-15-7 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Each of its 3 conditions went to another stage:
+
+- to bind-adapter: R-2.19: proposalSwuCreate.phaseRequirements (phaseRequirementLines, tests/adapters/new/index.ts:14011-14032) read 'Prototype | complete' for a prototype phase with no team. It only counts a phase as incomplete when a line starts 'Incomplete:'. The page's phase group 'Prototype phase' says 'This phase’s team is incomplete. Name at least one team member. Not yet held: Frontend Development.' (.sdlc/evidence/slice-15/R-2.19.txt line 52). Count a phase as incomplete when its requirements line says 'is incomplete', and complete when it says 'meets its requirements'.
+- to bind-adapter: R-2.19: in the missing-capability case phaseRequirementLines read both phases as complete with nothing missing. It looks for missing capabilities only in lines ending ': not held' (index.ts:14022, 14028). Each phase now gives them in one sentence: 'This phase’s team is incomplete. Not yet held: Frontend Development.' and 'This phase’s team is incomplete. Not yet held: Backend Development.' (.sdlc/evidence/slice-15/R-2.19-2.txt lines 59, 84). Read the missing capabilities from the comma-separated list after 'Not yet held:'.
+- to bind-adapter: R-2.19: proposalSwuCreate.costErrors (costErrorLines, tests/adapters/new/index.ts:13945) read '' for a total cost over the opportunity's budget. It looks for a region named exactly 'Cost', but the page names the region '4. Cost', and inside it, under 'Total proposed cost: $480,000 of the $400,000 maximum budget.', it shows 'The proposed cost exceeds the maximum budget for this opportunity.' (.sdlc/evidence/slice-15/R-2.19-3.txt lines 99-103). Accept a numbered part name such as '4. Cost' when finding the cost region.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 564 · bind-adapter · 2026-10-18
+
+cost $0.47829239999999995 · turns 13 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed all three conditions in `tests/adapters/new/index.ts`. I could not type-check the file or run the new patterns, because both commands were refused permission, so none of this has been run against the target yet. I didn't reopen the target either, since this revision asked me not to repeat the walk. The fixes are built from the page wording the reviewer quoted. `bindings.yaml` is unchanged: all three affected members were already marked `bound`, and nothing else in the adapter was touched.
+
+**1. Phase marked complete with no team (R-2.19).** The phase-requirements reader used to count a phase as incomplete only when a line started with "Incomplete:", so a prototype phase with no team came back as complete. It now counts a phase as incomplete when its requirements say it "is incomplete", and as complete when they say it "meets its requirements". If both phrases appear, "meets its requirements" wins. The old "Incomplete:" wording still counts too.
+
+**2. Missing capabilities not found (R-2.19).** The reader used to look only for lines ending ": not held", so both phases came back with nothing missing. It now reads the comma-separated list after "Not yet held:" and stops at the sentence's closing full stop. From the quoted text, that gives "Frontend Development" for the prototype phase and "Backend Development" for the other. The old ": not held" form is still read as well, with repeats removed.
+- Both checks now sit in one small helper, `phaseRequirementState`, which the test-ID path and the fallback path share.
+- One small addition beyond the literal request: when a phase's requirements element is found by its test ID, the phase group's own paragraphs are read alongside it. This covers the case where "Not yet held:" sits outside that element. The reviewer quoted the sentence from the phase group, not from the element.
+- The returned line keeps its existing form: `<Phase> | complete|incomplete | <missing, comma-separated>`.
+
+**3. Over-budget cost not reported (R-2.19).** The cost reader looked for a region named exactly "Cost", but the page names it "4. Cost". It now accepts either name. The region's numbered heading is skipped like the plain one, so it doesn't come back as an error line, and "The proposed cost exceeds the maximum budget for this opportunity." is returned as `total: …`. The over-budget reader (`budgetExceeded`) uses the same cost reader, so it picks up that notice too.
+
+No condition was deferred, and nothing outside `tests/adapters/new/` was changed.
+
+## 563 · design · 2026-10-18
+
+cost $0.6138938 · turns 22 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I changed four files under design/ to answer one ruling and two faults that the operator named in the same domain. I added no page or state, changed no test ID, and did not touch spec/contract/surface.yaml. I have no shell, so I couldn't compile or scan the catalogue; the pipeline does that after this turn. I deferred nothing.
+
+**Request 1 (build-slice-15-6, scrum master names).** The prose was wrong and the catalogue was right. Every Sprint With Us story that draws a scrum master choice draws the same thing: one required `RadioGroup` per phase, labelled "Scrum master for the <phase> phase", with one `Radio` per member (`proposal-scrum-master`). Each radio is named by the person alone. That covers the create default and invalid stories and the edit editing and organization-locked stories. None of them ever had the `aria-label` "Scrum master: <name>, <phase> phase" that DESIGN.md described.
+
+In the proposals accessibility list in DESIGN.md I took the scrum master out of the bullet about repeated controls with `aria-label`s. That bullet now covers only "Add team member" and "Remove", with the "Remove" example the story actually draws. A new bullet says what the radio group draws and how a test finds a radio: by the group's label and the person's name.
+
+The same section's components table had another line contradicting the catalogue: it listed the scrum master under `Checkbox`, as one per member per phase. A later section had already recorded that those checkboxes were gone. I moved the scrum master to the `RadioGroup` row, because leaving it would have left the two disagreeing, which is exactly what the ruling asked me to fix.
+
+**The Code With Us edit story's proponent question.** `proposal-cwu-edit.editing.stories.tsx` now asks the create page's question, "Will you be submitting a proposal for this opportunity as an Individual or Organization?", with "Individual" and "Organization". The test IDs `proposal-proponent-individual` and `proposal-proponent-organization` are unchanged. The components table's `RadioGroup` row now gives this wording too and says create and edit use the same words.
+
+**The second street line.** In `proposal-cwu-create-page.tsx` the second street line is now labelled "Street Address line 2", so the two street fields no longer share a name (WCAG 2.2 success criterion 2.4.6). Its test ID `proposal-street-2-field` is unchanged. DESIGN.md's section on the Code With Us proposal form notes that this label is the design's, not the original site's. The edit story already labelled its second line "Street address line 2 (optional)", so it needed nothing.
+
+I also added a short section, "Corrections after the build", at the end of the proposals' chosen-direction part of DESIGN.md. It records all three corrections and states that no page, state or test ID changed.
+
+**Inconsistency I left alone:** the edit story's other field labels use sentence case ("Legal name", "Email address"), while the create page uses the original site's title case ("Legal Name", "Email Address"). Nobody asked about those labels, so I didn't change them. A later pass may want to make them match.
+
+No condition here was addressed to a person, and nothing asked me to change paths outside this stage's boundary.
+
+## 562 · bind-adapter · 2026-10-18
+
+cost $1.0284884000000003 · turns 32 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+All seven conditions are answered, and nothing is deferred. I couldn't run the TypeScript type check: the session needed approval for `npx tsc` and none was available. So the edited file has not been compiled. I checked the changed lines by reading them and by running the same locator on the live target.
+
+**Conditions 1–4, 6 and 7 (the scrum master radio on R-2.7, R-2.9, R-2.11, R-2.16, R-2.19 and R-2.22).** The adapter found the radio only under the old name "Scrum master: <name>, <phase> phase". I opened the running target as the seeded vendor, went to the create form of the seeded open Sprint With Us opportunity (`…a025…`), chose the organization and added a member to the implementation phase. The page shows a radio group "Scrum master for the implementation phase (required)". Each member's radio is named by the member alone ("Alex Placeholder") and sits inside a label carrying the test ID `proposal-scrum-master`. The radio passes the adapter's visibility filter.
+
+I added one shared locator, `scrumMasterRadio`, and both `onPhase` and `tickScrumMaster` now use it. It looks for the radio by test ID `proposal-scrum-master` first. It falls back to the "Scrum master for the <phase> phase" radio group and matches the member's name, optionally followed by "Membership pending" or "(pending)". The old "Scrum master: <name>, …" name is still accepted as a last resort. Run against the live form, this locator found the radio and checked it. When it fails, the error now lists the names the radio group does offer.
+
+`proposalSwuEdit.setScrumMaster` goes through the same function, so this also covers the edit-form half of condition 7. `onPhase` now takes the phase word, and I updated its one caller in `addPhaseMembers`.
+
+**Condition 5 (R-2.18, the pending member).** `pickListed` now also accepts an option worded "<Name> (membership pending)", alongside "<Name>" and "<Name> (pending)". The member-choices reader (`choicesOffered`) had the same wording problem: it stripped only " (pending)" when reading names. I widened it to strip " (membership pending)" too, so it still returns names alone, the way the old binding does. That goes slightly beyond the literal request, but it is the same wording fix applied where the adapter reads the chooser. The second R-2.18 case failed on the scrum master radio, which the fix above covers.
+
+**What I did not check.** I did not see a pending member's option on the live target: the only person the seeded organization offered was a member who is not pending. That wording comes from the ruling and the design catalogue it cites. I also did not re-run the three R-2.19 cases the condition asks to re-check (missing phase capability, phase cost over budget, total cost over budget). They go through the same scrum master step and now reach it, but whether they pass is for the next calibration run.
+
+The only file changed is `tests/adapters/new/index.ts`, plus some comments in it describing the new wording. `bindings.yaml` is unchanged: `set_scrum_master`, `add_phase_team_member` and `pending_team_member` were already listed as bound. Every route I opened resolved on the target.
+
+## 561 · build · 2026-10-18
+
+cost $4.0172752 · turns 88 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I've restyled slice 3's screens to match the design catalogue approved at G-DESIGN. No test ID, wording or behaviour changed. `npm --prefix app run check` passes: 862 backend tests, 611 frontend tests and every package's typecheck. I couldn't look at any page in a browser, so the layouts are checked by unit tests, not by eye.
+
+Slice 3's criteria were already built and recorded in decision records 0021 and 0023. This pass changed only how the screens look, so each criterion is still reached the way 0023 describes.
+
+**What changed**
+- **Shared profile pieces.** I added them once to `app/frontend/src/app/user-kit.tsx`, following the catalogue's user kit:
+  - the account's status as a coloured label, green for Active and grey for Inactive;
+  - the section links, drawn as the manage page's tabs;
+  - the account facts as labelled values ("Account type", "Status", "Account ID"), with their test IDs on the values;
+  - the Details section;
+  - the capability rows;
+  - an empty status message area that announces the result of a save.
+- **The profile page** (`app/frontend/src/screens/user-profile.tsx`):
+  - **Profile view and editing:**
+    - The H1 now uses the smaller H3 size.
+    - Below the tabs and the facts comes the Details section, with Edit profile as the page's only primary button.
+    - While editing, "Edit your details" holds the picture picker and the fields in a grid. The error summary is the kit's, with its title now visible, and it takes focus.
+    - Permissions and "Deactivate your account" are sections of their own.
+  - **Capabilities, legal, notifications and the unsubscribe landing:**
+    - Capabilities are bordered rows, each with its checkbox and description toggle on one line.
+    - The legal page is three sections.
+    - The notifications section and the unsubscribe landing follow their stories. When opened from an unsubscribe link, the page waits under "Notifications" and says "Loading your notification settings…".
+    - After Unsubscribe is pressed, focus goes back to the cleared checkbox.
+- **The picture picker** (`app/frontend/src/app/image-picker.tsx`) now matches the catalogue's picture group:
+  - the refusal's title is now visible, and the refusal takes focus with a visible outline;
+  - the stated rule carries `image-file-rule` on the paragraph itself.
+
+  It carries its own small style sheet because the organization form uses the same picker for a logo. It is also the picker on the sign-up completion page.
+
+**Where I departed from the stories, and why** (recorded in `docs/decisions/0077-…`):
+- **Status on your own profile.** The status label stays there, although the story shows status only to administrators. The contract lists `profile-status-badge` on `/users/me`, and decision 0023 keeps it there for R-4.1.
+- **The line naming whose profile it is** stays above the facts, as 0023 has it.
+- **The sentence saying what the email setting covers** (R-6.16) appears on the notifications section however it is reached. The profile's own notifications story leaves it out; the unsubscribe landing's story has it.
+- **The administrator's view of someone else's profile** is restyled too. What its controls do belongs to slice 4, but it is the same page and uses the same pieces.
+
+**Tested.** `app/frontend/tests/slice-three-screens.test.tsx` adds 13 tests. They cover:
+- the user kit pieces;
+- the picker's layout, and focus on its refusal;
+- the own profile in view and edit, and a public sector employee's Permissions section;
+- the capabilities and legal layouts;
+- the unsubscribe landing's wait and the focus after unsubscribing;
+- the administrator's view.
+
+All earlier tests pass unchanged.
+
+**Left for other slices.**
+- **Organizations section:** the profile's organizations section keeps its older layout. Its stories belong to the organizations domain.
+- **Sign-in wait:** the wait screen shown while the sign-in check runs is unchanged; it is slice 2's.
+- **User list:** the user list's phone cards and export dialog layout are still to be added to the user kit when the user list (slice 4) is restyled.
+
+I changed nothing outside `app/` and `docs/decisions/`.
+
+## 560 · build · 2026-10-18
+
+cost $1.7553391999999999 · turns 64 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I restyled slice 9's screens to the approved design catalogue. Little needed to change: the slice's behaviour was already in place, and so was most of its new look. The full `npm --prefix app run check` passes: typecheck and unit tests for all three packages, with 16 tests in migrations, 862 in the backend and 598 in the frontend.
+
+**What was already there.** An earlier run built all six of the slice's criteria, recorded in decision records 0043 and 0044, and I did not change any of that logic:
+- **R-1.28:** an administrator can cancel an opportunity, with an optional note.
+- **R-1.20:** the program's permitted transitions are enforced, so cancelling from a draft, from under review, from awarded or from cancelled is refused.
+- **R-1.32:** the author or an administrator can add addenda, and nothing removes one.
+- **R-1.33:** private notes with files appear on the History tab. The service accepts notes by request, but no screen offers a way to add one.
+- **R-1.30:** the author and administrators see the views, watchers and proposals figures once an opportunity is published.
+- **R-6.17:** no message of any kind reaches a deactivated account. Recipients are checked when the change is made, and the mailer checks again as each message goes.
+
+The later restyles of slices 7 and 10 (records 0071 and 0075) had already moved the three programs' manage pages onto the shared opportunity kit. That covers the page head, action bar, tabs and History region on Code With Us, Sprint With Us and Team With Us. The addenda list, the history table and the reporting figures already matched their stories.
+
+**What I changed.** Two pieces in `app/frontend/src/screens/opportunity-running.tsx`, which all three programs share:
+- **Addenda form:** the form now uses the kit's `op-region` class. The sentence saying an addendum is permanent and who will be emailed is now a plain paragraph in the kit's text style, and the Add addendum button sits in the kit's `Actions` row.
+- **Cancel dialog:** its body now uses the kit's `op-dialog` wrapper, with its sentence as a paragraph in the kit's text style.
+
+No test ID, wording or behaviour changed.
+
+**One judgement call.** The stories disagree. The Code With Us and Team With Us stories draw these two pieces with the kit's classes, but the Sprint With Us story wraps them in a generic spacing component instead. One shared component can't follow both, so I followed the kit's classes. The spacing comes out the same, and DESIGN.md says a screen sets no spacing of its own. As decisions 0032 and 0043 already settled, neither text area carries the character limit the stories show. Each states its limit, and an entry that is too long is refused with a message naming the limit rather than silently cut. I recorded this in `docs/decisions/0076-running-an-opportunity-follows-the-chosen-direction.md`.
+
+**Tests.** I added `app/frontend/tests/opportunity-running.test.tsx`. It checks the new structure of the addenda form and the cancel dialog, and that an addendum is sent and the field cleared once it is accepted. It also checks that a cancelled opportunity's form says nobody will be emailed, that a note's file shows as a link in its history row, and that the reporting figures appear only once published. The existing manage-page tests for all three programs pass unchanged.
+
+**Not changed.** The slice's two other catalogue pages, `opportunity-counters` and `opportunity-history-request`, describe addresses that return data, not screens, so there was nothing to restyle. The compose file was not changed, and it still publishes the application at port 4300 and identity at port 8080 under `/realms/digital-marketplace`. Dependencies weren't installed in this workspace, so I ran `npm ci` under `app/` from the existing lockfile before the check.
+
+**For the next slice.** The notices to people who submitted a proposal when an addendum is added or an opportunity is cancelled (R-1.35, R-1.36) are built but answered for in Slice 14. The message reference page still needs to list this slice's three notices, which is Slice 21's work.
+
+## Fix turn
+
+I'm not sure what made `npm --prefix app run check` fail last time, but I made one change I think is the likely fix. The failure I was given showed only warnings that also print on passing runs: "Could not parse CSS stylesheet", and the missing `canvas` package for `getContext()`. They don't cause failures, so I left them alone. The real error wasn't in the output.
+
+When I ran the check here, it passed three times in a row: 862 backend tests and 598 frontend tests, with typechecking clean. I couldn't reproduce the failure. The likeliest cause is a frontend test running out of time. The frontend tests still used vitest's default 5-second limit per test. The slowest ones take 2.5–3.3 seconds even when the machine is warmed up, and the first run after an install is several times slower. The backend hit the same problem earlier and already allows 30 seconds per test and 60 seconds for setup.
+
+**Journal addition:** On this revision I changed only `app/frontend/vite.config.ts`. The frontend unit tests now get the same time limits as the backend's: 30 seconds per test and 60 seconds for setup, with a comment saying why. I made the change because the frontend's slowest tests (2.5–3.3 seconds when warm) could pass 5 seconds on a first run after an install, which is the likeliest reason the check failed. The output I was given held only warnings that don't fail the run, and three local runs passed, so I could not confirm the cause. If the check fails again, the actual error will need to be read from the full output. The full check still passes after the change, and nothing else in the slice was touched.
+
+## 559 · build · 2026-10-18
+
+cost $0 · turns 0
+
+The application build-slice-10-8 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Its one condition went to another stage:
+
+- to derive-tests: Rewrite tests/acceptance/organizations/R-3.28.spec.ts so nothing another test does can change what it reads. It sets its scenario up on seed.organizations.qualified (00000000-0000-4000-8000-000000000301), which other tests also read and change while verify runs the suite in parallel across copies of the application, so it passes or fails by timing: it passed in the verifies of build-slice-14-8, build-slice-1-11 and build-slice-2-17, and failed in build-slice-10-8's at line 58 ('the organization does not stand approved for exactly FULL_STACK_DEVELOPER and AGILE_COACH') while the page showed exactly Full stack developer and Agile coach approved. Give the test an organization of its own that no other test reads or changes, created in the test through the surface and approved for the service areas it needs, and read and change only that organization.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 558 · derive-tests · 2026-10-18
+
+cost $0.5055516000000001 · turns 13 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I took up request 1 and rewrote `tests/acceptance/organizations/R-3.28.spec.ts`. I could not type-check or run it: the workspace has no installed dependencies, and there is no application here to run it against.
+
+**What the ruling asked for.** The old test set its scenario up on `seed.organizations.qualified`. Other tests read and change that organization while verify runs the suite in parallel, so this test passed or failed depending on timing. The rewrite stops using any seeded organization.
+
+**What the test does now.** Each of the two tests creates its own organization. The organization owner registers it through `surface.organizationCreate.createOrganization` under a legal name nothing else uses: the test's purpose, a timestamp and a random suffix. The test reads the new organization's id from `surface.organizationEdit.organizationIdentifier()`, the same way R-3.15 does. The administrator then approves it for FULL_STACK_DEVELOPER and AGILE_COACH through `editServiceAreas` and `saveServiceAreas`, and the test polls until the page shows exactly those two.
+
+From there the steps are the same as before:
+- **First test:** the administrator keeps FULL_STACK_DEVELOPER, swaps AGILE_COACH for DATA_PROFESSIONAL, and the test checks the approvals are now exactly the two that were ticked.
+- **Second test:** the owner tries to edit and save, and the administrator's view must still show the original two.
+
+Each test reads and changes only the organization it created.
+
+**Other changes in the file:**
+- Because the two tests no longer share an organization, I removed the line that forced them to run one after the other (`test.describe.configure({ mode: "default" })`).
+- If registering the organization yields no usable id, the test now fails with that reason. It does not skip itself, so a broken setup cannot pass quietly.
+- I updated the header's derived date to 2026-10-18 because the content changed. The criterion is unchanged at v1, so the spec sha stays as it was.
+
+**Left alone.** No other file in `tests/acceptance/organizations/`, no entry in `tests/acceptance/not-testable.yaml`, and nothing under `tests/generated` was touched. The ruling did not ask for anything outside this stage's paths.
+
+**For the contract.** I did not need any surface action or observation that was missing. Two things are worth noting:
+- No seed handle lists the service areas the installation offers, so the test still writes those codes as literals.
+- The persona file says the organization owner can "choose the service areas of an organization they own". R-3.28 says the opposite. The test follows the criterion, but the persona text may need reconciling.
+
+## 557 · bind-adapter · 2026-10-18
+
+cost $1.3446261999999998 · turns 46 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+All three conditions are fixed in `tests/adapters/new/`. One check is missing: the TypeScript type-check needed an approval this session couldn't get, so it never ran. Instead I read the helpers' signatures and replayed the new steps by hand in the live browser.
+
+**What I found on the target.** I signed in through the identity provider as the administrator and opened the Evaluation panel tab of the seeded closed Sprint With Us opportunity (`/opportunities/sprint-with-us/00000000-0000-4000-8000-000000000701/edit?tab=evaluationPanel`). The section opens read-only: a "Members of the evaluation panel" list ("Casey Placeholder, Role: Evaluator" / "Robin Placeholder, Role: Evaluator and chair") above an "Edit evaluation panel" button (`evaluation-panel-edit`). The adapter had been written for a panel that opens ready to edit, so it went straight for controls that only appear after that button is pressed.
+
+Once the button is pressed:
+- Each seated member is a fieldset (`evaluation-panel-member-row`) holding a paragraph "Name (email)", a Chair checkbox (`evaluation-panel-member-chair`) and a Remove button. Members no longer have their own chooser.
+- There is one "Public sector employee to add" chooser (`evaluation-panel-member-choice`). It lists people as "Name (email)". "Add an evaluator" (`evaluation-panel-add-member`) seats the chosen person as a new row and resets the chooser.
+- Pressing "Add an evaluator" with nobody chosen does nothing. Adding someone already on the panel creates a second row; refusing it is left to the save.
+- The "Chair (required)" chooser also shows "Name (email)".
+
+I added, ticked a chair and pressed Cancel each time, so nothing was saved on the target.
+
+**What I changed:**
+- **Editing first (conditions 1, 2, 3).** One new step makes the panel editable: it presses "Edit evaluation panel" when the editing controls aren't shown yet. `start_editing` now just calls it, and so do `add_panel_member`, `mark_member_as_chair`, `choose_panel_chair` and `remove_panel_member`. Condition 3 names the Chair chooser, and `remove_panel_member` finds its member through the same code, so those two needed it as well. A locked panel is still recorded as a refusal, as before.
+- **Adding (conditions 1, 2, 3).** `add_panel_member` now picks the person in "Public sector employee to add", presses "Add an evaluator", waits for the new row and ticks its Chair box if the input asks. It throws `unbound:` if no row appears. A person the chooser doesn't offer still throws `refused:`. The old one-chooser-per-member path is kept as a fallback in case a build draws that layout again.
+- **Names with an email suffix.** Options and chooser values are now matched and returned by the name alone, without the "(email)". A seated member is found by the name in its paragraph, which is what fixes "nobody chosen, nobody chosen" in `mark_member_as_chair`.
+- **`chair_field` (condition 3).** When the panel is shown read-only, it now reads the chair from the members list (the row whose role ends "chair"), as it already did on a locked panel, instead of returning "". While editing it reads the Chair chooser, name only. That matches the old binding, which returns names only.
+
+**Not changed.** `save_evaluation_panel` and the error readers are as they were; the conditions don't name them and a save always follows an edit. The Team With Us panel uses the same code, so it gets the same fixes; I didn't open it again. In `bindings.yaml`, every member on both panel pages stays `bound`; I only updated the comment on `evaluation-panel-swu`, which still described the panel opening ready to edit. No other page or member was touched, and every route I used loaded.
+
+None of the three conditions is deferred.
+
+## 556 · bind-adapter · 2026-10-18
+
+cost $0.7982768 · turns 31 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed `panelMemberRow()` on the Sprint With Us evaluation panel so it reads the read-only member list the page now shows. I couldn't run the type-check: running `tsc` in the workspace needed an approval I didn't get. I checked the new parsing in the browser instead. The fix is not type-checked and has not been run through the suite.
+
+**What was wrong.** The adapter's member-rows reader only handled two shapes:
+- **Locked panel:** it read table cells. On this build the members are list items with no cells, so every row came back empty (request 1).
+- **Unlocked panel:** it read each name from a member chooser. The panel now opens read-only, with no choosers, so every row was skipped and the reader timed out (requests 2–5).
+
+**What changed.** All edits are in `rows()` and one new helper inside the evaluation panel binding in `tests/adapters/new/index.ts`. Each row is still found by its test ID `evaluation-panel-member-row`, and each still reads as "name — role", the form calibration accepted.
+- **New helper.** It reads a row of cells as before. A row without cells is read from its own text: the name first, then the role after the visually hidden "Role:" label.
+- **Locked panel.** It now uses that helper, so the a011 consensus-stage panel reads "Casey Placeholder — Evaluator" and "Robin Placeholder — Evaluator and chair".
+- **Unlocked panel, before "Edit evaluation panel" is pressed.** Rows without a chooser are read the same way, so the a023 panel gives "Robin Placeholder — Evaluator and chair" and "Devon Placeholder — Evaluator". Requests 3–5 show the same read-only list, so they are answered by the same change.
+
+**Something I found while checking.** After pressing "Edit evaluation panel" (`evaluation-panel-edit`), members already on the panel still have no chooser. Each shows its name with the email in brackets, plus a Chair checkbox and a Remove button. Only a slot added with "Add an evaluator" gets a chooser. So, in edit mode:
+- a row with a chooser is read from the chooser, as before;
+- a row with a name and Chair box is read as the name (email removed), with the role taken from the Chair box.
+
+I also stopped the reader from asking the chair chooser for its choice when there is none on the page. Before, that wait ran until the timeout.
+
+**Not changed, but the same problem applies.** `memberGroup` (used by remove and mark-as-chair) and `addPanelMember` still look for each member's name in a chooser. On this build, members already on the panel have none, so those actions may fail or wait out the timeout when such members are present. `chairField()` on an unlocked panel still reads the chair chooser, which the read-only view doesn't show. None of the five requests named these, so I left them for a later round.
+
+`bindings.yaml` is unchanged: `panel_member_row` was already listed as bound on both evaluation panel pages. No route failed to resolve, and nothing outside `tests/adapters/new/` was touched.
+
+All five requests were taken up; none deferred.
+
+## 555 · build · 2026-10-18
+
+cost $2.404173 · turns 52 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I restyled slice 2's screens to the design catalogue approved at G-DESIGN. Every test ID is kept on the same element, and `npm --prefix app run check` passes: types check in every package, and 862 frontend tests, 584 backend tests and 16 migration tests pass.
+
+**What this run was.** Slice 2's six criteria (R-4.1, R-4.2, R-4.3, R-4.17, R-4.24, R-6.1) were already built by an earlier run. That covers the sign-in with PKCE through the Keycloak realm, account creation on first sign-in, the welcome message, terms agreement, the new-opportunity notice choice and sign-out from both the service and the identity provider. The compose file already publishes the app at http://localhost:4300 and the realm at http://localhost:8080/realms/digital-marketplace. As the operator asked, this run changed only how the screens are drawn. Behaviour, routes, the service and compose are untouched, and how each criterion is reached is the same as before.
+
+**What changed:**
+- **One shared user kit.** `app/frontend/src/app/user-kit.tsx` holds the catalogue kit's page frame, the two-account-choices layout, the label group, the field grid and the error summary, built on the opportunity kit the shell already uses. I added only the pieces these screens need. The profile's own pieces belong to slices 3 and 4 and should be added there when those screens are restyled.
+- **Sign In and Choose Account Type** (`screens/sign-in.tsx`) follow their stories. Each kind of account is a bordered panel with one secondary button, side by side where there is room and stacked on a phone, and there is no primary button. When a page sends someone to sign in, the screen shows the sign-in-required story instead: an info alert in place of the introduction and shorter panel text.
+- **Complete Your Profile** (`screens/sign-up-complete.tsx`) follows its four stories:
+  - Above the form it shows the save refusal, or else the error summary, or else the introduction. The summary's title now actually renders and takes focus.
+  - Username, name and email sit in the field grid, the terms links and agreement box form one group, and Complete profile is the one primary action.
+- **Signed Out** (`screens/sign-out.tsx`) follows its three stories, with the wait drawn as the kit's status row.
+- **The notices** (`screens/notice.tsx`) are restyled too, because a refused sign-in lands on the sign-in-failed notice. The deactivation notice's behaviour is still slice 3's; only its layout changed.
+
+**Three places I didn't follow a story exactly.** All are recorded in `docs/decisions/0074-…`:
+- The sign-in-required state keeps the "Don't have an account? Sign up" link, though its story leaves it out, because the contract offers that action on the sign-in page without naming a state.
+- The terms links stay on the completion form in every state, though the `invalid` and `save-failed` stories leave them out, because the agreement box still refers to what they link to.
+- The shared picture picker (used by the profile and the organization form too) is unchanged; its wording already matches the story, and restyling it belongs to slice 3.
+
+**Tests.** A new `tests/slice-two-screens.test.tsx` checks the layout:
+- **Sign-in and sign-up:** the H1 and panel heading sizes, the two panels side by side, and no primary button.
+- **The sign-in-required state:** the alert replaces the introduction.
+- **The completion form:** the field grid, the terms group, and the error summary focused with its title.
+- **Signed Out and the notices:** the wait row while signing out, and each notice's region with its actions after it.
+
+The existing behaviour and axe accessibility tests for these screens still pass unchanged. I couldn't look at the pages in a browser here, so widths and reflow are covered only through the class structure these tests check. Installing dependencies created `app/node_modules`, which `app/.gitignore` already excludes.
+
+**What I didn't do and what's left.** I changed nothing under `spec/`, `design/` or `plan/`. DESIGN.md gaps 41 and 42 are still open, because the spec doesn't answer them:
+- **Gap 41:** whether the header should offer its navigation to someone who hasn't yet agreed to the terms.
+- **Gap 42:** which header to show when sign-out fails.
+
+The screens keep today's behaviour on both. The next restyle (slice 3's profile screens) will find the user kit has no profile pieces yet, and the picture picker still in its older layout.
+
+## 554 · build · 2026-10-18
+
+cost $0 · turns 0
+
+The application build-slice-1-10 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Each of its 3 conditions went to another stage:
+
+- to bind-adapter: R-1.43: on /opportunities/sprint-with-us/00000000-0000-4000-a011-000000000001/edit?tab=evaluationPanel at the consensus stage, the page shows a region "Evaluation panel" holding the note "The evaluation panel can no longer be changed — The consensus stage has begun, so the panel is fixed." (inside `evaluation-panel-locked-message`), with a read-only table region "Members of the evaluation panel" nested inside it. evaluationPanelPage's section() ends in `.last()`, so it resolves to the nested members-table region (it holds the member rows), which does not contain the note. lockNote() therefore counts 0, editable() returns true, and addPanelMember waits on a member chooser the locked page never draws until the 15s timeout. section() has to resolve to the outermost "Evaluation panel" region, or lockNote() has to look across the whole panel, so the lock is read as a refusal.
+- to bind-adapter: R-5.16: the same fault in evaluationPanelSwu.addPanelMember on /opportunities/sprint-with-us/00000000-0000-4000-8000-000000000701/edit?tab=evaluationPanel. The page shows status "Team questions: consensus" and the note "The evaluation panel can no longer be changed" in the outer "Evaluation panel" region. section()'s `.last()` picks the nested "Members of the evaluation panel" table region, the lock note is missed, and the adapter tries to click a member chooser that is not on the page (locator.click timeout) instead of noting the refusal.
+- to bind-adapter: R-1.40: opportunityCwuComplete.fullReport on /opportunities/code-with-us/00000000-0000-4000-a008-000000000001/complete (as an administrator) returned text starting "Opportunity Status Awarded Reward $5,000 …". It read only the element carrying `opportunity-full-report`, which starts at the "Opportunity" section. The page shows the opportunity's title "Seeded awarded Code With Us opportunity" as the report's H1, just above that element, and the report article is named by that title. fullReport has to include the report's heading (the H1 that labels the document), not only the body below it.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 553 · bind-adapter · 2026-10-18
+
+cost $0.8857403999999999 · turns 30 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed all three conditions in `tests/adapters/new/index.ts` and checked them against the running target. The project type-check (`tsc`) needed approval this session never got, so it was not run. I checked the new lines by hand against the helpers they call. `bindings.yaml` is unchanged: every member these conditions touch was already `bound`, and that stays true.
+
+**Conditions 1 and 2: evaluation panel lock (R-1.43, R-5.16).** Both Sprint With Us and Team With Us use one shared helper, `evaluationPanelPage`, so one change covers both.
+- **What the page has.** I signed in as the administrator through the identity provider. On a locked panel (`…/sprint-with-us/00000000-0000-4000-a011-000000000001/edit?tab=evaluationPanel`) there are two regions. The outer one, named "Evaluation panel", holds the lock note (`evaluation-panel-locked-message`). Inside it is a second region, "Members of the evaluation panel", which holds the member rows but not the note. An editable panel (the seeded opportunity `…-a024-000000000001`) has only the one "Evaluation panel" region.
+- **The fix.** `section()` ended in `.last()`, which picked the inner table region on the locked page. It now ends in `.first()`. Regions come in page order, so that is always the outermost "Evaluation panel" region.
+- **Checked live.** On the locked page the section now finds the lock note and both member rows, so `lockNote()` counts it, `editable()` returns false and `addPanelMember` notes the refusal instead of timing out on a member chooser. On the editable page the section still finds "Save evaluation panel" and no lock note, so editing works as before. `lockNote()` itself is unchanged.
+- **The 701 opportunity.** On this instance, `…-8000-000000000701` is still at "Team questions: individual evaluation". Its panel is editable, because only the reviewer's run had moved it on to consensus. I could not see its locked state here. The locked page it would show is the one I checked on the a011 opportunity, so the same fix applies.
+
+**Condition 3: full report heading (R-1.40).** On `…/code-with-us/00000000-0000-4000-a008-000000000001/complete`, signed in as administrator, the report article carrying `opportunity-full-report` is labelled by a level-1 heading drawn just above it. That heading is the opportunity's title, "Seeded awarded Code With Us opportunity", and it is the only one on the page. The article has no heading of its own inside it.
+- **The fix.** When the page carries `opportunity-full-report`, `documentText()` now puts the main area's level-1 heading on the first line, then the article's text as before. It skips this if the article ever holds its own level-1 heading, so the title is never read twice.
+- **Scope.** The same change applies to the Sprint With Us and Team With Us reports, which use the same reader. It does not change the printable proposal copies (`proposal-export-document`), which no condition named. A reader refused the page still gets an empty reading.
+
+No route failed to resolve in this run. I wrote nothing outside `tests/adapters/new/`, and no condition is deferred.
+
+## 552 · bind-adapter · 2026-10-18
+
+cost $46.19470260000003 · turns 608 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+The new target's adapter now finds elements by the contract's test IDs. I couldn't compile it or run any tests: the workspace has no `node_modules` and running node isn't approved. I checked the moved members against the running application at http://localhost:4300 through the browser instead.
+
+Only `tests/adapters/new/index.ts` and `tests/adapters/new/bindings.yaml` changed. `.playwright-mcp/`, the scratch folder the browser tool wrote into the workspace, has been removed, and the browser was signed out and closed.
+
+**What the change is.** Wherever a running page carries the `test_id` that `spec/contract/surface.yaml` gives a member, the member now finds its element with `page.getByTestId` first. It falls back to role, label, visible text or address only where the page doesn't carry the ID or the contract names none. What each member hands back keeps the old form: the element's own words, the same items in the same order. Where an element sits inside a larger marked block, the extra words are dropped:
+- a section's heading;
+- the "Back to the proposal" and "Print" lines on exported documents;
+- the button label inside the updated-terms warning.
+
+**A conflict in my instructions.** The task text says never to use "a test id". The stage instructions and the stated reason for this run both say to use the contract's test IDs. I followed the test IDs.
+
+**Members that now work where they reported unbound before.** Each was seen on the current build. Things I opened but didn't confirm were cancelled, so no seeded state changed.
+- **Sprint With Us management screen:** finalize question consensuses, start team scenario, and the Code challenge and Team scenario sections.
+- **Team With Us management screen:** finalize question consensuses and the Challenge section.
+- **Code With Us proposal screen:** rank, now shown as "1 of 2".
+- **User profile, as the administrator on another account:**
+  - The administrator box works. For a vendor the service refuses it with "Vendors cannot be granted administrator permissions".
+  - "Reactivate account" now appears on the deactivated vendor's profile and opens a confirmation dialog.
+- **Notifications on both profile pages:** confirming or cancelling an unsubscribe. Unticking the box now opens a dialog.
+- **Legal on both profile pages:** accepting updated terms and confirming it. The vendor whose terms were reset now sees a warning, a button and a dialog.
+
+Several readers that used to return empty now read their element:
+- the Sprint With Us budget, phases, assignment date and creator;
+- the Team With Us resources and dates;
+- the winning proponent's contact details and score;
+- the names of the elements in a published page's body;
+- the email reference page, which now loads.
+
+**Still unbound.** I opened each page in the state the contract describes:
+- **Team With Us proposal screen:** score resource questions, screen in and screen out. There are no such controls in any section.
+- **Organization team tab:** the invalid membership type error. The invite dialog offers no membership type.
+- **Mail delay proxy:** its three members. The sandbox doesn't run the proxy.
+
+The Sprint With Us and Team With Us proposal forms don't carry `proposal-team-member-choice`, so `team_member_choices` still finds the chooser by its name.
+
+**Absent.** `/proposals` still answers the application's "Page not found", so its placeholder reading stays absent and is decided when the method runs. Every other route in the contract resolves.
+
+**Behaviour that differs from before:**
+- `service_is_up` returns the status page's message.
+- Sign-out and failed-sign-in notices are read from their marked elements.
+- Documents leave out their control lines.
+- An opportunity's deadline returns the "Closes …" line where the page shows one.
+- Field errors marked `field-error` are read only when the form shows no other message, because their wording differs from the messages beside each field.
+
+**Self-check.** A read-only pass checked the changed function signatures against their callers. It found one duplicate variable in `columnValues`, which I renamed.
+
+Two kinds of lookup remain that a reviewer may want to look at:
+- A few lookups use tag names such as `input` or `dt` inside page evaluation, or XPath to reach a parent element. These are not class or element-id selectors, and most were already there before this run; one that reads the input inside a marked date field is mine.
+- The adapter has no `expect(` and no `test(`, and no password value is written anywhere. The password is read from the environment when `signIn` runs.
+
+**Data touched while walking.** Probe content pages and a draft Sprint With Us opportunity were created and then deleted. One stored image file from that probe remains. Clicking the team-scenario start once was refused and changed nothing. A Sprint With Us proposal form was filled and then abandoned without saving.
+
+`bindings.yaml` names every page and member once, spelled as in the contract. Its comments now say the test ID comes first.
+
+## 551 · build · 2026-10-18
+
+cost $0 · turns 0
+
+The application build-slice-14-7 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Its one condition went to another stage:
+
+- to derive-tests: Rewrite tests/acceptance/organizations/R-3.28.spec.ts so its two cases cannot change each other's state. Both cases change the approved service areas of the same seeded organization (seed.organizations.qualified, 00000000-0000-4000-8000-000000000301), and verify runs seven instances in parallel. In slice 14's run, case 1 failed at line 74 while the page showed exactly Data professional + Full stack developer, which is what it was waiting for. Case 2 failed at line 51 while the page showed exactly Agile coach + Full stack developer, which is what it was waiting for. Each poll saw the other case's write. Run the two cases serially, or give each case an organization the other does not change. Do not let either rely on another case leaving the seed's approvals in place.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 550 · derive-tests · 2026-10-18
+
+cost $0.3404018 · turns 9 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I changed one file, `tests/acceptance/organizations/R-3.28.spec.ts`, so its two cases now run one after the other in a single worker. I could not run the file here, because the command to list it needed an approval nobody was present to give. The first real check will be the next verify run.
+
+**Request 1 (build-slice-14-7, ruled at G3): taken up.** The ruling offered two fixes: run the cases serially, or give each case its own organization. The second was not possible. In the seed, the qualified organization is the only one approved for two service areas. The owner case also needs the qualified organization's own owner signed in, and that owner belongs to this organization alone.
+
+So I added `test.describe.configure({ mode: "default" })` at the top of the file. This runs the two cases in file order in one worker, even if the run is started with full parallelism. I chose `"default"` rather than `"serial"` because `"serial"` would skip the second case whenever the first fails, and that would hide its result.
+
+Both cases still do what the ruling's last sentence asks:
+- **Own starting state:** each case first checks, as the administrator, that the organization is approved for exactly the seed's two areas, and saves them back if not.
+- **Order doesn't matter:** case 2 does not rely on case 1 leaving the approvals in place, and neither case depends on running first.
+
+I added a short comment explaining why the cases are serialised, and moved the header's derived date to 2026-10-17 because the file's content changed. I left the spec sha in the header as it was. No test body or assertion changed.
+
+One thing I could not settle without the target: the fixture resets the seed before every test, and `tests/playwright.config.ts` already sets `fullyParallel: false`. That the two cases still saw each other's writes suggests the verify run either overrides parallelism or shares one target between workers. If several instances write to one target, two separate files touching this organization could still collide. Forcing this file's order covers the case the ruling describes, but not that wider one. Whoever owns the runner configuration should check how the seven instances map to targets. That configuration is not this stage's to change.
+
+No other spec file and no entry in `tests/acceptance/not-testable.yaml` was touched.
+
+## 549 · bind-adapter · 2026-10-18
+
+cost $1.1857512 · turns 37 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I've fixed the one gap from the last run, R-8.31 (`proposal-cwu-edit.save_changes`). The application does offer this action. The adapter wasn't finding it because it looked in the wrong place on the page. I couldn't run the type check (permission was refused), so the change compiles in principle but hasn't been checked.
+
+**What I found.** I signed in through the sandbox identity provider as the first vendor persona (`test-vendor-1`), using the password variable's name as instructed. I then created a draft individual proposal on the seeded published Code With Us opportunity (…0601) and opened its edit screen. Pressing "Edit" under "Proposal actions" opens the fields. The save buttons ("Save changes and submit", "Save changes", "Cancel") now sit below the opportunity summary in the side panel labelled "Opportunity and actions". Earlier builds put them in a group named "Save choices". The adapter's `saveChanges` searched only inside that group. When the group wasn't there, the search came up empty and reported unbound, even though the button was on screen. I submitted the proposal and pressed "Edit" again: a submitted proposal shows the same panel and buttons.
+
+**What I changed.** One helper in `tests/adapters/new/index.ts`, `saveChoices()`, now accepts either the old "Save choices" group or the "Opportunity and actions" panel. It counts the panel only while it shows a "Save changes" button. This matters because the Sprint With Us and Team With Us code uses the same helper to tell when a save has finished and the screen has closed again. The closed screen has no such panel, so that check still works. I didn't walk those two programs' edit screens on this pass, so it isn't confirmed that their edit screens use the same panel.
+
+**Checked in the browser:** with the new lookup, entering a comment and pressing "Save changes" stays on the proposal's address, shows "Your changes have been saved.", and closes the form.
+
+**Unchanged:**
+- `bindings.yaml` already listed `proposal-cwu-edit.save_changes` as bound, which is now accurate, so I left the file alone.
+- Every other binding is as it was.
+- Every page route I used during this run loaded normally.
+- I changed nothing outside `tests/adapters/new/`.
+
+**Leftover data on the target:** my test left a submitted Code With Us proposal ("Binding Probe", id 1a58ddd1-6042-4e5e-8395-fe9e035915c1) by the first vendor persona on the seeded published opportunity. I cancelled out of editing it but didn't withdraw or remove it. A submitted proposal can only be withdrawn, and withdrawing still leaves the record. If the target isn't reseeded before the next run, any test that expects this vendor to have no proposal on that opportunity will see this one.
+
+## 548 · bind-adapter · 2026-10-18
+
+cost $0.28445479999999995 · turns 8 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I made the one change the ruling asked for, build-slice-14-6, and left the rest of the binding as it was.
+
+**What changed.** `attachmentRegion()` in `tests/adapters/new/index.ts` used to find only a region or heading named exactly "Attachments". It now also accepts a numbered part title, using `/^\s*(\d+\.\s*)?attachments\s*$/i`, with a one-line comment saying why. The Code With Us proposal create and edit forms draw that part as "3. Attachments", so the old pattern found no region there. That is why `proposal-cwu-create.add_attachment` in R-8.31's removal case stopped with "no row naming it" even though the row and its download link were on the page.
+
+**Where it applies.** This is the only definition of `attachmentRegion()`, so the change reaches every proposal form's `add_attachment` and remove step. The opportunity forms' "Attachments" part, which has no number, still matches as before.
+
+**Not checked.**
+- I didn't run the type checker: running it needed an approval this unattended session can't get. The change only replaces one regular expression literal with another, so it shouldn't introduce a type error.
+- I didn't reopen the running target to watch the R-8.31 case pass. The ruling had already described what the page shows, and I was told not to start the walk over.
+
+`bindings.yaml` is unchanged, because no member moved between bound, unbound and absent. Nothing outside `tests/adapters/new/` was touched, and no request is deferred.
+
+## 547 · bind-adapter · 2026-10-18
+
+cost $1.5208414000000003 · turns 58 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I've made the four fixes the ruling asked for, plus two more the create page needed, all in `tests/adapters/new/index.ts`. Signed in as test-vendor-1, I checked every new pattern against the live create form for the seeded published Code With Us opportunity and each one matched. I could not run the TypeScript typecheck: the session refused permission for `tsc`. I checked the new code by reading it instead, but the runner's typecheck still needs to pass before this goes further.
+
+**What the create form looks like now.** It sits under "Create a Code With Us Proposal". Section "1. Proponent" asks "Will you be submitting a proposal for this opportunity as an Individual or Organization? (required)", with the radios "Individual" and "Organization", neither ticked at first. Choosing "Individual" shows these fields:
+- "Legal Name(required)", "Email Address(required)", "Phone Number"
+- "Street Address(required)", then a second box labelled just "Street Address"
+- "City(required)", "Province / State(required)", "Postal / ZIP Code(required)", "Country(required)"
+
+Choosing "Organization" shows a chooser button that reads "Organization" until one is picked, then shows the organization's legal name. Its list offered "Cedar Hollow Systems Inc." for this vendor. The "Submit", "Save Draft" and "Cancel" buttons are no longer in a "Proposal actions" group; they sit in a side panel called "Opportunity and actions". With only the proposal text missing, "Submit" gave the alert "Unable to Submit Proposal". Once that text was filled it opened a dialog titled "Review Terms and Conditions". Its two boxes now read "I acknowledge that I have read, fully understand and agree to the Code With Us Terms & Conditions. (required)" and the same for the Digital Marketplace terms. Its "Submit Proposal" stays disabled until both are ticked. I pressed "Cancel" in that dialog and saved nothing, so this walk left no proposal behind.
+
+**The four conditions:**
+1. **Submit button (R-2.13).** The pattern now also accepts "Submit", but only as a button's entire name: on the create form only the real Submit button matches. The dialog's confirm button already accepted "Submit Proposal", so it needed no change. The check on the proposal's own screen around line 10703 now accepts "Submit" too, but only inside "Proposal actions".
+2. **Address labels.** The labels "Province / State" and "Postal / ZIP Code" are on the proposal create form, not the organization create form the cited lines belong to. I opened `/organizations/create` and it still reads "Province or state(required)" and "Postal code or ZIP code(required)". So I put the patterns into two shared patterns that accept both the old and new wordings. Every alias in the organization field map uses them, and so does the proposal form's field list, which is where the real fix was needed.
+3. **Default organization.** The chooser now counts as empty when it reads "Select an item", "Organization" or nothing. A test that names no organization gets the first one offered.
+4. **Street lines.** Both address lines are now chosen by position among the boxes labelled for a street: the first box is line one, the second is line two. On the live form, line-one aliases filled "Street Address(required)" and line-two aliases filled the plain "Street Address" box, without either overwriting the other.
+
+**Two extra fixes on the same page:**
+- **Terms boxes.** The patterns for ticking the two terms boxes only knew "I accept the … terms", so they could no longer find the new boxes. That would have broken accepting the terms and submitting. They now accept the "I acknowledge … agree to the … Terms" wording as well as the old one. The field-error reader skips those lines the same way.
+- **Cancel.** The create form's cancel looked for "Cancel" in "Proposal actions" or "Save choices", neither of which exists there any more. It now falls back to the "Opportunity and actions" panel, and then to the main area.
+
+**The unbound reasons quoted from calibration** ("no 'An individual' choice under 'Who is submitting this proposal?'", "no 'Submit proposal'") come from an older adapter's wording. The current one already accepted "Individual" / "Organization", and I confirmed that its way of clicking the radio ticks "Individual" on the live page. With the submit pattern now accepting "Submit", nothing should stop those tests on these members any more. `bindings.yaml` already lists every `proposal-cwu-create` member as bound, so I left it unchanged.
+
+I didn't change anything outside `tests/adapters/new/`, and every route I visited resolved. As the ruling says, the earlier walk left a saved draft by test-vendor-2 on the seeded published Code With Us opportunity. Resetting the target's seed isn't this stage's work, but it should be done before the next verify run.
+
+## 546 · build · 2026-10-18
+
+cost $0 · turns 0
+
+The application build-slice-7-12 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Its one condition went to another stage:
+
+- to bind-adapter: opportunityCwuView.status() and opportunityCwuView.proposalDeadline() in tests/adapters/new/index.ts still read '' on a published Code With Us opportunity. Their fallbacks go through cwuHeadLines(), which ends the head at the first line equal to any definition-list label. 'Published' is both the status in the head's label and the term of the 'Published' date detail, so the head is cut off at the status line: the 'Closes ... at 4:00 p.m. Pacific time' line is dropped, and cwuHeadStatus() skips 'Published' as a label. Read status from data-testid opportunity-status and the deadline from data-testid opportunity-proposal-deadline, as the earlier request asked, rather than by matching head text. Check reward() against data-testid opportunity-reward too. Shown by verify on build-slice-7-12 (application tree 7e29391): R-1.14 (tests/acceptance/opportunities/R-1.14.spec.ts:109) and R-1.22 (R-1.22.spec.ts:50) read '' while .sdlc/evidence/slice-7/R-1.14.txt and R-1.22.txt show 'Code With Us Published' and the 4:00 p.m. deadline on the page. R-1.21 passes only because 'Draft' is not a label on that page. Before proposing, run the rebound reads against a published opportunity as well as a draft.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 545 · bind-adapter · 2026-10-18
+
+cost $0.8728895999999999 · turns 31 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed the second-level adapter reads that came back empty on a published Code With Us opportunity, without using the test ids the ruling asked for. I couldn't run the adapter itself, so the fix is checked only by running its logic in the browser. The only file I changed is `tests/adapters/new/index.ts`. `bindings.yaml` is unchanged, because status, proposal deadline and reward stay bound.
+
+**The defect.** The ruling found it correctly. On the restyled page, `cwuHeadLines()` ended the head at the first line whose text matched any term label. A published opportunity shows its status as "Published", and that is also the label of the "Published" date. So the head was cut off at the status line, and `cwuHeadStatus()` then skipped "Published" as if it were a label. That made `opportunityCwuView.status()` and `opportunityCwuView.proposalDeadline()` both return '' on a published opportunity. A draft escaped only because "Draft" is not a label on the page.
+
+**Why I didn't use the test ids.** The ruling asked me to read status, deadline and reward from the `opportunity-status`, `opportunity-proposal-deadline` and `opportunity-reward` test ids. Those ids are on the running target. But this stage's rules forbid binding to a `data-testid`, and the separation check refuses an adapter that uses one. So I fixed the cause instead.
+
+**The fix.**
+- **Head lines:** `cwuHeadLines()` now finds where the head ends from the page's structure: it takes the visible text that comes before the first definition-list term, grouped into one line per block. It no longer matches lines against label text. The other two cut-offs, "Opportunity ID:" and "Description", are kept.
+- **Status:** `cwuHeadStatus()` no longer skips lines that equal a label, so "Published" or "Code With Us Published" now reads as "Published".
+- **Deadline:** `cwuHeadDeadline()` now also falls back to the first line anywhere on the page that starts with "Closes" or "Closed". This matches how the old binding reads its own deadline, and covers a restyled page that draws that line below the terms.
+- **Reward:** `reward()` still reads the "Reward" term first and the head's "Reward $5,000" line after that. It goes through the same corrected head, so it can no longer be cut off.
+- **Cleanup:** I removed the `termLabels()` helper, which nothing uses any more.
+
+**What I checked.** The target running here at `localhost:4300` still draws status, deadline and reward under their own terms, so the term reads answer before any of the fallbacks.
+- **Seeded published opportunity (signed out):** Published / "June 1, 2030 at 4:00 p.m. Pacific time" / $5,000.
+- **Seeded draft opportunity of another staff member (signed in as the administrator):** Draft / "August 1, 2030 at 4:00 p.m. Pacific time" / $12,000.
+- **Restyled head:** I can't open the build the ruling looked at (application tree 7e29391), so I rebuilt its head inside the published page. I added "Code With Us" and "Published" as inline labels, a "Closes June 1, 2030 at 4:00 p.m. Pacific time" line and a "Reward $5,000" line, and removed the Status, Proposal deadline and Reward terms while keeping the "Published" date term. The new head logic, run in the browser, returned all three of those lines, which the existing patterns read as Published, the full Closes line and $5,000. A draft's "Code With Us Draft" goes through the same path and reads as Draft.
+
+**What I couldn't do.** The workspace has no installed node packages, and type-checking needed an approval this session doesn't have. So the TypeScript wasn't compiled and the adapter wasn't run under Playwright here. The next verify run on the slice should confirm R-1.14, R-1.21 and R-1.22. Every page route that was resolving before still resolves; I opened no new routes.
+
+## 544 · bind-adapter · 2026-10-18
+
+cost $0.4357414 · turns 13 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed `opportunityCwuView.reward()` and `opportunityCwuView.status()` in `tests/adapters/new/index.ts`, as the ruling asked. Nothing else changed: no other member, and not `bindings.yaml`, where both members were already `bound`. I could not run a typecheck: the session needed permission to run `npx tsc` in `tests/` and none was given. I also did not re-run either member against the build at localhost:4300.
+
+**reward().** It still tries the "Reward" term first, then the existing labelled-value lookup. After those it now takes the figure from a head line matching `/^reward\s+(.+)$/i`, so "Reward $5,000" gives "$5,000". On the build at localhost:4300 the "Reward" term still answers first, so that build reads as it did. The new pattern needs a space right after "Reward", so it does not catch "Reward: $5,000"; the labelled-value lookup already handles that form.
+
+**status().** The head used to run until a line beginning "Opportunity ID:". On the restyled page "Opportunity ID" is a term with the id below it, so that line never appears, and the head ran on to the Description heading and took in the "Published" term label. The head now stops at whichever comes first:
+- the first line whose text is one of the page's term labels (the text of every `dt` in the main region);
+- an "Opportunity ID:" line;
+- the "Description" heading.
+
+On the restyled page that cuts the head off above "Opportunity ID" and the "Published" label below it. The status lookup also skips any line that is a term label. It now accepts either a line that is just a status word, or a line that starts with "Code With Us" and ends in a status word, which it reads as that word ("Code With Us Draft" gives "Draft"). It still ignores "Closed", as before. The "Status" term is still tried first, so the current build answers from its label as it did.
+
+**proposalDeadline().** The ruling accepted this one. It shares the narrower head, and I left it otherwise untouched. The "Closes …" line would only be missed if the restyled page put it below the first term. Given the head the snapshot describes (status label, title, "Closes …", "Reward $5,000", then the terms), I expect it to sit above them, but I did not check that in the browser.
+
+Every route in `surface.yaml` was already settled in the accepted binding, and this revision did not revisit any of them. I changed nothing outside `tests/adapters/new/`.
+
+## 543 · build · 2026-10-18
+
+cost $0 · turns 0
+
+The application build-slice-8-13 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Each of its 2 conditions went to another stage:
+
+- to bind-adapter: R-1.3: in both cases (public sector staff; administrator) opportunityList.openGroup() read '' at /opportunities, but the page shows 'Seeded published Code With Us opportunity' as a level-3 heading inside the region whose heading is 'Open Opportunities 3' (evidence R-1.3.txt and R-1.3-2.txt). The open group's heading name includes its count, and OPPORTUNITY_GROUPS in tests/adapters/new/index.ts (/^open(?: opportunities)?$/i and its siblings) is anchored so that it does not match 'Open Opportunities 3', so groupSection and the heading fallback both find nothing and opportunityGroup returns ''. Match a group heading or region whose name is followed by a count, e.g. /^open(?: opportunities)?(?:\s+\d+)?$/i, for all three groups.
+- to bind-adapter: R-1.38: opportunityList.openGroup() read '' at /opportunities after publishing, but the page shows 'R-1.38 open opportunity whose deadline is sooner' (closes December 17, 2026) and then 'R-1.38 open opportunity whose deadline is later' (closes February 15, 2027) inside the region headed 'Open Opportunities 5' (evidence R-1.38.txt). This is the same cause as R-1.3: the OPPORTUNITY_GROUPS pattern for the open group does not allow the count that follows the heading's words, so the adapter never finds the open group's section.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 542 · bind-adapter · 2026-10-18
+
+cost $0.3189658 · turns 9 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I've fixed both conditions in this run, and neither is deferred. Both had the same cause, so one change answers them together.
+
+**What was wrong.** For the list at `/opportunities`, the adapter found each group by matching its heading against patterns that had to match the whole heading, such as `/^open(?: opportunities)?$/i`. The reviewer's evidence shows that public sector staff and administrators see headings with the group's count on the end, like "Open Opportunities 3" (R-1.3) and "Open Opportunities 5" (R-1.38). Those headings never matched. So the adapter found no group section and no heading either, and `openGroup()` returned an empty string while the page was showing published opportunities.
+
+**What I changed.** In `tests/adapters/new/index.ts`, the three group patterns in `OPPORTUNITY_GROUPS` now allow an optional count after the heading's words:
+- `/^unpublished(?: opportunities)?(?:\s+\d+)?$/i`
+- `/^open(?: opportunities)?(?:\s+\d+)?$/i`
+- `/^closed(?: opportunities)?(?:\s+\d+)?$/i`
+
+I applied it to all three groups, as the condition asked. The part that drops the heading from what a group returns already handled a count, whether it shares the heading's line or sits on its own line, so with the new patterns the heading and count are removed and the rows come back as before. `opportunityStatus`, which uses the same patterns to find where the first group starts, now also recognises a heading with a count. I also updated the comment describing the page to mention that a heading can carry its count.
+
+**What I checked.** I opened `/opportunities` signed out on the running target. There the headings are just "Open" and "Closed", with no count, and the new patterns still match them. I did not sign in as staff or an administrator to see the counted headings myself; for that form I'm relying on the reviewer's evidence. I haven't run the tests against the change.
+
+Nothing else changed. `bindings.yaml` stays as it was, since no member's status changed, and I touched no other binding and wrote nothing outside `tests/adapters/new/`.
+
+## 541 · bind-adapter · 2026-10-18
+
+cost $0.8822124 · turns 24 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed the opportunity list's group reader on the new target as the ruling asked. I checked the new logic in the browser, but I could not run the type-checker or the test suite.
+
+**What changed.** The ruling (build-slice-8-12, G3) said the reader for the Unpublished, Open and Closed groups took the lines after a group's heading as its rows, up to the next group heading. When Closed was the last group and collapsed, it read the program descriptions panel that follows as Closed's rows. It also never opened the group, so the seeded closed Sprint With Us opportunity was reported missing for an administrator.
+
+I signed in through the identity provider as the administrator and opened the opportunity list. Each group is its own section under a level-2 heading: "Unpublished", "Open", "Closed". Each holds one line of description and then its list of opportunity cards. None of the groups was collapsed when I looked.
+
+The reader in `tests/adapters/new/index.ts` now works like this:
+- **Collapsed groups first.** If the group's header is a button marked collapsed, it clicks it and waits for it to open. A group drawn as a closed disclosure inside its section is opened the same way.
+- **Finding the section.** It looks for the section that holds this group's heading or header button and no other group's.
+- **Reading rows.** It reads the text inside that section only, drops the heading and any count shown beside it, and returns what is left. Anything after the last group on the page can no longer be read as its rows.
+- **Output format.** It is the same as before: the description line, then each card's lines, separated by newlines.
+- **Group not shown.** If the list doesn't show this reader the group at all, it still returns an empty answer.
+- **New failure case.** If the heading is there but no section of its own holds it, the reader now throws `unbound:` naming the group.
+
+**Checked.** I ran the same logic against the live page as the administrator. Each group matched exactly one section, and its text started with that group's own description line. The Closed group's rows include "Seeded closed Sprint With Us opportunity" and end with the last closed card. I did not see a collapsed group on this build, so the opening step has not been tried on a real collapsed group.
+
+**Not checked.** Running `tsc` and the suite both needed approval, which nobody was here to give. I read the changed code by hand and the types should hold, but the first proper compile will be the next run.
+
+**One limitation.** The pattern for a group's header is unchanged: it must read exactly "Unpublished", "Open" or "Closed", optionally followed by "Opportunities". A collapsed header that puts a count inside its name, such as "Closed Opportunities 12", would not be recognized. I left the pattern alone because other readers use it and the ruling didn't name them.
+
+Nothing else in the adapter was touched. `bindings.yaml` is unchanged, since all three groups were already listed as bound. Every page route I opened during this run resolved.
+
+## 540 · design · 2026-10-17
+
+cost $10.402704600000002 · turns 213 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I restyled every evaluation screen in the chosen direction and filled the six test IDs the contract had left empty in this domain. I had no shell to compile or scan with. The pipeline's typecheck and accessibility scan, run after this turn, are the first real check, so read `design/report.json` before ruling.
+
+**How the stories are built now.** The Sprint With Us and Team With Us copies of each page used to be separate files that differed only in their words. Each page is now drawn once:
+- `design/catalogue/evaluation-pages.tsx` has one component per page, taking the state to draw.
+- `design/catalogue/evaluation-kit.tsx` holds the program data (question words, address segment, how many proponents go forward, the next stage, the tabs) and the earlier stories' record text, moved unchanged.
+- Each of the 113 story files is now a few lines: its comment, its title and one render of a page with a program and a state.
+
+Every story sits inside `SitePage` with the person the state is seen by. The table in the new DESIGN.md section lists who that is for each page and state.
+
+**What I reused and what is new.** The catalogue leans on the opportunities domain's kit throughout: the page frame, the opportunity head, the details list, the action bar, regions, panels, the tables, the loading spinner and the missing page. It also uses `marketplace.tsx`'s `Label` and the design system's `InlineAlert`, `Select`, `Checkbox`, `NumberField`, `TextArea`, `Form`, `ButtonGroup`, `Modal` and `AlertDialog`. `statusOf` had no use, because no screen here shows the public's view of an opportunity's status.
+
+The project's own components, all listed in DESIGN.md as not the design system's, are:
+- **Manage frame**: the manage page around one of this domain's tabs.
+- **Scoring head**: the top of a scoring form, with the proponent's anonymous name as the heading.
+- **Evaluation status**: a status label for evaluations and consensuses (grey for Not started, blue for a draft, green for Submitted). Whether a draft is complete is in its words, not its colour.
+- **Rows**: the proponent lists, the panel's members and each question's evaluators' scores. They sit in columns where the list is wide and become stacked cards on a phone. This replaces the tables that scrolled sideways and settles the proposals section's gap 40 for this domain.
+- Smaller pieces: a question box, a response block, the panel's member row, a pick-and-add control, the alerts and the response reference.
+
+The dashboard's Evaluations list is the exception to rows: it shares a page with the opportunity dashboard's table, so I kept it a table too, so the one page doesn't show two kinds of list (gap 72).
+
+**States.** Every earlier state is kept, with its words. The contract asked for three changes, which I made:
+- **The panel tab opens read-only.** `default` now shows the panel and an "Edit evaluation panel" button. A new `editing` state holds the form that `default` used to show.
+- **Adding a panel member.** You now choose a person, listed as "Name (email)", and press Add an evaluator. Each row shows the person it holds instead of its own dropdown.
+- **A new page, `evaluation-individual-submission-request-swu`.** It is the response reference for an evaluator submitting scores while naming fewer than every proponent, with `default` and `refused` states.
+
+Both changes are recorded in `design/screens.yaml`.
+
+**Test IDs filled:**
+
+| Entry | Test ID |
+| --- | --- |
+| `start_editing` on both panel pages | `evaluation-panel-edit` |
+| `submit_scores_for_consensus_naming` | `evaluation-submission-request-submit` |
+| `request_accepted` | `evaluation-submission-request-accepted` |
+| `refusal_messages` | `evaluation-submission-request-refusal-messages` |
+| `stored_status` | `evaluation-submission-request-status` |
+
+Every test ID already filled stays on an element that does what the surface says. Two extra IDs the surface doesn't name are new: `evaluation-panel-member-choice` (the person to add) and `evaluation-panel-cancel` (Cancel while editing). The old per-row `evaluation-panel-member-field` is gone, along with the per-row dropdown it was on.
+
+**Other visible changes:**
+- Error summaries now show their titles. The earlier stories gave the alert both a title and content, so the design system never displayed the title.
+- Stories that used to say "trimmed here" now draw the manage frame and the full form.
+
+**Gaps found (67 to 73 in DESIGN.md):**
+- No confirmation state after the panel is saved. The surface quotes "Opportunity Changes Published", but no criterion gives it.
+- With pick-and-add, the form could stop offering people already on the panel, but the surface still observes a duplicate error. I kept offering everyone and refusing the duplicate on save.
+- R-5.25 says submission is "not offered" until every evaluation is complete; the surface observes a disabled button. The two may disagree.
+- Whether the seeded submission actually moves the opportunity to consensus depends on the seed, so that story's outcome is illustrative.
+- There is no Team With Us page for the submission request.
+- The dashboard's tables (above).
+- Nothing says whether an administrator, as well as the owner, is offered the panel's Edit; the stories show the owner.
+
+I changed nothing under `spec` except `spec/contract/surface.yaml`, and nothing under `constitution.md` or `.claude/skills`.
+
+## 539 · design · 2026-10-17
+
+cost $0.5809597999999999 · turns 19 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed the doubled spacing around the stated rules on the files screens. I didn't redraw anything else, and no test ID was added, removed or given a different meaning.
+
+**The cause.** The kits' stacks (`.op-panel`, `.fl-row`, `.fl-group`, `.fl-editor`) set the margin to none only on their direct children. The id and test ID for each rule were on a `<div>`, so the `<p className="op-note">` inside it kept the browser's paragraph margin on top of the stack's gap.
+
+**The fix.** I dropped each wrapper and put its id, test ID and the target of the button's `aria-describedby` on the paragraph itself. That way no CSS rule is needed for nested elements, and the gap around each line is just the container's own token. The places I changed:
+
+- **`design/catalogue/file-kit.tsx`, attachment control:** `attachment-size-limit` is now the paragraph, so its gaps are the panel's medium gap. This covers `file-attachment-control` default, too-large and new-attachment.
+- **`design/catalogue/file-kit.tsx`, picture group:** `image-file-rule` (id `image-file-rule`) is now the paragraph, so its gaps are the group's small gap. This covers `file-image-picker` default, rejected, chosen and empty.
+- **`design/catalogue/file-kit.tsx`, image editor:** `image-file-rule` (id `embedded-image-rule`) is now the paragraph, so its gaps are the editor's small gap. This covers every `file-embedded-image` editing state.
+- **`design/catalogue/file-attachment-control.new-attachment.stories.tsx`:** the "Will be saved as" line now carries `attachment-resulting-name` and id `attachment-new-1-result` on the paragraph itself.
+
+**Two more wrappers fixed.** The condition asked for any other story in this domain built the same way, and I found two. Each wrapped a status line in `<div role="status">`: one in `file-image-picker.chosen.stories.tsx` (inside the picture group) and one in `file-embedded-image.inserted.stories.tsx` (inside the editor). Both are now `<p role="status" className="op-note">`. A search of the remaining files stories found no other `<div>` wrapping a paragraph inside these containers. The Refusal wrapper holds an `InlineAlert`, not a bare paragraph, and the uploading status uses a `<span>`, so I left both alone.
+
+**`design/DESIGN.md`.** I appended a "Spacing correction" subsection to the end of the files section. It explains the cause and sets the rule for a build: an element that carries an id, a test ID or a role for a single paragraph is that paragraph, not a `<div>` around it. Nothing other domains wrote was touched. `design/screens.yaml` and `spec/contract/surface.yaml` are unchanged: the test IDs are the same and so is what each one shows.
+
+**What the pipeline still has to confirm.** The fix comes from reading the CSS. I didn't compile, render or scan anything in this turn. The third condition asks for a re-render and a check that the gaps around each rule equal the container's own token (medium in the panel, small in a row, the group and the editor). The pipeline renders and scans the catalogue when this turn ends, so whoever reviews the new screenshots and `design/report.json` should check this in `file-attachment-control` default and too-large, `file-image-picker` default and rejected, and `file-embedded-image` default. None of the conditions was addressed to a person, and I didn't touch any path outside this stage's own.
+
+**Components.** I added none. The screens are still built from the design system's `Button`, `TextField`, `TextArea`, `Link`, `InlineAlert` and `ProgressCircle`, plus `FileTrigger` and `Toolbar` from react-aria-components. The kit's own stacks and rows are the same ones `DESIGN.md` already lists as the project's own components.
+
+**Gaps.** I found no new gaps in the spec. The ones recorded earlier in the files section (62–66) still stand.
+
+## 538 · design · 2026-10-17
+
+cost $3.448873200000001 · turns 58 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I've redrawn all eight notification pages in the chosen direction, using the shared site shell and kits. Every page keeps its states, every filled test ID and this domain's own words. Nothing was compiled or scanned during my turn. The pipeline builds the catalogue and runs the accessibility scan afterwards, and writes `design/report.json`.
+
+**What each page now looks like**
+- **Unsubscribe landing** (`default`, `loading`, `unsubscribed`, `sign-in-required`). Three states are seen by a signed-in vendor, Test Vendor One. They show the users domain's notifications page with its section links, plus this domain's sentence saying what the setting covers. In `default` the unsubscribe question is open over the whole page. `sign-in-required` is the users domain's sign-in screen, seen by a visitor, with this domain's alert.
+- **New-opportunity email control** (`default`, `subscribed`, `signed-out`). It is now drawn inside the real, redesigned opportunity list, for a signed-in vendor. It is a bordered panel at the head of the results, just before the first group. On a phone it sits under the filters with its button at full width. For a visitor (`signed-out`) the page is the opportunity list with nothing in the control's place.
+- **Terms broadcast** (`default`, `notify-confirm`, `notified`, `notify-failed`), seen by an administrator. The placeholder that stood in for the content domain's part of the page is gone. The stories now draw the content domain's real managing screen for a page the service needs: facts, warning, Edit page and current wording. The notify section follows it. Edit page stays the one primary button, so Notify vendors is secondary.
+- **Email reference** (`default`, `loading`, `not-found`). Same structure as before, restyled:
+  - contents links, then each event, then each message's subject and summary, then the email preview frame;
+  - the refusal is the shared missing page, drawn for a vendor.
+- **Mail-catcher addresses** (`caught-message`, `caught-message-list`, `mail-delivery-fault`, `mail-delivery-delay`). Each is a single `default` response reference, drawn in a visitor's shell. Their test IDs stay `null`, because the mail catcher serves them, not the application.
+
+**Components used most.** Most of the screens are built from the opportunity kit's page frame, panel, region, details, actions, loading row and missing page. The users kit supplies the profile section links and the sign-in choices, and the content kit the managing screen. From the design system they use `Button`, `Checkbox`, `Link`, `InlineAlert`, and `Modal` with `AlertDialog`. The new `notification-kit.tsx` only puts these together; it adds no component of its own beside the design system's. No screen of this domain colours anything, because none of them shows a status.
+
+**One change outside this domain's own files.** The opportunity list page (`opportunity-list-page.tsx`) needed somewhere to put the control, so I gave it one optional `notice` slot at the top of the results. The opportunities domain's stories don't use it and render exactly as before.
+
+**Test IDs.** All of them were already filled in `spec/contract/surface.yaml`, and none changed. Each is still in the stories' markup on an element that does what the surface says.
+
+**Gaps I recorded** (gaps 57–61 in `design/DESIGN.md`, new section "Notification screens in the chosen direction"):
+- **57:** the opportunities domain's own list stories, which I kept as they are, don't show the control. The build has to take it from this domain's stories. Nothing says what it shows while the list is loading.
+- **58:** the criterion puts the control "at the top of the first group". I placed it just before the group, as its own panel, so the group's test ID holds only opportunities.
+- **59:** the terms page's title and its dates are test data. On a fresh installation the criterion says it would be titled with its own address.
+- **60:** I chose viewers where no criterion names one. That includes a signed-in header while the account is still loading, and a shell around the mail-catcher addresses, which have none.
+- **61:** the users domain's drawing of the same settings page still lacks the scope sentence and the signed-in name in the dialog. Those stories aren't this stage's to change.
+
+The earlier gaps still stand. One worth repeating is that `notification_control_hidden_on_narrow_screen` is named after a superseded rule; the contract stage should rename it.
+
+**One risk the scan may raise.** On the terms page, the content domain's warning and this domain's outcome alert now appear together. If the design system gives every alert title the same id, the scan will report a duplicate id on the `notified` and `notify-failed` stories. Without the package installed here I couldn't check this.
+
+`design/screens.yaml` is unchanged, and I changed nothing under `spec/` (apart from reading it), `constitution.md` or `.claude/skills`.
+
+## 537 · design · 2026-10-17
+
+cost $8.231425999999997 · turns 148 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I brought the organizations domain into the chosen direction and drew the two pages in the brief that had no screens yet. The catalogue was not compiled or scanned during my turn: there are no installed packages here, so the typecheck could not run. The pipeline's scan after this turn is the first check of this work. The last report in the workspace was clean for every organization story, but that was the old version of them.
+
+**What I built.** All 65 organization stories now render inside `SitePage`, each with the person who sees that state and the current section. They are laid out with the opportunities domain's kit (`OpportunityPage`, `PageTitle`, `Region`, `Panel`, `Details`, `DataTable`, `Actions`, `Waiting`, `MissingPage`), `marketplace.tsx`'s `Label` and `look`, `proposal-kit.tsx`'s `AlertTitle`, and the users domain's `ProfileTabs` and shared profile sections. I did not use `statusOf` or `StatusLabel`, because no organization screen shows an opportunity. Two new files hold this project's own compositions, and both are listed in `DESIGN.md`:
+- `organization-kit.tsx`: the management page's head and tabs, the profile fields read-only and as a form, the team, list and changelog rows, the requirement list, the pagination, the terms page and the response reference.
+- `organization-memberships.tsx`: one memberships page used by both the `/users/me` address and the by-identifier address.
+
+The stories keep no inline styles, no `PageContainer` and no colour values.
+
+**The seven rules:**
+- **Colour only for status.** The circular badge is now a `Label`. Pending and Not met are yellow, Met and the "qualified" labels are green, and Owner, Administrator and Member are grey.
+- **Dense spacing.** The tighter spacing tokens and smaller type follow the opportunity screens.
+- **One primary action per screen.** No screen has more than one.
+- **Rows become cards on phones.** The organization list, team, memberships and changelog are tables on a wide screen and stacked cards on a phone. The switch is read in script, as the header's is, so each test ID appears once.
+
+**Changes beyond restyling:**
+- The dialog stories now draw the whole page behind the dialog instead of the single control that opened it.
+- The three invitation alerts sit inside the full Team members tab.
+- Four alerts had titles the design system silently dropped (gap 4 in the site shell section). Those titles now render: the two forms' problem lists, "2 invitations were not sent", and the refused-logo alert.
+
+Every page keeps its states and words, and every test ID that was already filled stays on an element that does the same job.
+
+**New pages.** `affiliation-removal-request` has two states: `default`, an accepted removal (R-3.10), and `sole-owner`, refused with the surface's own message (R-3.11). Its four test IDs were already filled in the surface; these are the first stories to emit them. `organization-request` has three states: `default` (registration accepted), `invalid` (R-3.22's "not-an-email") and `refused` (an organization administrator changing the profile, R-3.18). I filled its ten `null` test IDs (`organization-request-register`, `-change-profile`, `-archive`, `-accepted`, `-refusal-status`, `-refusal-reason`, `-refusal-messages`, `-organization-id`, `-stored-active`, `-stored-legal-name`), and each appears in a story. Both pages are added to `screens.yaml`, keeping every existing entry. `DESIGN.md` has a new section, "Organization screens in the chosen direction", appended after the existing ones.
+
+**Gaps recorded (48–56 in `DESIGN.md`):**
+- **Request methods.** The surface names operations, not HTTP methods; the methods in the stories are my reading.
+- **Refusal status codes.** No criterion gives the numbers. Only the accepted 201 comes from the surface.
+- **Unworded messages.** The invalid-field and permission messages on `organization-request` are placeholders.
+- **Undrawn cases.** The `notFound` refusal and a request sent with no session have no state, because no criterion turns on them.
+- **Misplaced observations.** The five `legal-*` observations listed on the by-identifier memberships page are bound in the users domain's Legal section, not on this page. That looks like a slip in the contract.
+- **Colours.** The status colours are the design's own choice; no criterion sets them.
+- **Clashing test data.** `invite-open` invites an address belonging to someone already on the team behind the dialog. I kept the words as they were.
+- **Viewers I chose.** Where a story named no viewer, I picked one and said so.
+- **Phones.** No criterion says how the lists behave on a narrow screen.
+
+I changed nothing outside `design/` and the `test_id` fields of `spec/contract/surface.yaml`.
+
+## 536 · design · 2026-10-17
+
+cost $3.8294668 · turns 74 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I restyled all seven content pages and their 31 stories in the chosen direction. I couldn't compile or scan them myself: this workspace has no `node_modules` to run `tsc`. That check runs after my turn and writes `design/report.json`. The earlier report was clean for every content story.
+
+**What changed.** Every story now renders inside `SitePage`, with a viewer and current section per state:
+- **Admin screens:** the list, create and managing screens are seen by an administrator, with Content as the current section.
+- **Their not-found states:** seen by a vendor, whose header offers no Content section.
+- **Public page:** all three states are seen by a visitor.
+- **Footer story:** a visitor on Home.
+- **Service level agreement link:** a visitor, with no current section.
+- **Request references:** the requester each criterion names (an administrator, a vendor or a visitor).
+
+The screens are built from a new `design/catalogue/content-kit.tsx`, which sits on the existing kits. From `opportunity-kit.tsx` it uses `OpportunityPage`, `PageTitle`, `Region`, `Panel`, `Details`, `Waiting` and `MissingPage`. From `marketplace.tsx` it uses `Label` and `look`, and from `proposal-kit.tsx` it uses `AlertTitle`. Everything else is design-system components: `Button`, `ButtonGroup`, `TextField`, `TextArea`, `InlineAlert`, `Modal` with `AlertDialog`, `Link` and `Text`. The body editor still uses `react-aria-components`' `Toolbar` and `FileTrigger`. The kit adds no new widget; it replaces the content stories' hand-styled table, badge and facts row, which were growing beside the design system.
+
+**How the seven rules land:**
+- Nothing on these screens is coloured by this domain. "Needed by the service" reads "Yes" as a grey label and "No" as plain text.
+- Headings use the direction's denser sizes.
+- Each screen has at most one primary button: Create page, Publish page, Edit page or Publish changes.
+- On phones the list of pages becomes stacked cards. The switch is made in script, so each test ID appears once.
+
+The home page, opportunity list, Code With Us proposal form and the opportunities domain's screens are untouched. `design/screens.yaml` is unchanged, and every story keeps the words it had. Every test ID filled before this pass stays on an element that does what the surface says.
+
+**A fix that adds visible text.** The old content stories gave each `InlineAlert` both a title and content, and the design system drops the title in that case. So these titles never rendered:
+- "The service needs this page"
+- "Page published"
+- "Changes published"
+- "Page removed"
+- "This address is already in use"
+- "Fix 2 fields to publish …"
+
+They are now written in the alert's own title markup and do appear. The footer story now shows the shared footer, with the original site's eight links. The five links R-7.19 names keep their test IDs. The older section's "About this service" link heading is gone, and its accessibility note about that heading no longer holds.
+
+**Test IDs.** The only `null` left on this domain's pages was `content-list.page_count`. I filled it with `content-list-count`: the number alone, in a `span` inside the list's caption ("Every page, in order of title (5 pages)").
+
+**New gaps**, added to `design/DESIGN.md` under a new section, "Content screens in the chosen direction":
+- **45 – Page count:** no criterion says the list states its count, so "(N pages)" is wording I chose. The figure on a fresh installation still depends on the older open question: 22 pages (R-7.12) or 16 (the later rulings).
+- **46 – Not-found viewer:** one not-found state can show only one header, and three kinds of viewer reach it. The stories show a vendor's.
+- **47 – Wide public page:** the page body runs the full 1100-pixel column, because no token gives a narrower reading width.
+
+I changed nothing under `spec/` except that one `test_id`.
+
+## 535 · design · 2026-10-17
+
+cost $4.672479000000001 · turns 95 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I've restyled all 60 users-domain stories (17 pages) into the chosen direction. No states, words or test IDs changed. Nothing was compiled or scanned: there are no installed dependencies here and I couldn't run scripts. The pipeline's catalogue build and accessibility scan, which write `design/report.json`, are the real check.
+
+**What I did.** Every story now sits inside `SitePage` with a stated viewer and current section. The one viewer rule worth knowing: an administrator reading someone else's profile, or using the user list, is shown with Users as the current section; a person on their own profile has no current section, because they reach it from the account menu. In place of `PageContainer` and the outer `Stack`, the stories now use the opportunity kit's pieces: `PageTitle`, `Region`, `Panel`, `Details`, `DataTable`, `Actions`, `Waiting` and `MissingPage`, plus `marketplace.tsx`'s `Label` and `look`. `statusOf` didn't fit, because no users screen shows an opportunity. Every story also offers the three widths (desktop 1440, phone 390, narrow phone 320).
+
+I added two files of our own components and listed them in `DESIGN.md` as not design-system components:
+- **`user-kit.tsx`** has:
+  - the page frame;
+  - an account status label (green for Active, grey for Inactive), replacing the old circular badge;
+  - the account facts as a term-and-value list, replacing the "Account type: …" style lines;
+  - the profile section links, drawn like the opportunity manage page's tabs;
+  - read-only details laid out in a field grid;
+  - the two side-by-side account choices on the sign-in and sign-up screens;
+  - capability rows;
+  - a status region for immediate saves that adds no gap while empty;
+  - a focus-taking error summary.
+- **`user-profile-sections.tsx`** holds the capabilities, notifications and legal sections, and the two "section not offered" profiles. Each is written once and shared by the by-identifier and `/users/me` stories.
+
+The design-system components used most are `TextField`, `Checkbox`, `Button`, `InlineAlert`, `Modal` with `AlertDialog`, `Dialog`, `CheckboxGroup`, `ButtonGroup`, `Link` and `FileTrigger`.
+
+**Three changes beyond restyling:**
+- **Error summary titles now show.** The old invalid-form stories gave the alert both a title and content, which makes the design system drop the title. "Your profile has 2 problems" and "Your changes have 2 problems" were never rendered; they now are, and the summary takes focus when it appears.
+- **The user list becomes cards on phones.** Wide screens keep the table with its caption and columns. Below the header's switch point each account becomes a stacked card. The switch is made in script, so each row's test IDs appear once. This settles, for this domain, the earlier note that tables only scrolled sideways on phones.
+- **One primary button per screen.** Deactivate stays a secondary danger button, and the two sign-in choices are equal secondary buttons.
+
+**Test IDs.** All of these pages' test IDs in `spec/contract/surface.yaml` were already filled, so I left the contract unchanged. I checked with a search that every one still appears in the markup on an element that does what the surface says. `design/screens.yaml` is unchanged because no state was added or removed.
+
+**Gaps**, recorded as 41–44 in a new `DESIGN.md` section, "User screens in the chosen direction":
+- **41:** The completion page shows the newly signed-in vendor the full signed-in header (Dashboard first) before they have agreed to the terms. No criterion says whether they should get it.
+- **42:** When sign-out fails, the criterion says the person "may still be signed in", so which header to show isn't defined. I drew them signed in.
+- **43:** The Active/Inactive colours are my own choice; no criterion covers them.
+- **44:** No criterion says what the user list looks like on a narrow screen. The cards put the name first.
+
+The earlier users gaps 1–11 still stand.
+
+I touched nothing outside `design/`.
+
+## 534 · design · 2026-10-17
+
+cost $18.264894400000003 · turns 123 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I redrew all of the proposals domain's screens in the chosen direction: about 115 stories on 19 of the 20 pages. The Code With Us proposal form was the reference and stays as it was, except for one added test ID. Nothing has been compiled or scanned yet: there is no compiler or `node_modules` in this workspace. A separate agent read all 115 restyled stories against the kits' prop types and the design system's existing uses and found no errors. The pipeline's compile and accessibility scan will be the first real check.
+
+**What I built.** I added `design/catalogue/proposal-kit.tsx`, the project's own components on top of the opportunity kit and `marketplace.tsx`:
+- **Proposal page and head:** the small page-kind line, the program as a grey label, the proposal's status as a coloured label, then the H1.
+- **Status colours:** Draft is blue, matching the Code With Us form; Submitted and Awarded are green; review stages are yellow; Not awarded and Withdrawn are grey; Disqualified is red.
+- **Action bar and tabs:** the action bar keeps `proposal-actions`; the tabs are marked the same way as the header's navigation.
+- **Shared form layout:** the Code With Us form's layout, reused, with numbered parts and a 320-pixel opportunity summary beside the form that holds the actions. On a phone it becomes a compact card and the actions follow the form.
+- **Small helpers:** team-member rows, group errors, messages that take focus, and catalogue notes.
+
+Every story renders inside `SitePage` with a viewer and a section:
+- **Vendor:** create pages (Opportunities); manage pages, the dashboard and export-one (Dashboard).
+- **The opportunity's author or an administrator:** evaluate pages and export-all (Dashboard).
+- **No section:** not-found pages, `/proposals` and the three request addresses.
+
+The stories lean mostly on the design system's `Button`, `ButtonGroup`, `Link`, `InlineAlert`, `Modal` with `AlertDialog` and `Dialog`, `Select`, `TextField`, `TextArea`, `NumberField`, `RadioGroup`, `Checkbox` and `Form`. Labels, details lists, regions, panels, fieldsets and tables come from the opportunity kit, as on the opportunity screens. No `Stack`, inline style or colour value is left in any proposal story.
+
+**States.** Every page keeps exactly the states it had, so `design/screens.yaml` is unchanged.
+
+**Test IDs.** I filled every `null` on this domain's pages in `spec/contract/surface.yaml`, each with an identifier a story actually renders:
+- `field_errors_by_field` → `proposal-field-errors` (the one attribute added to the Code With Us form)
+- `team_member_choices` → `proposal-team-member-choice`
+- `phase_team_sections` → `proposal-phase-team`
+- `phase_requirements` → `proposal-phase-requirements`
+- `cost_errors` → `proposal-cost`
+- On the Sprint With Us and Team With Us manage pages: the organization, add-member, scrum master and hourly-rate controls reuse the create page's IDs. `submission_refusal` is `proposal-submit-refused-message`, `field_error` is `field-error`, and `organization` is `proposal-organization`.
+- On the Sprint With Us and Team With Us evaluate pages: `history_entries` → `proposal-history-table`, `rank` → `proposal-rank`, `offered_score_actions` → `proposal-score-actions`
+
+Every test ID that was already filled is kept, on an element that does the same thing.
+
+**Words changed, against the request to keep them.** Each change was forced by an accepted criterion or by the contract:
+- **Scrum master:** R-2.19 v3 makes it a single choice per phase, so the per-member checkboxes became one radio group per phase. The invalid story's "two scrum masters" problem became "choose a scrum master".
+- **Phase requirements:** each Sprint With Us phase now says whether its team meets its requirements.
+- **Cost messages:** the over-budget messages now use the contract's wording.
+- **Disabled submit:** in the Sprint With Us invalid story, Submit is disabled while problems stand, as the contract says.
+- **Scoring at the right stage:** R-2.28 v2 says a stage's score is offered only once the opportunity reaches that stage. The wrong-stage stories therefore lost their score button, and the tab now says the proposal can be scored once that stage is reached.
+- **Rank:** reads "1st", as the contract states, instead of "1 of 3".
+- **Removed and added labels:** "Status:" labels are gone, because status now sits in the head. "Legal name" and "Not yet ranked" were added.
+
+All of this is recorded in DESIGN.md under "Proposal screens in the chosen direction", which I appended. It also closes the older section's gaps 4 and L4.
+
+**Gaps for the spec** (35–40 in DESIGN.md):
+- **35:** with no score button at the wrong stage, the screen cannot itself trigger the wrong-stage refusal, yet the contract keeps that observation on both evaluate pages.
+- **36:** the cost messages and the pending marking come only from the contract's notes; no criterion owns them.
+- **37:** the wording a phase uses to say it is complete or incomplete is the design's own.
+- **38:** so is the message when no scrum master is chosen.
+- **39:** the Sprint With Us and Team With Us summaries lack location and Remote OK, because the test data has none.
+- **40:** tables still scroll sideways on phones rather than becoming stacked cards. That is the opportunity screens' choice too, and changing it would be a new component for both domains.
+- **Not numbered:** who may award is still unstated. The evaluated and History stories show Award to the opportunity's author, because their comments say so.
+
+I changed nothing outside `design/` and `spec/contract/surface.yaml`.
+
+## Fix turn
+
+I fixed the `landmark-unique` failure on both states of proposal-cwu-export-all (`default` and `anonymous`). Inside each exported proposal, the stories used the opportunities kit's `Region`, which renders a `<section>` named by its heading. With two proposals on the page, that gave two section landmarks with the same name, "Proposal", which is what the scan flagged. In `design/catalogue/proposal-cwu-export-all.default.stories.tsx` and `design/catalogue/proposal-cwu-export-all.anonymous.stories.tsx` I swapped that `Region` for a plain `div` with the same `op-region` class, holding the kit's own `SectionTitle` (still a level-3 "Proposal" heading with the same id). The block should look the same, and the per-proposal "Proposal" heading is no longer a duplicate landmark: each proposal's named `<article>` is the only landmark it adds. The words, the `test_id`s, the shared `opportunity-kit.tsx` and every other story are unchanged. The fix will be confirmed only when the pipeline's scan writes the next `design/report.json`. The Sprint With Us and Team With Us export-all stories were not in the failure list, so I left them as they are.
+
+## 533 · design · 2026-10-17
+
+cost $13.178365399999997 · turns 1 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+Nothing was left to do when this check came back.
+
+- **Helper stories:** all four helpers finished, and I reviewed their stories and fixed what I found. The report pages' proposal headings now sit at H3 under "Proposals", and the Sprint With Us editing form's parts are bordered panels again.
+- **Contract test IDs:** every `test_id: null` on this domain's pages in `spec/contract/surface.yaml` is filled. The first remaining `null` is at line 479, on the proposal pages, which belong to another domain.
+- **`DESIGN.md`:** the new section "Opportunity screens in the chosen direction" is added at the end of the file, with gaps 29 to 34.
+
+The journal entry in my previous message stands as the final report for this stage.
+
+## 532 · build · 2026-10-17
+
+cost $0 · turns 0
+
+The application build-slice-1-8 carried is proposed again unchanged, because the ruling on it asked nothing of the build.
+
+Its one condition went to another stage:
+
+- to bind-adapter: R-7.19: contentFooter scopes every read to siteFooter(), which is `getByRole("contentinfo").or(getByText("Owned and operated by the B.C. Government.", {exact:true}).locator("xpath=..")).last()`. On / the page now draws that line in its own small block inside the footer, so `.last()` picks the line's parent rather than the whole footer. presentWhenSignedOut read only "Owned and operated by the B.C. Government." and aboutLink read "". The page does show the five links, labelled About, Disclaimer, Privacy, Accessibility and Copyright, in the footer's link list beside that block (evidence .sdlc/evidence/slice-1/R-7.19.png). Scope the footer to the whole footer region (the outermost match, or the contentinfo landmark on its own), not to the parent of the ownership line.
+
+No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.
+
+## 531 · bind-adapter · 2026-10-17
+
+cost $0.42277599999999993 · turns 16 · claude claude-opus-5-5 (2.1.300 (Claude Code))
+
+I fixed condition 1 (R-7.19): the footer is now read as the whole footer, not just the small block holding the ownership line. The type check did not run, so the change is checked only against the live page.
+
+**What changed.** In `tests/adapters/new/index.ts`, `siteFooter()` (around line 181) used to pick the *last* match of "the contentinfo landmark, or the parent of the 'Owned and operated by the B.C. Government.' line". On the page the ruling saw, both of those match: the ownership line sits in its own small block inside the landmark. Taking the last match picked that inner block, so `presentWhenSignedOut` returned only the ownership line and `aboutLink` came back empty. It now takes the *first* match. An outer element always comes before the elements inside it on a page, so the first match is the whole footer: the landmark when there is one, and the block around the ownership line when there is not. I updated the comment above it. That was the only edit.
+
+**Checked on the target.** On `http://localhost:4300/` the footer is now a single contentinfo landmark, and the page I opened did not show the ownership line at all. Its layout differs a little from the one in the ruling's evidence, but both layouts resolve to the same element under the new rule. Run against the live page, the new locator:
+- matched exactly one element, the whole footer;
+- had text ending "ABOUT THIS SERVICE / About / Disclaimer / Privacy / Accessibility / Copyright / © 2026 Government of British Columbia.";
+- returned `/content/about` for the About link.
+
+**Not done.** I could not run `tsc` or a standalone Playwright script, because the sandbox refused both commands. The change only swaps `.last()` for `.first()`, so it cannot alter any types, but the type check has not been run.
+
+**Left alone.** Every other page footer reads, including `contentFooter`'s link reads, `openFromFooter` and the footer trim in `mainText`, already goes through `siteFooter()`, so they pick up the fix with no changes of their own. `bindings.yaml` is unchanged, because nothing moved between bound, unbound and absent. No other member was rebound, and nothing outside `tests/adapters/new/` was touched.
+
+Nothing is deferred.
+
+## 530 · design · 2026-10-17
+
+cost $0 · turns 0
+
+Handed in by a person from `design-directions` at 35b7a503234b. No agent session ran: the stage's outputs are that commit's own, judged by the stage's checks as an agent's work is.
+
+The reason given for the run: Hand in the redesign drawn outside the pipeline on the design-directions branch: the shared site header and footer, the home page, the opportunity list and the Code With Us proposal form, with the chosen direction's rules in DESIGN.md
+
 ## 529 · calibrate · 2026-10-04
 
 cost $0 · turns 0

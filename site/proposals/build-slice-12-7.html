@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-12-7 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-12-7</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 19:27</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 12 (An organization can build its team) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> The application build-slice-12-6 carried is proposed again unchanged, because the ruling on it asked nothing of the build.</p>
+<p>The application build-slice-12-6 carried is proposed again unchanged, because the ruling on it asked nothing of the build.</p>
+<p>Each of its 2 conditions went to another stage:</p>
+<ul><li>to bind-adapter: R-3.28: organizationEdit.serviceAreaCheckbox, read as the administrator on /organizations/&lt;id&gt;/edit with the Team With Us qualification section closed, did not report the approvals the page shows. .sdlc/evidence/slice-12/R-3.28.png shows the region &#39;Approved service areas&#39; listing exactly &#39;Agile coach&#39; and &#39;Full stack developer&#39;, with an &#39;Edit service areas&#39; button beneath it. Because that button is present, the member skips the listed approvals and opens the edit form to read ticked checkboxes, and that read did not yield both areas. Read the approvals from the &#39;Approved service areas&#39; list whenever the form is not already open, whether or not an &#39;Edit service areas&#39; button is offered.</li><li>to bind-adapter: R-8.31: opportunityCwuEdit.deleteOpportunity returned before the deletion had finished. The outline captured at failure (.sdlc/evidence/slice-12/R-8.31.txt) is still /opportunities/code-with-us/&lt;id&gt;/edit, with the Edit, Submit for review and Delete actions all disabled, meaning the delete was still in flight. The screenshot taken afterwards (.sdlc/evidence/slice-12/R-8.31.png) is the Dashboard, so the deletion did complete. The fileDownload read that followed ran before the delete finished and was let through. After confirming the delete, wait until the management page has been left (the URL is no longer the opportunity&#39;s edit page) before returning.</li></ul>
+<p>No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-18 20:03.</p>
+<div class="body"><p>Does slice 12 (An organization can build its team) do what its criteria say? Approve. Verify recorded pass for this proposal against application tree febd809: all 19 criteria the slice claims were exercised and met, none failed or went unasserted. The two conditions from build-slice-12-6 were addressed to bind-adapter and asked nothing of build, so proposing the same application again was correct; this run passing is consistent with those fixes. The diff restyles slice 12&#39;s own screens (team and changelog tabs, a vendor&#39;s own organizations) using organization-kit pieces and a new organization-memberships module: a table on a wide screen, cards on a phone. Decision record 0080 gives the reason for each place it departs from the design stories (separate missing-capabilities region for R-3.34, Remove on the owner&#39;s row for R-3.11, two-step change owner, one combined field-error). No test ID, wording or behaviour changes beyond the added status announcements. Nothing belongs to another slice, no secret, credential or personal data appears (names in tests are placeholders), and the new seams have unit tests: membership words and colours, the status region, and phone-card rendering for the team, the changelog and both membership lists. The DialogText import resolves to an existing export in organization-kit.tsx. This would change on a verify result that fails against this tree or evidence that a test ID or wording the acceptance tests rely on changed.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

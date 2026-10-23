@@ -1,31 +1,32 @@
-import { useEffect, useRef, useState } from "react";
-import { Button, ButtonGroup, Heading, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
+import { useEffect, useState } from "react";
+import { Button, ButtonGroup, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
 import { useSearch } from "@tanstack/react-router";
 import type { TeamProgram } from "@rules/team-proposals";
 import { Scoresheet, offeredTeamEvaluationActions } from "@rules/proposal-evaluation";
+import { proposalStatusLabel } from "@rules/proposals";
 import { STAGE_SCORES, StageOffers, StageScoreTag, WRONG_STAGE, hasReachedStage, offeredStageActions } from "@rules/team-evaluation";
 import { statusLabel, type OpportunityStatus } from "@rules/opportunities";
 import type { Account } from "../api/accounts";
 import { OtherProgramOpportunity, fetchOtherProgramOpportunity } from "../api/other-programs";
 import { TeamProposal, TeamProposalSaveAnswer, changeTeamProposal, fetchTeamProposal } from "../api/team-proposals";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Actions, DataTable, Details, PageTitle, Region, Waiting, type Detail } from "../app/opportunity-kit";
+import { AlertTitle, Focused, ProposalHead, ProposalPage, ProposalTabs, type ProposalTab } from "../app/proposal-kit";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
 import { TitledAlert } from "../app/titled-alert";
-import { Fact, momentLabel } from "./opportunity-parts";
+import { momentLabel } from "./opportunity-parts";
 import { ProposalHistory } from "./proposal-cwu-edit";
-import { ProposalStatusBadge } from "./proposal-cwu-form";
 import { EvaluationActions, EvaluationAnswer, ScoreDialog } from "./proposal-evaluation-actions";
 import { TeamProposalDetails } from "./proposal-team-edit";
 
 /**
  * A Sprint With Us or Team With Us proposal, read-only, at
  * `/opportunities/<program>/:opportunityId/proposals/:proposalId` (proposal-swu-view,
- * proposal-twu-view): who proposed, its state and identifier, its scores, and its tabs (`?tab=…`) —
- * the proposal, its answers to the questions, each stage after the questions (the code challenge and
- * team scenario, or the challenge), and its history.
+ * proposal-twu-view), drawn as its stories draw it: the head with the proponent as the H1 and the
+ * status label, the details, the Scores region, the printable-copy link, the action bar, the tabs
+ * (`?tab=…`) — the proposal, its answers to the questions, each stage after the questions (the code
+ * challenge and team scenario, or the challenge), and its history — then the tab's region.
  *
  * Whoever may read the proposal sees it, and the service decides who that is: the vendor who wrote
  * it and a vendor who owns or administers its organization (R-2.9, R-2.24); the opportunity's author
@@ -51,15 +52,18 @@ const TAB_NAMES: Readonly<Record<Tab, string>> = {
   challenge: "Challenge",
   history: "History",
 };
-const TAB_TEST_IDS: Readonly<Record<Tab, string>> = {
-  proposal: "proposal-tab-proposal",
-  teamQuestions: "proposal-tab-team-questions",
-  codeChallenge: "proposal-tab-code-challenge",
-  teamScenario: "proposal-tab-team-scenario",
-  resourceQuestions: "proposal-tab-resource-questions",
-  challenge: "proposal-tab-challenge",
-  history: "proposal-tab-history",
+/** Each tab's test ID suffix (`proposal-tab-<key>`); the address keeps the service's tab name. */
+const TAB_KEYS: Readonly<Record<Tab, string>> = {
+  proposal: "proposal",
+  teamQuestions: "team-questions",
+  codeChallenge: "code-challenge",
+  teamScenario: "team-scenario",
+  resourceQuestions: "resource-questions",
+  challenge: "challenge",
+  history: "history",
 };
+const tabLinks = (program: TeamProgram): ProposalTab[] =>
+  TABS[program].map((tab) => ({ key: TAB_KEYS[tab], label: TAB_NAMES[tab], ...(TAB_KEYS[tab] === tab ? {} : { query: tab }) }));
 
 const TITLES: Readonly<Record<TeamProgram, string>> = {
   "sprint-with-us": "Sprint With Us proposal",
@@ -100,10 +104,10 @@ function ViewLoader({ program, account, opportunityId, proposalId }: { program: 
   if (loaded.kind === "missing") return <NotFound />;
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>{TITLES[program]}</Heading>
-        <Loading label="Loading proposal…" />
-      </Stack>
+      <ProposalPage>
+        <PageTitle>{TITLES[program]}</PageTitle>
+        <Waiting label="Loading proposal" />
+      </ProposalPage>
     );
   }
   // A draft is never shown to staff, whatever the service sends (R-2.25).
@@ -127,45 +131,43 @@ export function ordinal(place: number): string {
 
 /**
  * The proposal's scoresheet as it is read on this page (R-2.30, R-2.31, R-2.32): each stage's score,
- * the weighted total and, once fully evaluated, its place among the others that are.
+ * the price score, the weighted total and the rank. The rank is always there, holding a place once
+ * the proposal is fully evaluated and empty beside "Not yet ranked" until then.
  */
-export function TeamScores({ program, scoresheet }: { program: TeamProgram; scoresheet: Scoresheet }) {
+export function teamScoreDetails(program: TeamProgram, scoresheet: Scoresheet): Detail[] {
   const sprint = program === "sprint-with-us";
+  return [
+    { term: sprint ? "Team questions" : "Resource questions", value: scoreLabel(scoresheet.questions, "Not yet scored"), testId: "proposal-questions-score" },
+    { term: sprint ? "Code challenge" : "Challenge", value: scoreLabel(scoresheet.challenge, "Not yet scored"), testId: "proposal-challenge-score" },
+    ...(sprint ? [{ term: "Team scenario", value: scoreLabel(scoresheet.scenario, "Not yet scored"), testId: "proposal-scenario-score" }] : []),
+    { term: "Price", value: scoreLabel(scoresheet.price, "Not yet calculated"), testId: "proposal-price-score" },
+    { term: "Total", value: scoreLabel(scoresheet.total, "Not yet calculated"), testId: "proposal-total-score" },
+    {
+      term: "Rank",
+      value: scoresheet.rank ? (
+        <span data-testid="proposal-rank">{ordinal(scoresheet.rank.rank)}</span>
+      ) : (
+        <>
+          <span data-testid="proposal-rank" />
+          Not yet ranked
+        </>
+      ),
+    },
+  ];
+}
+
+function TeamScores({ program, scoresheet }: { program: TeamProgram; scoresheet: Scoresheet }) {
   return (
-    <Stack as="section" gap="medium" aria-labelledby="scores-heading">
-      <Heading level={2} id="scores-heading">
-        Scores
-      </Heading>
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label={sprint ? "Team questions" : "Resource questions"} testId="proposal-questions-score">
-          {scoreLabel(scoresheet.questions, "Not yet scored")}
-        </Fact>
-        <Fact label={sprint ? "Code challenge" : "Challenge"} testId="proposal-challenge-score">
-          {scoreLabel(scoresheet.challenge, "Not yet scored")}
-        </Fact>
-        {sprint ? (
-          <Fact label="Team scenario" testId="proposal-scenario-score">
-            {scoreLabel(scoresheet.scenario, "Not yet scored")}
-          </Fact>
-        ) : null}
-        <Fact label="Price" testId="proposal-price-score">
-          {scoreLabel(scoresheet.price, "Not yet calculated")}
-        </Fact>
-        <Fact label="Total score" testId="proposal-total-score">
-          {scoreLabel(scoresheet.total, "Not yet calculated")}
-        </Fact>
-        {scoresheet.rank ? (
-          <Fact label="Rank" testId="proposal-rank">
-            {ordinal(scoresheet.rank.rank)}
-          </Fact>
-        ) : null}
-      </Stack>
-      <Text elementType="p" size="small" color="secondary">
-        {`The total combines each stage's score in the proportions the opportunity states. The price score is this proposal's share of the lowest bid still in contention.${
-          scoresheet.rank ? ` The rank is among the ${scoresheet.rank.of} fully evaluated ${scoresheet.rank.of === 1 ? "proposal" : "proposals"}.` : ""
-        }`}
-      </Text>
-    </Stack>
+    <Region id="scores-heading" title="Scores">
+      <Details items={teamScoreDetails(program, scoresheet)} />
+      {scoresheet.total !== null || scoresheet.rank ? (
+        <p className="op-note">
+          {`The total combines each stage's score in the proportions the opportunity states. The price score is this proposal's share of the lowest bid still in contention.${
+            scoresheet.rank ? ` The rank is among the ${scoresheet.rank.of} fully evaluated ${scoresheet.rank.of === 1 ? "proposal" : "proposals"}.` : ""
+          }`}
+        </p>
+      ) : null}
+    </Region>
   );
 }
 
@@ -210,6 +212,11 @@ export function stageTabSentence(
   return `${at} This proposal was not carried into the ${rule.name}.`;
 }
 
+/**
+ * A stage's tab: the sentence, the stage's score, and the score button in its wrapper
+ * (`proposal-score-actions`), which is always there and empty when no score is offered. Screening in
+ * and out of the team scenario are not score actions and sit in a group of their own.
+ */
 function StageTabContent({
   program,
   stage,
@@ -235,18 +242,22 @@ function StageTabContent({
   const screening = codeChallenge && offers ? { in: offers.screenIn, out: offers.screenOut } : { in: false, out: false };
   return (
     <>
-      <Text elementType="p">{stageTabSentence(program, stage, proposal.status, proposal.opportunity.status, offered || screening.in || screening.out)}</Text>
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label={`${capitalized(rule.name)} score`}>{proposal.scoresheet ? scoreLabel(score, "Not yet scored") : "Not shown"}</Fact>
-        {codeChallenge ? <Fact label="Screened in to the team scenario">{screenedIn ? "Yes" : "No"}</Fact> : null}
-      </Stack>
-      {offered || screening.in || screening.out ? (
+      <p className="op-text">{stageTabSentence(program, stage, proposal.status, proposal.opportunity.status, offered || screening.in || screening.out)}</p>
+      <Details
+        items={[
+          { term: `${capitalized(rule.name)} score`, value: proposal.scoresheet ? scoreLabel(score, "Not yet scored") : "Not shown" },
+          ...(codeChallenge ? [{ term: "Screened in to the team scenario", value: screenedIn ? "Yes" : "No" }] : []),
+        ]}
+      />
+      <div data-testid="proposal-score-actions">
+        {offered ? (
+          <Button variant="primary" isDisabled={busy} onPress={() => onScore(stage)} data-testid={SCORE_TEST_IDS[stage]}>
+            {`Enter ${rule.name} score`}
+          </Button>
+        ) : null}
+      </div>
+      {screening.in || screening.out ? (
         <ButtonGroup ariaLabel={`${capitalized(rule.name)} actions`}>
-          {offered ? (
-            <Button variant="primary" isDisabled={busy} onPress={() => onScore(stage)} data-testid={SCORE_TEST_IDS[stage]}>
-              {`Enter ${rule.name} score`}
-            </Button>
-          ) : null}
           {screening.in ? (
             <Button variant="secondary" isDisabled={busy} onPress={() => onScreen("screenInToTeamScenario")} data-testid="proposal-screen-in">
               Screen in to team scenario
@@ -263,50 +274,24 @@ function StageTabContent({
   );
 }
 
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-
 /** The proposal's answers to the opportunity's questions, each beside its question. */
 function QuestionsTabContent({ program, proposal, opportunity }: { program: TeamProgram; proposal: TeamProposal; opportunity: OtherProgramOpportunity }) {
   const sprint = program === "sprint-with-us";
   const base = `/opportunities/${program}/${opportunity.id}/edit?tab=consensus`;
   return (
     <>
-      <Text elementType="p">
+      <p className="op-text">
         Question scores are agreed by the evaluation panel on the opportunity's <Link href={base}>Consensus tab</Link>. Only proposals
         meeting every question's minimum score move on to the {sprint ? "code challenge" : "challenge"}.
-      </Text>
-      <div role="region" aria-labelledby="questions-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <caption id="questions-caption" style={{ textAlign: "start" }}>
-            <Text size="small" color="secondary">
-              Responses to the {sprint ? "team" : "resource"} questions
-            </Text>
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col" style={cell}>
-                Question
-              </th>
-              <th scope="col" style={cell}>
-                Response
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {opportunity.questions.map((question, order) => (
-              <tr key={order}>
-                <td style={cell}>{`${order + 1}. ${question.question}`}</td>
-                <td style={cell}>{proposal.responses.find((response) => response.order === order)?.response ?? "Not answered"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      </p>
+      <DataTable captionId="questions-caption" caption={`Responses to the ${sprint ? "team" : "resource"} questions`} columns={["Question", "Response"]}>
+        {opportunity.questions.map((question, order) => (
+          <tr key={order}>
+            <td>{`${order + 1}. ${question.question}`}</td>
+            <td>{proposal.responses.find((response) => response.order === order)?.response ?? "Not answered"}</td>
+          </tr>
+        ))}
+      </DataTable>
     </>
   );
 }
@@ -316,6 +301,9 @@ const DONE_SCORE: Readonly<Record<StageScoreTag, string>> = {
   scoreTeamScenario: "The team scenario score has been entered.",
   scoreChallenge: "The challenge score has been entered.",
 };
+
+/** A stage action the service refused: at the wrong stage (R-2.28), or for another reason. Counted, so each is drawn afresh and takes focus. */
+type StageRefusal = { readonly wrongStage: boolean; readonly reasons: readonly string[]; readonly attempt: number };
 
 function View({
   program,
@@ -332,10 +320,7 @@ function View({
   const [done, setDone] = useState<string | null>(null);
   const [scoring, setScoring] = useState<StageScoreTag | null>(null);
   const [busy, setBusy] = useState(false);
-  // A stage action refused because the opportunity stands at another stage (R-2.28), or for any other reason.
-  const [wrongStage, setWrongStage] = useState(false);
-  const [refusal, setRefusal] = useState<readonly string[] | null>(null);
-  const alertRef = useRef<HTMLDivElement>(null);
+  const [refusal, setRefusal] = useState<StageRefusal | null>(null);
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const tabs = TABS[program];
   const tab: Tab = tabs.includes(search.tab as Tab) ? (search.tab as Tab) : "proposal";
@@ -346,23 +331,17 @@ function View({
   const opportunityAddress = vendor ? `/opportunities/${program}/${opportunityId}` : `/opportunities/${program}/${opportunityId}/edit`;
   const stageOffers = vendor ? null : offeredStageActions(program, proposal.status, proposal.opportunity.status);
 
-  useEffect(() => {
-    if (wrongStage || refusal) alertRef.current?.focus();
-  }, [wrongStage, refusal]);
-
   /** What a stage action came back with: the proposal as it now stands, or why it was refused. */
   function settle(answer: TeamProposalSaveAnswer, text: string): void {
     if (answer.kind === "saved") {
       setProposal(answer.proposal);
       setDone(text);
-      setWrongStage(false);
       setRefusal(null);
       return;
     }
     setDone(null);
     const reasons = answer.kind === "refused" ? answer.reasons : ["The service could not do that. Try again."];
-    setWrongStage(reasons.includes(WRONG_STAGE));
-    setRefusal(reasons.includes(WRONG_STAGE) ? null : reasons);
+    setRefusal((previous) => ({ wrongStage: reasons.includes(WRONG_STAGE), reasons, attempt: (previous?.attempt ?? 0) + 1 }));
   }
 
   async function score(value: number): Promise<EvaluationAnswer<TeamProposal>> {
@@ -389,43 +368,34 @@ function View({
     );
   }
 
+  const details: Detail[] = [
+    { term: "Opportunity", value: <Link href={opportunityAddress}>{proposal.opportunity.title || "Untitled opportunity"}</Link> },
+    ...(proposal.submittedAt && proposal.status !== "DRAFT"
+      ? [{ term: "Submitted", value: momentLabel(proposal.submittedAt), testId: "proposal-submitted-at" }]
+      : []),
+    { term: "Proposal ID", value: proposal.id, testId: "proposal-identifier" },
+  ];
+
   const stage = STAGE_OF_TAB[tab];
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          {TITLES[program]}
-        </Text>
-        <Heading level={1}>
-          <span data-testid="proposal-proponent-name">{teamProponentName(proposal)}</span>
-        </Heading>
-      </Stack>
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label="Opportunity">
-          <Link href={opportunityAddress}>{proposal.opportunity.title || "Untitled opportunity"}</Link>
-        </Fact>
-        <Fact label="Status">
-          <ProposalStatusBadge status={proposal.status} />
-        </Fact>
-        {proposal.submittedAt && proposal.status !== "DRAFT" ? (
-          <Fact label="Submitted" testId="proposal-submitted-at">
-            {momentLabel(proposal.submittedAt)}
-          </Fact>
-        ) : null}
-        <Fact label="Proposal ID" testId="proposal-identifier">
-          {proposal.id}
-        </Fact>
-      </Stack>
+    <ProposalPage>
+      <ProposalHead
+        eyebrow={TITLES[program]}
+        program={program}
+        status={proposalStatusLabel(proposal.status)}
+        title={<span data-testid="proposal-proponent-name">{teamProponentName(proposal)}</span>}
+      />
+      <Details items={details} />
       {/* The service sends the scoresheet to staff, and to the vendor once a decision has been made (R-2.32). */}
       {proposal.scoresheet && (!vendor || proposal.status === "AWARDED" || proposal.status === "NOT_AWARDED") ? (
         <TeamScores program={program} scoresheet={proposal.scoresheet} />
       ) : null}
-      <Stack direction="row" align="center" gap="medium">
+      <Actions>
         {vendor ? <Link href={`${base}/edit`}>Manage this proposal</Link> : null}
         <Link href={`${base}/export`} data-testid="proposal-export-link">
           Printable copy
         </Link>
-      </Stack>
+      </Actions>
       {/* Staff read a proposal only as the opportunity's author or an administrator, once it has closed. */}
       {!vendor ? (
         <EvaluationActions
@@ -440,41 +410,34 @@ function View({
           }}
         />
       ) : null}
-      <div role="status">{done ? <Text elementType="p">{done}</Text> : null}</div>
-      <nav aria-label="Proposal sections">
-        <Stack as="ul" direction="row" gap="medium">
-          {tabs.map((name) => (
-            <li key={name}>
-              <Link href={`${base}?tab=${name}`} aria-current={name === tab ? "page" : undefined} data-testid={TAB_TEST_IDS[name]}>
-                {TAB_NAMES[name]}
-              </Link>
-            </li>
-          ))}
-        </Stack>
-      </nav>
-      {wrongStage ? (
-        <div tabIndex={-1} ref={alertRef} data-testid="proposal-wrong-stage-error">
-          <InlineAlert variant="danger" title="That score was not entered" role="alert">
+      <div role="status">{done ? <p className="op-text">{done}</p> : null}</div>
+      <ProposalTabs base={base} current={TAB_KEYS[tab]} tabs={tabLinks(program)} />
+      {refusal?.wrongStage ? (
+        <Focused key={refusal.attempt} testId="proposal-wrong-stage-error">
+          <InlineAlert variant="danger" role="alert">
+            <AlertTitle>That score was not entered</AlertTitle>
             <Text elementType="p">{WRONG_STAGE}</Text>
           </InlineAlert>
-        </div>
+        </Focused>
       ) : null}
-      {refusal ? (
-        <div tabIndex={-1} ref={alertRef} data-testid="proposal-refused-message">
+      {refusal && !refusal.wrongStage ? (
+        <Focused key={refusal.attempt} testId="proposal-refused-message">
           <TitledAlert variant="danger" role="alert" title="That was not done">
-            {refusal.map((reason) => (
+            {refusal.reasons.map((reason) => (
               <Text elementType="p" key={reason}>
                 {reason}
               </Text>
             ))}
           </TitledAlert>
-        </div>
+        </Focused>
       ) : null}
-      <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-        <Heading level={2} id="tab-heading">
-          {TAB_NAMES[tab]}
-        </Heading>
-        {tab === "proposal" ? <TeamProposalDetails program={program} proposal={proposal} opportunity={opportunity} /> : null}
+      <Region id="tab-heading" title={TAB_NAMES[tab]}>
+        {tab === "proposal" ? (
+          <>
+            <TeamProposalDetails program={program} proposal={proposal} opportunity={opportunity} questions={false} />
+            <p className="op-note">{`The responses to the ${program === "sprint-with-us" ? "team" : "resource"} questions are on the ${TAB_NAMES[program === "sprint-with-us" ? "teamQuestions" : "resourceQuestions"]} tab.`}</p>
+          </>
+        ) : null}
         {tab === "teamQuestions" || tab === "resourceQuestions" ? <QuestionsTabContent program={program} proposal={proposal} opportunity={opportunity} /> : null}
         {stage ? (
           <StageTabContent
@@ -488,7 +451,7 @@ function View({
           />
         ) : null}
         {tab === "history" ? <ProposalHistory proposal={proposal} /> : null}
-      </Stack>
+      </Region>
       <ScoreDialog
         isOpen={scoring !== null}
         isSending={busy}
@@ -498,6 +461,6 @@ function View({
         label={scoring ? `${capitalized(STAGE_SCORES[scoring].name)} score (%)` : "Score (%)"}
         explanation="The score is recorded in the proposal's history."
       />
-    </Stack>
+    </ProposalPage>
   );
 }

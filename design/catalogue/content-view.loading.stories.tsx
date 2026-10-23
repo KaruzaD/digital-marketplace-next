@@ -1,21 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ProgressCircle, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { ContentPage } from "./content-kit";
+import { Waiting } from "./opportunity-kit";
+import { SitePage, VISITOR, WIDTHS } from "./site";
 
 // content-view · loading — the page has been asked for and has not arrived. Its title is the page's own, so nothing
-// stands in for the H1 until it arrives; the status row says what is happening (R-7.1).
-const meta: Meta = { title: "content/content-view/loading" };
+// stands in for the H1 until it arrives; the status row says what is happening (R-7.1). Drawn for a visitor.
+const meta: Meta = { title: "content/content-view/loading", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
 export const Loading: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack direction="row" align="center" gap="small" role="status">
-          <ProgressCircle isIndeterminate aria-label="Loading page" />
-          <Text>Loading page…</Text>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <SitePage viewer={VISITOR}>
+      <ContentPage>
+        <Waiting label="Loading page" />
+      </ContentPage>
+    </SitePage>
   ),
 };

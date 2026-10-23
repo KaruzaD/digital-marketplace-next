@@ -9,7 +9,6 @@ import {
   InlineAlert,
   Link,
   Modal,
-  Text,
   TextField,
 } from "@bcgov/design-system-react-components";
 import {
@@ -19,11 +18,13 @@ import {
   nameMatchesSearch,
 } from "@rules/users";
 import { Account, downloadContactList, fetchAccounts } from "../api/accounts";
-import { Stack } from "../app/page-layout";
-import { Loading } from "../app/loading";
+import { look } from "../app/marketplace";
 import { NotFound } from "../app/not-found";
+import { DataTable, PageTitle, Waiting } from "../app/opportunity-kit";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
+import { useNarrow } from "../app/site-header";
+import { AccountStatus, DialogBody, SaveStatus, Toolbar, UserPage } from "../app/user-kit";
 
 /**
  * Digital Marketplace Users, at `/users` (user-list). An administrator browses everyone
@@ -39,18 +40,7 @@ export function UserListScreen() {
   );
 }
 
-const cell = {
-  textAlign: "start",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
+const caption = "Everyone registered, active accounts first, then by account type and name";
 
 function UserList() {
   useScreenTitle("Digital Marketplace Users");
@@ -75,13 +65,13 @@ function UserList() {
 
   if (answer === "refused") return <NotFound />;
   return (
-    <Stack gap="large">
-      <Heading level={1}>Digital Marketplace Users</Heading>
+    <UserPage>
+      <PageTitle>Digital Marketplace Users</PageTitle>
       {answer === "loading" ? (
-        <Loading label="Loading users…" />
+        <Waiting label="Loading users" />
       ) : (
         <>
-          <Stack direction="row" gap="medium" align="end" justify="space-between">
+          <Toolbar>
             <TextField
               type="search"
               label="Search by name"
@@ -92,70 +82,76 @@ function UserList() {
             <Button variant="secondary" onPress={() => setExporting(true)} data-testid="contact-list-open-export">
               Export contact list
             </Button>
-          </Stack>
-          <div role="region" aria-labelledby="user-list-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }}>
-              <caption id="user-list-caption" style={{ textAlign: "start" }}>
-                <Text size="small" color="secondary">
-                  Everyone registered, active accounts first, then by account type and name
-                </Text>
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" style={cell}>
-                    Status
-                  </th>
-                  <th scope="col" style={cell}>
-                    Account type
-                  </th>
-                  <th scope="col" style={cell}>
-                    Name
-                  </th>
-                  <th scope="col" style={cell}>
-                    Administrator
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((account) => (
-                  <tr key={account.id} data-testid="user-list-row">
-                    <td style={cell}>
-                      <span style={badge} data-testid="user-list-status-badge">
-                        {accountStatusLabel(account.status)}
-                      </span>
-                    </td>
-                    <td style={cell}>
-                      <span data-testid="user-list-account-type">{accountKindLabel(account.type)}</span>
-                    </td>
-                    <td style={cell}>
-                      <Link href={`/users/${account.id}`} data-testid="user-list-profile-link">
-                        {account.name}
-                      </Link>
-                    </td>
-                    <td style={cell}>
-                      <span data-testid="user-list-admin-check">{account.type === "ADMIN" ? "Yes" : "No"}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div role="status">
-            {search.trim() ? (
-              <Text elementType="p" size="small" color="secondary">
-                {`${shown.length} of ${answer.length} ${answer.length === 1 ? "person" : "people"} shown`}
-              </Text>
-            ) : null}
-          </div>
+          </Toolbar>
+          <UserRows accounts={shown} />
+          <SaveStatus>
+            {search.trim() ? `${shown.length} of ${answer.length} ${answer.length === 1 ? "person" : "people"} shown` : null}
+          </SaveStatus>
           <ExportContactList isOpen={exporting} onClose={() => setExporting(false)} />
         </>
       )}
-    </Stack>
+    </UserPage>
   );
 }
 
-// The dialog's inner padding is its own; its content is laid out by the stack.
-const dialogBody = { padding: "var(--layout-padding-large)" } as const;
+/**
+ * The rows of the list. On a wide screen a table with a column for each fact; below the header's
+ * switch point each account is a stacked card, its name first and its facts on one line beneath.
+ * The switch is read in script, as the header's is, so each row and its test IDs appear once.
+ */
+function UserRows({ accounts }: { accounts: readonly Account[] }) {
+  if (useNarrow()) {
+    return (
+      <>
+        <p id="user-list-caption" className="op-note">
+          {caption}
+        </p>
+        <ul className="us-cards" aria-labelledby="user-list-caption">
+          {accounts.map((account) => (
+            <li key={account.id} data-testid="user-list-row">
+              <article className="us-card" aria-labelledby={`user-${account.id}`}>
+                <Heading level={2} id={`user-${account.id}`} style={look.title}>
+                  <Link href={`/users/${account.id}`} data-testid="user-list-profile-link">
+                    {account.name}
+                  </Link>
+                </Heading>
+                <div className="us-card-facts">
+                  <AccountStatus testId="user-list-status-badge">{accountStatusLabel(account.status)}</AccountStatus>
+                  <span data-testid="user-list-account-type">{accountKindLabel(account.type)}</span>
+                  <span>
+                    Administrator: <span data-testid="user-list-admin-check">{account.type === "ADMIN" ? "Yes" : "No"}</span>
+                  </span>
+                </div>
+              </article>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+  return (
+    <DataTable captionId="user-list-caption" caption={caption} columns={["Status", "Account type", "Name", "Administrator"]}>
+      {accounts.map((account) => (
+        <tr key={account.id} data-testid="user-list-row">
+          <td>
+            <AccountStatus testId="user-list-status-badge">{accountStatusLabel(account.status)}</AccountStatus>
+          </td>
+          <td>
+            <span data-testid="user-list-account-type">{accountKindLabel(account.type)}</span>
+          </td>
+          <td>
+            <Link href={`/users/${account.id}`} data-testid="user-list-profile-link">
+              {account.name}
+            </Link>
+          </td>
+          <td>
+            <span data-testid="user-list-admin-check">{account.type === "ADMIN" ? "Yes" : "No"}</span>
+          </td>
+        </tr>
+      ))}
+    </DataTable>
+  );
+}
 
 /**
  * The contact-list export (R-4.32). Export is unavailable until at least one account type and
@@ -189,12 +185,11 @@ function ExportContactList({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   return (
     <Modal isOpen={isOpen} isDismissable onOpenChange={(open) => (open ? undefined : close())}>
       <Dialog isCloseable data-testid="contact-list-modal">
-        <div style={dialogBody}>
-          <Stack gap="medium">
-            <Heading level={2} slot="title">
+        <DialogBody>
+            <Heading level={2} slot="title" style={look.section}>
               Export contact list
             </Heading>
-            <Text elementType="p">The file lists active accounts only.</Text>
+            <p className="op-text">The file lists active accounts only.</p>
             <CheckboxGroup
               label="Account types"
               description="Administrators are included with public sector employees."
@@ -232,9 +227,9 @@ function ExportContactList({ isOpen, onClose }: { isOpen: boolean; onClose: () =
               />
             ) : null}
             {ready ? null : (
-              <Text id="contact-list-export-hint" elementType="p" size="small" color="secondary">
+              <p id="contact-list-export-hint" className="op-note">
                 Choose at least one account type and one field to export.
-              </Text>
+              </p>
             )}
             <ButtonGroup alignment="end" ariaLabel="Export actions">
               <Button variant="secondary" isDisabled={working} onPress={close} data-testid="contact-list-cancel-button">
@@ -250,8 +245,7 @@ function ExportContactList({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 Export
               </Button>
             </ButtonGroup>
-          </Stack>
-        </div>
+        </DialogBody>
       </Dialog>
     </Modal>
   );

@@ -9,7 +9,7 @@ import {
   imageKindOf,
 } from "@rules/files";
 import { fileAddress } from "../api/files";
-import { Stack } from "./page-layout";
+import { AlertTitle } from "./proposal-kit";
 
 /**
  * The profile picture, or an organization's logo, as a host form offers it (file-image-picker;
@@ -26,8 +26,25 @@ export interface PictureRejection {
   readonly reason: string;
 }
 
-// Keeps an image inside its column. Not spacing.
-const image = { maxWidth: "100%", height: "auto" } as const;
+/**
+ * The picture group as `design/catalogue/file-kit.tsx` draws it: its parts `small` apart and kept
+ * at their own width, the picture at its stored size and never wider than its column, the stated
+ * lines in small secondary text, and a focus ring on the refusal when it takes focus. The picker
+ * carries its own sheet because the organization form, which also uses it, is drawn without the
+ * file kit.
+ */
+const css = `
+.fl-group { display: flex; flex-direction: column; align-items: flex-start; gap: var(--layout-margin-small); }
+.fl-group > * { margin: var(--layout-margin-none); }
+.fl-group-label { font: var(--typography-regular-label); color: var(--typography-color-primary); }
+.fl-note { font: var(--typography-regular-small-body); color: var(--typography-color-secondary); }
+.fl-image { max-width: 100%; height: auto; }
+.fl-focus:focus {
+  outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
+  outline-offset: var(--layout-margin-hair);
+}
+`;
+
 const hiddenInput = { display: "none" } as const;
 
 export const IMAGE_RULE =
@@ -175,41 +192,42 @@ export function ImagePicker({
   }, [rejection, rejectionFocus]);
 
   return (
-    <Stack role="group" aria-labelledby={words.labelId} gap="small" align="start">
-      <Text elementType="p" id={words.labelId}>
+    <div className="fl-group" role="group" aria-labelledby={words.labelId}>
+      <style>{css}</style>
+      <p className="fl-group-label" id={words.labelId}>
         {words.label}
-      </Text>
+      </p>
       {chosen && preview !== null ? (
-        <img src={preview} alt={words.preview(chosen.name)} style={image} data-testid={words.previewTestId} />
+        <img src={preview} alt={words.preview(chosen.name)} className="fl-image" data-testid={words.previewTestId} />
       ) : storedFileId ? (
-        <img src={fileAddress(storedFileId)} alt={words.stored(ownerName)} style={image} data-testid={words.storedTestId} />
+        <img
+          src={fileAddress(storedFileId)}
+          alt={words.stored(ownerName)}
+          className="fl-image"
+          data-testid={words.storedTestId}
+        />
       ) : (
-        <Text elementType="p" size="small" color="secondary">
-          {words.none}
-        </Text>
+        <p className="fl-note">{words.none}</p>
       )}
       {chosen && !rejection ? (
-        <div role="status">
-          <Text elementType="p">{words.ready(chosen.name)}</Text>
-        </div>
+        <p role="status" className="fl-note">
+          {words.ready(chosen.name)}
+        </p>
       ) : null}
       {rejection ? (
-        <div data-testid={words.refusedTestId} tabIndex={-1} ref={rejectionRef}>
+        <div data-testid={words.refusedTestId} tabIndex={-1} ref={rejectionRef} className="fl-focus">
           <InlineAlert variant="danger" role="alert">
             {/* The design system's alert shows no title of its own once it has children, and
                 names itself by the element with this id, so the title is given here. */}
-            <span className="title" id="alert-title">
-              {words.refused(rejection.name)}
-            </span>
+            <AlertTitle>{words.refused(rejection.name)}</AlertTitle>
             <Text elementType="p">{rejection.reason}</Text>
           </InlineAlert>
         </div>
       ) : null}
-      <div id={words.ruleId} data-testid="image-file-rule">
-        <Text elementType="p" size="small" color="secondary">
-          {words.rule}
-        </Text>
-      </div>
+      {/* The rule is the paragraph itself, so the group's gap is the only space around it. */}
+      <p id={words.ruleId} className="fl-note" data-testid="image-file-rule">
+        {words.rule}
+      </p>
       {/* The picker's own file input, opened by the button. React Aria's FileTrigger is not used:
           its press handler did not reach the design system's Button, so in a real browser the
           button opened no file chooser. */}
@@ -235,6 +253,6 @@ export function ImagePicker({
       >
         {storedFileId || chosen ? words.chooseAnother : words.choose}
       </Button>
-    </Stack>
+    </div>
   );
 }

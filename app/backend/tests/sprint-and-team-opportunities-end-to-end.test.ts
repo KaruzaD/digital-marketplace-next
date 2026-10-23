@@ -325,9 +325,11 @@ describe("the evaluation panel (R-1.43, R-5.1, R-5.9, R-5.16, R-5.17, R-5.18, R-
     });
   });
 
-  it("offers panel candidates, by name alone, on a public sector employee's own session", async () => {
+  it("offers panel candidates, by name and email address, on a public sector employee's own session", async () => {
     const session = await ask("GET", "/api/sessions/current", await tokens.staff());
-    expect(session.body.panelCandidates).toEqual(expect.arrayContaining([{ id: STAFF_TWO, name: expect.any(String) }]));
+    expect(session.body.panelCandidates).toEqual(
+      expect.arrayContaining([{ id: STAFF_TWO, name: expect.any(String), email: expect.any(String) }]),
+    );
     expect(session.body.panelCandidates.some((candidate: { id: string }) => candidate.id === VENDOR_ONE)).toBe(false);
     expect((await ask("GET", "/api/sessions/current", await tokens.vendor())).body.panelCandidates).toBeUndefined();
   });

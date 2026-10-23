@@ -65,7 +65,7 @@ screens:
   - page: opportunity-dashboard
     states: [default, administrator, empty, loading]
   - page: opportunity-list
-    states: [default, staff, signed-out, loading]
+    states: [default, staff, signed-out, loading, no-results]
   - page: opportunity-program-select
     states: [default, not-found]
   - page: opportunity-cwu-create
@@ -198,6 +198,10 @@ screens:
     states: [default, invalid]
   - page: affiliation-approval-request
     states: [default, refused, not-pending]
+  - page: affiliation-removal-request
+    states: [default, sole-owner]
+  - page: organization-request
+    states: [default, invalid, refused]
 
   # notifications domain — see design/DESIGN.md, "Domain: notifications"
   - page: notification-unsubscribe-landing
@@ -265,7 +269,7 @@ screens:
 
   # proposals domain — see design/DESIGN.md, "Domain: proposals"
   - page: proposal-cwu-create
-    states: [default, organization, invalid, refused, terms, not-found]
+    states: [default, organization, invalid, refused, terms, not-found, draft-saved]
   - page: proposal-swu-create
     states: [default, invalid, unqualified-organization, refused, terms, not-found]
   - page: proposal-twu-create
@@ -389,9 +393,9 @@ screens:
   - page: evaluation-panel-dashboard
     states: [default, empty, loading]
   - page: evaluation-panel-swu
-    states: [default, invalid, too-few, refused, locked, not-found, loading]
+    states: [default, editing, invalid, too-few, refused, locked, not-found, loading]
   - page: evaluation-panel-twu
-    states: [default, invalid, too-few, refused, locked, not-found, loading]
+    states: [default, editing, invalid, too-few, refused, locked, not-found, loading]
   - page: evaluation-instructions-swu
     states: [default, not-found, loading]
   - page: evaluation-instructions-twu
@@ -448,6 +452,8 @@ screens:
     states: [default, refused, duplicate]
   - page: evaluation-individual-request-twu
     states: [default, refused, duplicate]
+  - page: evaluation-individual-submission-request-swu
+    states: [default, refused]
   - page: evaluation-consensus-request-swu
     states: [default, refused]
   - page: evaluation-consensus-request-twu

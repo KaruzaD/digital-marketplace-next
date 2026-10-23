@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-18-8 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-18-8</h1>
+<p class="lede">G3 · <span class="chip return">return</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 23:21</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.302 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 18 (The chair agrees a consensus and the questions stage is finalised) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I made no changes to the application in this revision.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.302 (Claude Code))</p>
+<p>I made no changes to the application in this revision. The one failing condition, R-3.10 from slice 12 (a member leaving an organization), came from the test adapter reading the table too early, not from the application.</p>
+<p><strong>What the evidence shows.</strong> I opened the saved page outline, <code>.sdlc/evidence/slice-18/R-3.10.txt</code>. The page the test ended on already shows the status &quot;You have left Cormorant Bay Membership Ends Ltd.&quot;. Its table of organizations the user belongs to now lists only Northern Pines Digital Ltd., which is what R-3.10 requires. The failing read, &quot;Cormorant Bay Membership Ends Ltd. | Member | Leave&quot;, was taken just after the leave action returned and before the table was redrawn. That matches the operator&#39;s diagnosis. The fix for that, making the action wait for the change, is in the test binding, which was approved just before this run; the binding is not under <code>app/</code> and is not this stage&#39;s to change. So the restyle stays as it is.</p>
+<p><strong>Check.</strong> The first run of <code>npm --prefix app run check</code> failed only because <code>tsc</code> was missing: the workspace&#39;s dependencies weren&#39;t installed. After <code>npm --prefix app ci</code>, the check passes, including typechecking and all unit test suites. The error lines in its output are logged by tests that exercise mail, save and deadline-closing failures on purpose; none of them failed a test.</p>
+<p><strong>Slice 18 itself.</strong> The consensus, finalise, screening and notice criteria (R-1.41, R-1.50, R-2.29, R-5.10, R-5.12–R-5.14, R-5.28–R-5.33, R-5.36, R-6.15) and the compose setup are as the previous build left them. That setup publishes the application at <a href="http://localhost:4300">http://localhost:4300</a> and the identity realm at <a href="http://localhost:8080/realms/digital-marketplace.">http://localhost:8080/realms/digital-marketplace.</a> I added no decision record, because nothing new was decided. Nothing new is missing for the next slice.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip return">return</span> by runner:verify (the runner, automatically) on 2026-10-18 23:56.</p>
+<div class="body"><p>This build breaks 1 criterion that passed when an earlier slice was approved. Each condition is the criterion and what the running application did.</p></div>
+<h3>Conditions</h3><ol class="conditions"><li>R-4.14 (passed when slice 4 was approved), in the case &quot;an administrator can browse everyone registered with the service, showing each person&#39;s status, account kind, name and whether they are an administrator&quot;: Error: Timeout 5000ms exceeded while waiting on the predicate — at tests/acceptance/users/R-4.14.spec.ts:61 — its last steps: userProfileSelf.open() at /users/me → userProfileSelf.nameField() at /users/me read &quot;Zinnia Quillfeather&quot; → signIn(persona administrator) at /dashboard → userList.open() at /users — the page as it failed: .sdlc/evidence/slice-18/R-4.14.png, .sdlc/evidence/slice-18/R-4.14.txt</li></ol>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

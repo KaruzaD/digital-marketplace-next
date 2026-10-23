@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bind-adapter-new-103 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>bind-adapter-new-103</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 08:47</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does this adapter bind every surface action and observation on new, and nothing else?</h2>
+<p><strong>Recommendation.</strong> I fixed <code>panelMemberRow()</code> on the Sprint With Us evaluation panel so it reads the read-only member list the page now shows.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I fixed <code>panelMemberRow()</code> on the Sprint With Us evaluation panel so it reads the read-only member list the page now shows. I couldn&#39;t run the type-check: running <code>tsc</code> in the workspace needed an approval I didn&#39;t get. I checked the new parsing in the browser instead. The fix is not type-checked and has not been run through the suite.</p>
+<p><strong>What was wrong.</strong> The adapter&#39;s member-rows reader only handled two shapes:</p>
+<ul><li><strong>Locked panel:</strong> it read table cells. On this build the members are list items with no cells, so every row came back empty (request 1).</li><li><strong>Unlocked panel:</strong> it read each name from a member chooser. The panel now opens read-only, with no choosers, so every row was skipped and the reader timed out (requests 2–5).</li></ul>
+<p><strong>What changed.</strong> All edits are in <code>rows()</code> and one new helper inside the evaluation panel binding in <code>tests/adapters/new/index.ts</code>. Each row is still found by its test ID <code>evaluation-panel-member-row</code>, and each still reads as &quot;name — role&quot;, the form calibration accepted.</p>
+<ul><li><strong>New helper.</strong> It reads a row of cells as before. A row without cells is read from its own text: the name first, then the role after the visually hidden &quot;Role:&quot; label.</li><li><strong>Locked panel.</strong> It now uses that helper, so the a011 consensus-stage panel reads &quot;Casey Placeholder — Evaluator&quot; and &quot;Robin Placeholder — Evaluator and chair&quot;.</li><li><strong>Unlocked panel, before &quot;Edit evaluation panel&quot; is pressed.</strong> Rows without a chooser are read the same way, so the a023 panel gives &quot;Robin Placeholder — Evaluator and chair&quot; and &quot;Devon Placeholder — Evaluator&quot;. Requests 3–5 show the same read-only list, so they are answered by the same change.</li></ul>
+<p><strong>Something I found while checking.</strong> After pressing &quot;Edit evaluation panel&quot; (<code>evaluation-panel-edit</code>), members already on the panel still have no chooser. Each shows its name with the email in brackets, plus a Chair checkbox and a Remove button. Only a slot added with &quot;Add an evaluator&quot; gets a chooser. So, in edit mode:</p>
+<ul><li>a row with a chooser is read from the chooser, as before;</li><li>a row with a name and Chair box is read as the name (email removed), with the role taken from the Chair box.</li></ul>
+<p>I also stopped the reader from asking the chair chooser for its choice when there is none on the page. Before, that wait ran until the timeout.</p>
+<p><strong>Not changed, but the same problem applies.</strong> <code>memberGroup</code> (used by remove and mark-as-chair) and <code>addPanelMember</code> still look for each member&#39;s name in a chooser. On this build, members already on the panel have none, so those actions may fail or wait out the timeout when such members are present. <code>chairField()</code> on an unlocked panel still reads the chair chooser, which the read-only view doesn&#39;t show. None of the five requests named these, so I left them for a later round.</p>
+<p><code>bindings.yaml</code> is unchanged: <code>panel_member_row</code> was already listed as bound on both evaluation panel pages. No route failed to resolve, and nothing outside <code>tests/adapters/new/</code> was touched.</p>
+<p>All five requests were taken up; none deferred.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:tech-lead (persona agent · claude claude-opus-5-5) on 2026-10-18 08:48.</p>
+<div class="body"><p>The question is whether bind-adapter-new-103 binds the evaluation panel&#39;s member rows as the new build draws them, and nothing beyond that. bind-adapter escalated it to me because the build-slice-10 requests went past policy.loops.request (4 sends against a limit of 2). That is a policy cap on rounds, not a stage unable to produce what the gate asks, so I am ruling rather than escalating. The last five requests (build-slice-10-6#1-#5, items 18-22 of the account) say the same thing: panel members now appear as read-only list items with no cells or choosers, so rows() read &#39;&#39; or timed out. The diff does exactly that and no more: a shownRow() helper reads a cell row as before or a list item from its own text (name, then the role after the visually hidden &#39;Role:&#39;); the unlocked branch uses the chooser only on rows that have one, and reads existing members in edit mode from name plus Chair box; and chairChooser() is only queried when present, which removes a timeout. Rows are still found by data-testid evaluation-panel-member-row and still read as &#39;name — role&#39;. bindings.yaml is unchanged and nothing outside tests/adapters/new/ moved. The runner&#39;s type-check on af966c4 passed with no diagnostics in adapters/new/. The author names memberGroup, addPanelMember and chairField() as likely to hit the same chooser problem but leaves them alone because no request named them. That is right for evidence-scoped work: a failing verify run will raise its own request. What would change this ruling: a verify run on this revision where panelMemberRow() still reads &#39;&#39; on the read-only or locked list, which would mean the row-text parsing does not match the real markup. build-slice-10-6#1 (R-1.9 assignment date, owed by build) is not settled here and stays open.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

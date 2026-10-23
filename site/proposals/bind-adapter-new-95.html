@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bind-adapter-new-95 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>bind-adapter-new-95</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 01:48</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does this adapter bind every surface action and observation on new, and nothing else?</h2>
+<p><strong>Recommendation.</strong> I fixed <code>opportunityCwuView.reward()</code> and <code>opportunityCwuView.status()</code> in <code>tests/adapters/new/index.ts</code>, as the ruling asked.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I fixed <code>opportunityCwuView.reward()</code> and <code>opportunityCwuView.status()</code> in <code>tests/adapters/new/index.ts</code>, as the ruling asked. Nothing else changed: no other member, and not <code>bindings.yaml</code>, where both members were already <code>bound</code>. I could not run a typecheck: the session needed permission to run <code>npx tsc</code> in <code>tests/</code> and none was given. I also did not re-run either member against the build at localhost:4300.</p>
+<p><strong>reward().</strong> It still tries the &quot;Reward&quot; term first, then the existing labelled-value lookup. After those it now takes the figure from a head line matching <code>/^reward\s+(.+)$/i</code>, so &quot;Reward $5,000&quot; gives &quot;$5,000&quot;. On the build at localhost:4300 the &quot;Reward&quot; term still answers first, so that build reads as it did. The new pattern needs a space right after &quot;Reward&quot;, so it does not catch &quot;Reward: $5,000&quot;; the labelled-value lookup already handles that form.</p>
+<p><strong>status().</strong> The head used to run until a line beginning &quot;Opportunity ID:&quot;. On the restyled page &quot;Opportunity ID&quot; is a term with the id below it, so that line never appears, and the head ran on to the Description heading and took in the &quot;Published&quot; term label. The head now stops at whichever comes first:</p>
+<ul><li>the first line whose text is one of the page&#39;s term labels (the text of every <code>dt</code> in the main region);</li><li>an &quot;Opportunity ID:&quot; line;</li><li>the &quot;Description&quot; heading.</li></ul>
+<p>On the restyled page that cuts the head off above &quot;Opportunity ID&quot; and the &quot;Published&quot; label below it. The status lookup also skips any line that is a term label. It now accepts either a line that is just a status word, or a line that starts with &quot;Code With Us&quot; and ends in a status word, which it reads as that word (&quot;Code With Us Draft&quot; gives &quot;Draft&quot;). It still ignores &quot;Closed&quot;, as before. The &quot;Status&quot; term is still tried first, so the current build answers from its label as it did.</p>
+<p><strong>proposalDeadline().</strong> The ruling accepted this one. It shares the narrower head, and I left it otherwise untouched. The &quot;Closes …&quot; line would only be missed if the restyled page put it below the first term. Given the head the snapshot describes (status label, title, &quot;Closes …&quot;, &quot;Reward $5,000&quot;, then the terms), I expect it to sit above them, but I did not check that in the browser.</p>
+<p>Every route in <code>surface.yaml</code> was already settled in the accepted binding, and this revision did not revisit any of them. I changed nothing outside <code>tests/adapters/new/</code>.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-18 01:49.</p>
+<div class="body"><p>The question is whether bind-adapter-new-95 carries out the two instructions bind-adapter-new-94 left owed and stays an adapter. It does both, so I approve. The diff touches only tests/adapters/new/index.ts, and every change is a read or a locator: it finds lines on the page and pulls values out of them, with no assertion and nothing that decides whether a test passes. Nothing under tests/acceptance changed. reward() keeps the &#39;Reward&#39; term lookup first and the labelled-value lookup second, then adds the /^reward\s+(.+)$/i head-line fallback in the order instruction #1 asked for, so the build at localhost:4300 still answers from its term. status() now cuts the head off at the first line whose text is a term label (a dt in the main region), at an &#39;Opportunity ID:&#39; line, or at the Description heading, whichever comes first. It skips any line that is a term label, so a dt&#39;s text can never be taken as the status, and it reads a &#39;Code With Us &lt;status&gt;&#39; line as its trailing status word, which is everything instruction #2 asked for. The members that now take the place of cwuViewTerm do the same onCwuView check followed by definitionOf, which cwuViewTerm itself does, so the current build behaves as before. The runner&#39;s typecheck on this revision passed with no diagnostics under adapters/new/, which covers the author not being able to run tsc. Neither member was re-run against the live build. A verify run on the restyled view showing status() or reward() still answering wrongly would change this ruling.</p></div>
+<h3>Conditions</h3><ol class="conditions"><li>condition-met bind-adapter-new-94#1: opportunityCwuView.reward() in tests/adapters/new/index.ts now tries definitionOf(/^reward$/i), then labelledValue([&#39;Reward&#39;]), then cwuHeadReward(), which takes the figure from a head line matching /^reward\s+(.+)$/i (&#39;Reward $5,000&#39; gives &#39;$5,000&#39;); see the reward member and cwuHeadReward in the diff.</li><li>condition-met bind-adapter-new-94#2: cwuHeadLines() in tests/adapters/new/index.ts now ends the head at the first line equal to a dt&#39;s text (termLabels()), at an &#39;Opportunity ID:&#39; line, or at the Description heading, whichever comes first. cwuHeadStatus() skips any line that is a term label and accepts either a bare status word or a &#39;Code With Us &lt;status&gt;&#39; line, read as the status word; status() tries the &#39;Status&#39; term first and falls back to cwuHeadStatus().</li></ol>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { AlertDialog, Button, Heading, Link, Modal, Text } from "@bcgov/design-system-react-components";
-import { mayChangeOrganization } from "@rules/organizations";
+import { AlertDialog, Button, Modal } from "@bcgov/design-system-react-components";
+import { PROFILE_FIELDS, ProfileField, mayChangeOrganization } from "@rules/organizations";
 import type { Account } from "../api/accounts";
-import { fileAddress } from "../api/files";
 import {
   Organization,
   archiveOrganization,
@@ -12,13 +11,29 @@ import {
 } from "../api/organizations";
 import { useSession } from "../auth/session";
 import { useGoTo } from "../app/go-to";
-import { term } from "../app/layout";
-import { Loading, useLoadingShown } from "../app/loading";
+import { useLoadingShown } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Actions, PageTitle, Region, Waiting } from "../app/opportunity-kit";
+import {
+  ArchiveRegion,
+  DialogText,
+  ManagementTop,
+  OrganizationPage,
+  OrganizationTabKey,
+  ReadOnlyFields,
+  StoredLogo,
+  organizationTabOf,
+} from "../app/organization-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { TitledAlert } from "../app/titled-alert";
-import { FIELD_TEST_IDS, OrganizationForm, valuesOf } from "./organization-form";
+import {
+  ADDRESS_FIELDS,
+  CONTACT_FIELDS,
+  DETAILS_FIELDS,
+  FIELD_TEST_IDS,
+  OrganizationForm,
+  valuesOf,
+} from "./organization-form";
 import { ChangelogTab, TeamTab } from "./organization-team";
 import { SwuQualificationTab, TwuQualificationTab } from "./organization-qualification";
 
@@ -33,30 +48,6 @@ import { SwuQualificationTab, TwuQualificationTab } from "./organization-qualifi
  * `organization-team.tsx` (slice 12), and the two qualification tabs in
  * `organization-qualification.tsx` (slice 13).
  */
-
-type Tab = "organization" | "team" | "swu-qualification" | "twu-qualification" | "changelog";
-
-const TABS: readonly { readonly tab: Tab; readonly label: string }[] = [
-  { tab: "organization", label: "Organization" },
-  { tab: "team", label: "Team members" },
-  { tab: "swu-qualification", label: "Sprint With Us qualification" },
-  { tab: "twu-qualification", label: "Team With Us qualification" },
-  { tab: "changelog", label: "Changelog" },
-];
-
-function tabOf(asked: unknown): Tab {
-  return TABS.find((entry) => entry.tab === asked)?.tab ?? "organization";
-}
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-
-// Keeps a logo inside its column. Not spacing: the files domain's image rule.
-const image = { maxWidth: "100%", height: "auto" } as const;
 
 export function OrganizationEditScreen({ orgId }: { orgId: string }) {
   const session = useSession();
@@ -84,27 +75,27 @@ export function OrganizationEditScreen({ orgId }: { orgId: string }) {
   if (loading) {
     if (!loadingShown) return null;
     return (
-      <Stack gap="large">
-        <Heading level={1}>Edit Organization</Heading>
-        <Loading label="Loading organization…" />
-      </Stack>
+      <OrganizationPage>
+        <PageTitle>Edit Organization</PageTitle>
+        <Waiting label="Loading organization" />
+      </OrganizationPage>
     );
   }
   if (!viewer || answer === "missing" || answer === "loading") return <NotFound />;
   if (answer === "failed") return <Failed />;
   if (!answer.active) return <NotFound />;
-  return <ManageOrganization viewer={viewer} organization={answer} tab={tabOf(search.tab)} onChanged={setAnswer} />;
+  return <ManageOrganization viewer={viewer} organization={answer} tab={organizationTabOf(search.tab)} onChanged={setAnswer} />;
 }
 
 function Failed() {
   useScreenTitle("Edit Organization");
   return (
-    <Stack gap="large">
-      <Heading level={1}>Edit Organization</Heading>
+    <OrganizationPage>
+      <PageTitle>Edit Organization</PageTitle>
       <TitledAlert variant="danger" role="alert" title="The organization could not be loaded">
-        <Text elementType="p">Try again in a moment.</Text>
+        <p className="op-text">Try again in a moment.</p>
       </TitledAlert>
-    </Stack>
+    </OrganizationPage>
   );
 }
 
@@ -116,49 +107,19 @@ function ManageOrganization({
 }: {
   viewer: Account;
   organization: Organization;
-  tab: Tab;
+  tab: OrganizationTabKey;
   onChanged: (organization: Organization) => void;
 }) {
   useScreenTitle("Edit Organization");
-  const base = `/organizations/${organization.id}/edit`;
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          Edit Organization
-        </Text>
-        <Heading level={1}>{organization.legalName}</Heading>
-      </Stack>
-      <Stack direction="row" align="center" gap="medium">
-        {organization.swuQualified ? (
-          <span style={badge} data-testid="organization-swu-qualified-badge">
-            Sprint With Us qualified
-          </span>
-        ) : null}
-        {organization.twuQualified ? (
-          <span style={badge} data-testid="organization-twu-qualified-badge">
-            Team With Us qualified
-          </span>
-        ) : null}
-        <Text elementType="p" size="small" color="secondary">
-          Organization ID: <span data-testid="organization-identifier">{organization.id}</span>
-        </Text>
-      </Stack>
-      <nav aria-label="Organization sections">
-        <Stack as="ul" direction="row" gap="medium" align="center">
-          {TABS.map((entry) => (
-            <li key={entry.tab}>
-              <Link
-                href={`${base}?tab=${entry.tab}`}
-                aria-current={entry.tab === tab ? "page" : undefined}
-                data-testid={`organization-tab-${entry.tab}`}
-              >
-                {entry.label}
-              </Link>
-            </li>
-          ))}
-        </Stack>
-      </nav>
+    <OrganizationPage>
+      <ManagementTop
+        id={organization.id}
+        legalName={organization.legalName}
+        swu={organization.swuQualified}
+        twu={organization.twuQualified}
+        current={tab}
+      />
       {tab === "organization" ? (
         <OrganizationTab viewer={viewer} organization={organization} onChanged={onChanged} />
       ) : tab === "team" ? (
@@ -170,8 +131,13 @@ function ManageOrganization({
       ) : (
         <ChangelogTab organization={organization} />
       )}
-    </Stack>
+    </OrganizationPage>
   );
+}
+
+/** The fields named, read-only, as the tab shows them. */
+function readOnly(organization: Organization, fields: readonly ProfileField[]) {
+  return fields.map((field) => ({ label: PROFILE_FIELDS[field].label, value: organization[field], testId: FIELD_TEST_IDS[field] }));
 }
 
 function OrganizationTab({
@@ -204,81 +170,26 @@ function OrganizationTab({
   }
 
   return (
-      <Stack as="section" aria-labelledby="tab-heading" gap="medium">
-        <Heading level={2} id="tab-heading">
-          Organization
-        </Heading>
-        {mayChange ? (
-          <div>
-            <Button variant="primary" onPress={() => setEditing(true)} data-testid="organization-edit-button">
-              Edit organization
-            </Button>
-          </div>
-        ) : (
-          <Text elementType="p">Only the organization’s owner can change these details.</Text>
-        )}
-        {organization.logoImageFile ? (
-          <Stack role="group" aria-labelledby="logo-label" gap="small" align="start">
-            <Text elementType="p" id="logo-label">
-              Logo
-            </Text>
-            <img
-              src={fileAddress(organization.logoImageFile)}
-              alt={`${organization.legalName} logo`}
-              style={image}
-              data-testid="organization-current-logo"
-            />
-          </Stack>
-        ) : (
-          <Text elementType="p" size="small" color="secondary">
-            No logo has been added.
-          </Text>
-        )}
-        <Stack as="dl" gap="medium">
-          <ReadOnly organization={organization} field="legalName" label="Legal name" />
-          <ReadOnly organization={organization} field="websiteUrl" label="Website" />
-        </Stack>
-        <Heading level={3}>Address</Heading>
-        <Stack as="dl" gap="medium">
-          <ReadOnly organization={organization} field="streetAddress1" label="Street address" />
-          <ReadOnly organization={organization} field="streetAddress2" label="Address line 2" />
-          <ReadOnly organization={organization} field="city" label="City" />
-          <ReadOnly organization={organization} field="region" label="Province or state" />
-          <ReadOnly organization={organization} field="mailCode" label="Postal code or ZIP code" />
-          <ReadOnly organization={organization} field="country" label="Country" />
-        </Stack>
-        <Heading level={3}>Contact</Heading>
-        <Stack as="dl" gap="medium">
-          <ReadOnly organization={organization} field="contactName" label="Contact name" />
-          <ReadOnly organization={organization} field="contactTitle" label="Contact title" />
-          <ReadOnly organization={organization} field="contactEmail" label="Contact email address" />
-          <ReadOnly organization={organization} field="contactPhone" label="Contact phone number" />
-        </Stack>
-        {/* Inside the tab's section, so the tab reads as offering both Edit and Archive (R-3.18). */}
-        {mayChange ? <ArchiveSection viewer={viewer} organization={organization} /> : null}
-      </Stack>
-  );
-}
-
-/**
- * One profile field, read-only: its label and its value as text, so the value is part of what the
- * tab reads as and not only the content of a box (decision record 0048). An empty field says so.
- */
-function ReadOnly({
-  organization,
-  field,
-  label,
-}: {
-  organization: Organization;
-  field: keyof typeof FIELD_TEST_IDS;
-  label: string;
-}) {
-  const value = organization[field];
-  return (
-    <Stack gap="small">
-      <dt style={term}>{label}</dt>
-      <dd data-testid={FIELD_TEST_IDS[field]}>{value ? value : "Not entered"}</dd>
-    </Stack>
+    <Region id="tab-heading" title="Organization">
+      {mayChange ? (
+        <Actions>
+          <Button variant="primary" onPress={() => setEditing(true)} data-testid="organization-edit-button">
+            Edit organization
+          </Button>
+        </Actions>
+      ) : (
+        <p className="op-text">Only the organization’s owner can change these details.</p>
+      )}
+      <StoredLogo fileId={organization.logoImageFile} legalName={organization.legalName} />
+      <ReadOnlyFields fields={readOnly(organization, DETAILS_FIELDS)} />
+      <Region id="address-heading" title="Address" level={3}>
+        <ReadOnlyFields fields={readOnly(organization, ADDRESS_FIELDS)} />
+      </Region>
+      <Region id="contact-heading" title="Contact" level={3}>
+        <ReadOnlyFields fields={readOnly(organization, CONTACT_FIELDS)} />
+      </Region>
+      {mayChange ? <ArchiveSection viewer={viewer} organization={organization} /> : null}
+    </Region>
   );
 }
 
@@ -310,24 +221,21 @@ function ArchiveSection({ viewer, organization }: { viewer: Account; organizatio
   const administratorArchiving = viewer.type === "ADMIN" && organization.viewerMembership?.membershipType !== "OWNER";
 
   return (
-    <Stack as="section" aria-labelledby="archive-heading" gap="medium">
-      <Heading level={3} id="archive-heading">
-        Archive this organization
-      </Heading>
-      <Text elementType="p">
+    <ArchiveRegion>
+      <p className="op-text">
         An archived organization leaves the organization list and its members’ lists of organizations, and can no longer be
         used on proposals. Its records are kept.
-      </Text>
+      </p>
       {failed ? (
         <TitledAlert variant="danger" role="alert" title="The organization could not be archived">
-          <Text elementType="p">{failed.join(" ") || "Try again in a moment."}</Text>
+          <p className="op-text">{failed.join(" ") || "Try again in a moment."}</p>
         </TitledAlert>
       ) : null}
-      <div>
+      <Actions>
         <Button variant="secondary" danger onPress={() => setAsking(true)} data-testid="organization-archive-button">
           Archive organization
         </Button>
-      </div>
+      </Actions>
       <Modal isOpen={asking} isDismissable onOpenChange={(open) => (working ? undefined : setAsking(open))}>
         <AlertDialog
           variant="destructive"
@@ -350,21 +258,21 @@ function ArchiveSection({ viewer, organization }: { viewer: Account; organizatio
             </>
           }
         >
-          <Stack gap="medium">
-            <Text elementType="p">
+          <DialogText>
+            <p className="op-text">
               It will no longer appear in the organization list or in its members’ lists of organizations, and it cannot be used
               on proposals. Its records and memberships are kept.
-            </Text>
+            </p>
             {administratorArchiving ? (
-              <Text elementType="p">
+              <p className="op-text">
                 {organization.ownerName
                   ? `${organization.ownerName}, the owner, will be emailed that an administrator has archived it.`
                   : "The owner will be emailed that an administrator has archived it."}
-              </Text>
+              </p>
             ) : null}
-          </Stack>
+          </DialogText>
         </AlertDialog>
       </Modal>
-    </Stack>
+    </ArchiveRegion>
   );
 }

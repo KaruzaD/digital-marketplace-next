@@ -1,25 +1,24 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, ButtonGroup, Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, Link } from "@bcgov/design-system-react-components";
+import { ADMIN, ActionBar, DataTable, Details, OpportunityHead, OpportunityPage, Region } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // opportunity-swu-edit · history-tab — every change of state and every event, including a private note the service
 // accepted by request; no screen offers a way to add one (R-1.4, R-1.30, R-1.32, R-1.33)
-const meta: Meta = { title: "opportunities/opportunity-swu-edit/history-tab" };
+const meta: Meta = { title: "opportunities/opportunity-swu-edit/history-tab", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
 const base = "/opportunities/sprint-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000201/edit";
+
+// The Evaluation panel tab's address (?tab=evaluationPanel) differs from its test ID's suffix, so the tabs are written
+// in ManageTabs' markup here rather than with ManageTabs.
+const tabs = [
+  { tab: "summary", testId: "opportunity-tab-summary", label: "Summary" },
+  { tab: "opportunity", testId: "opportunity-tab-opportunity", label: "Opportunity" },
+  { tab: "addenda", testId: "opportunity-tab-addenda", label: "Addenda" },
+  { tab: "history", testId: "opportunity-tab-history", label: "History" },
+  { tab: "evaluationPanel", testId: "opportunity-tab-evaluation-panel", label: "Evaluation panel" },
+];
 
 const history = [
   { when: "September 21, 2026, 10:00 a.m.", entry: "Note", by: "Test Public Servant", note: "Confirmed the budget with the finance office. Attachment: budget-approval.pdf" },
@@ -31,60 +30,49 @@ const history = [
 
 export const HistoryTab: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Manage a Sprint With Us opportunity</Text>
-          <Heading level={1}>Modernize the licence renewal service</Heading>
-        </Stack>
-        <Stack direction="row" align="center" gap="medium">
-          <Text elementType="p">Status: <span style={badge} data-testid="opportunity-status">Published</span></Text>
-          <Text elementType="p" size="small" color="secondary">
-            Opportunity ID: <span data-testid="opportunity-identifier">7c1e2d40-5b1a-4c2e-9d3f-000000000201</span>
-          </Text>
-        </Stack>
-        <ButtonGroup ariaLabel="Opportunity actions">
+    <SitePage viewer={ADMIN} current="dashboard">
+      <OpportunityPage>
+        <OpportunityHead
+          eyebrow="Manage a Sprint With Us opportunity"
+          program="sprint-with-us"
+          status="Published"
+          title="Modernize the licence renewal service"
+        />
+        <Details
+          items={[{ term: "Opportunity ID", value: "7c1e2d40-5b1a-4c2e-9d3f-000000000201", testId: "opportunity-identifier" }]}
+        />
+        <ActionBar>
           <Button variant="secondary" data-testid="opportunity-edit-button">Edit</Button>
           <Button variant="secondary" danger data-testid="opportunity-cancel-button">Cancel opportunity</Button>
-        </ButtonGroup>
-        <nav aria-label="Opportunity sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href={`${base}?tab=summary`} data-testid="opportunity-tab-summary">Summary</Link></li>
-            <li><Link href={`${base}?tab=opportunity`} data-testid="opportunity-tab-opportunity">Opportunity</Link></li>
-            <li><Link href={`${base}?tab=addenda`} data-testid="opportunity-tab-addenda">Addenda</Link></li>
-            <li><Link href={`${base}?tab=history`} aria-current="page" data-testid="opportunity-tab-history">History</Link></li>
-            <li><Link href={`${base}?tab=evaluationPanel`} data-testid="opportunity-tab-evaluation-panel">Evaluation panel</Link></li>
-          </Stack>
+        </ActionBar>
+        <nav className="op-tabs" aria-label="Opportunity sections">
+          <ul>
+            {tabs.map((t) => (
+              <li key={t.tab}>
+                <Link href={`${base}?tab=${t.tab}`} aria-current={t.tab === "history" ? "page" : undefined} data-testid={t.testId}>
+                  {t.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </nav>
-        <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-          <Heading level={2} id="tab-heading">History</Heading>
-          <div role="region" aria-labelledby="history-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }}>
-              <caption id="history-caption" style={{ textAlign: "start" }}>
-                <Text size="small" color="secondary">Every change of state and every event, newest first</Text>
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" style={cell}>Date</th>
-                  <th scope="col" style={cell}>Entry</th>
-                  <th scope="col" style={cell}>By</th>
-                  <th scope="col" style={cell}>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.when}>
-                    <td style={cell}>{h.when}</td>
-                    <td style={cell}>{h.entry}</td>
-                    <td style={cell}>{h.by}</td>
-                    <td style={cell}>{h.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Stack>
-      </Stack>
-    </PageContainer>
+        <Region id="tab-heading" title="History" testId="opportunity-history-section">
+          <DataTable
+            captionId="history-caption"
+            caption="Every change of state and every event, newest first"
+            columns={["Date", "Entry", "By", "Note"]}
+          >
+            {history.map((h) => (
+              <tr key={h.when}>
+                <td>{h.when}</td>
+                <td>{h.entry}</td>
+                <td>{h.by}</td>
+                <td>{h.note}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </Region>
+      </OpportunityPage>
+    </SitePage>
   ),
 };

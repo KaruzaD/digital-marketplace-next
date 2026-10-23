@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  The question is whether slice 17 (panel evaluators score proponents individually) does what its criteria say and nothing more. I approve. The verify result is pass, current for this proposal against application tree b04860d, which matches the branch, with all 15 claimed criteria exercised and met. The three conditions on build-slice-17-3 were all addressed to bind-adapter, because the adapter's rowsText skipped li rows. That is why the application comes back unchanged and is now verified green. The diff only restyles the evaluator's Instructions and Evaluation tabs and the per-proponent scoring forms to the approved design catalogue, as decision record 0083 records: kit pieces EvaluationStatus, ScoringHead, QuestionBox, Response, SaveRow and Refusal; the table becomes a ul/li list with the same test IDs; the status label carries its state in words as well as colour; alerts take focus again after each refused save. No behaviour, route, message wording or test ID changes. Nothing from slice 18 is built, and the consensus form's shared Heading1 and OpportunityLine are left as they were. No secret, credential or personal data appears, no protected path is touched, and new unit tests in app/frontend/tests/individual-evaluation.test.tsx cover the new seams: row structure and status colours, the scoring head and question boxes, the error summary taking focus again, and the read-only panels. The ruling would change if the verify result went stale or failed, or if the restyle had changed behaviour or wording, or reached into another slice's screens.
+conditions: []
+cost: 0.4926224
+turns: 2
+session: "04353622-f752-45e5-8f62-a8d1a1c2fb45"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.302 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T22:26:00.208Z

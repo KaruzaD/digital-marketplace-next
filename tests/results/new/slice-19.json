@@ -1,10 +1,10 @@
 {
   "slice": 19,
-  "proposal": "build-slice-19-2",
-  "app_tree": "4f0236b589c2ead4e7771ddebb6c879544555f05",
-  "at": "2026-10-04T19:00:38.622Z",
+  "proposal": "build-slice-19-3",
+  "app_tree": "d4f5c24afa064f8b3e769881fae2644f591bbe59",
+  "at": "2026-10-19T01:24:54.311Z",
   "verdict": "pass",
-  "adapter": "d44ea8519aeeda3c286127e83558725e565b8b96",
+  "adapter": "7c1cb8f81bb28f72d02a6d684f6167ef7a7a24b0",
   "rechecked": [
     "R-7.1",
     "R-7.2",
@@ -103,6 +103,7 @@
     "R-1.28",
     "R-1.30",
     "R-1.32",
+    "R-1.33",
     "R-7.17",
     "R-5.1",
     "R-5.9",
@@ -234,10 +235,16 @@
     "R-6.15",
     "R-1.41",
     "R-1.50",
-    "R-2.29"
+    "R-2.29",
+    "R-1.40",
+    "R-2.37",
+    "R-2.38",
+    "R-6.6",
+    "R-6.13",
+    "R-6.19"
   ],
   "measured": {
-    "harness": "281abfe5236515cc78ac7b2d30c3d4578bc10c7bcb5137068ebbcb0b5d260912",
+    "harness": "99e34317cc9a3cbf5c17b427b0af3c4f29b8fdd026ed42372e76b927df9daa25",
     "passed": {
       "R-7.1": "09a8250ff44dff07264b1225c46adc382cb73c08",
       "R-7.2": "4203b22723ee69352ac368c2d1d331c285273e13",
@@ -336,6 +343,7 @@
       "R-1.28": "4a4d1184bade43b4f43be4b3bf00f184daf4f139",
       "R-1.30": "7e34733f30e2310585b821615bf08906647ebc30",
       "R-1.32": "f41511723d6234dc86a2eff8302a0f395159527e",
+      "R-1.33": "d0929650430635d28cd90fb7c145ec1c410a3418",
       "R-7.17": "2689de36626ce6f93749a3624afb2c790c59d6d8",
       "R-5.1": "90c0a508bc20bf74c7e5ad29d795148ae2a78650",
       "R-5.9": "a077dfe2f532a06d5b82d6f4eaa936c1ced60113",
@@ -390,7 +398,7 @@
       "R-3.25": "28cde6bbb60018b866971fc8ac1454e00d165f42",
       "R-3.26": "e5c8d9b827947a0375fc3bf54757816ac907948f",
       "R-3.27": "197c3006bca169ba05b89bfdb57376d87422813d",
-      "R-3.28": "fc9295bcc614ac3d0c9c1b48e68af2bd57d29a33",
+      "R-3.28": "2e3ef1622644eb0d5be8c1e104b0221da7f55b62",
       "R-8.22": "1cd3bf318a0e03f83c1b33a1dd4423b791149876",
       "R-8.31": "a72499e5b6e5c7fd4a8c8935e2980ec8f980d6bc",
       "R-6.2": "bc7fd3047214cd83d2a0f47d16c4d1d677798aef",
@@ -437,7 +445,7 @@
       "R-2.32": "63786badf2abda007467b16f473c14b637fda84a",
       "R-2.33": "4f5ef4151faf419495d21169bc3cb5493c676341",
       "R-2.34": "361733e04822255c8f1bf144b6b98755e5b2491c",
-      "R-2.36": "335b675a5128a6c2ed5dd45033d0e1e0408e0b11",
+      "R-2.36": "fb94eb0cf91986230eddfd7c79c3dbe7f54315e3",
       "R-5.3": "f2dcfbaa0831f0faf0a3df16283bf4bade09aeac",
       "R-5.11": "5fa36f640e420c10d63815d48e338ce8b26cf258",
       "R-5.16": "2ffba7b158f6c666b26d1caa0ac846858a4a36c8",
@@ -467,7 +475,13 @@
       "R-6.15": "6f0039750ad77cbe645a2b1b5be45cce814cc2a7",
       "R-1.41": "962a2ec24a86f0e58d5a72284ef6fb26b7dd444a",
       "R-1.50": "8c482af339113f9b120042324278cd34a9c88f72",
-      "R-2.29": "8934ddf6cce1a4766f232d9d9d969b28c46e5199"
+      "R-2.29": "8934ddf6cce1a4766f232d9d9d969b28c46e5199",
+      "R-1.40": "d909587610283cc0a7c1ec85e6ac669847c23272",
+      "R-2.37": "c611d0eb966ccfa12c6be589493dccdb6e675734",
+      "R-2.38": "e9bbf78d155ae2eb8ee9028e9a3c742f73740d7c",
+      "R-6.6": "7183faae6925887241b60082b7ae1ed1c4eec34f",
+      "R-6.13": "abd8704aabf597e44cdb6539f856b9090747f6ba",
+      "R-6.19": "7b78b38328b58686509f62719ff255179847acab"
     }
   },
   "rows": [
@@ -492,7 +506,7 @@
         }
       ],
       "file_sha": "a18c381c4e081798bbded735a6c0cc55ede3b625",
-      "adapter": "d44ea8519aeeda3c286127e83558725e565b8b96"
+      "adapter": "7c1cb8f81bb28f72d02a6d684f6167ef7a7a24b0"
     },
     {
       "id": "R-1.42",
@@ -507,7 +521,7 @@
         }
       ],
       "file_sha": "1910b9a936156020a2b037da8f65c465b0a9ac4f",
-      "adapter": "d44ea8519aeeda3c286127e83558725e565b8b96"
+      "adapter": "7c1cb8f81bb28f72d02a6d684f6167ef7a7a24b0"
     },
     {
       "id": "R-1.49",
@@ -522,7 +536,7 @@
         }
       ],
       "file_sha": "4af893ad6570aae2e689e68b13c9543bca6bfbb1",
-      "adapter": "d44ea8519aeeda3c286127e83558725e565b8b96"
+      "adapter": "7c1cb8f81bb28f72d02a6d684f6167ef7a7a24b0"
     },
     {
       "id": "R-2.28",
@@ -549,7 +563,7 @@
         }
       ],
       "file_sha": "9a72c2c1735efc50c2a1073af375cfdb4a7859a9",
-      "adapter": "d44ea8519aeeda3c286127e83558725e565b8b96"
+      "adapter": "7c1cb8f81bb28f72d02a6d684f6167ef7a7a24b0"
     },
     {
       "id": "R-2.30",
@@ -564,7 +578,7 @@
         }
       ],
       "file_sha": "fd684f1f68f26cf5809e5772411b8f3c6fa208fa",
-      "adapter": "d44ea8519aeeda3c286127e83558725e565b8b96"
+      "adapter": "7c1cb8f81bb28f72d02a6d684f6167ef7a7a24b0"
     },
     {
       "id": "R-2.31",
@@ -591,7 +605,7 @@
         }
       ],
       "file_sha": "656da2fa1bff29f269076b2a637c254280111456",
-      "adapter": "d44ea8519aeeda3c286127e83558725e565b8b96"
+      "adapter": "7c1cb8f81bb28f72d02a6d684f6167ef7a7a24b0"
     },
     {
       "id": "R-2.35",
@@ -606,7 +620,7 @@
         }
       ],
       "file_sha": "46be266b170656d7ba5b9cb2bcf7eab96504ced9",
-      "adapter": "d44ea8519aeeda3c286127e83558725e565b8b96"
+      "adapter": "7c1cb8f81bb28f72d02a6d684f6167ef7a7a24b0"
     }
   ]
 }

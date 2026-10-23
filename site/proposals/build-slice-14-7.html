@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-14-7 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-14-7</h1>
+<p class="lede">G3 · <span class="chip return">return</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 03:39</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 14 (A vendor can propose on a Code With Us opportunity) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I removed the change the ruling called unjustified, and the application is back to its earlier behaviour on proposal forms.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I removed the change the ruling called unjustified, and the application is back to its earlier behaviour on proposal forms. <code>npm --prefix app run check</code> passes on every package: 566 frontend tests, 862 backend tests, and the migrations typecheck. R-8.31&#39;s proposal case will still fail until the adapter is fixed, and that fix belongs to another stage.</p>
+<p><strong>What changed</strong></p>
+<ul><li><strong><code>app/frontend/src/app/attachments.tsx</code>:</strong> I removed <code>StoredNewRow</code>, the <code>host === &quot;proposal&quot;</code> branch in <code>NewAttachmentRow</code>, and the header comment&#39;s mention of decision record 0073.</li><li><strong>What a proposal form now shows:</strong> a file chosen on a proposal form is shown as a new attachment, just as on the opportunity forms. Once stored, its row has its &quot;Download …&quot; link and its Remove button, and it can still be renamed until the proposal is saved (R-8.27).</li><li><strong>Decision record 0073:</strong> I deleted it rather than writing a record to replace it. Its argument rested on the cause the ruling found unsupported, and I found no proposal criterion or catalogue story asking for a stored row on proposal forms that would justify keeping it.</li></ul>
+<p><strong>Unit test</strong> I rewrote the first case in <code>app/frontend/tests/proposal-attachments.test.tsx</code>. On the Code With Us proposal create page, with an organization as proponent, it now checks that a stored file:</p>
+<ul><li>appears as a new-attachment list item, with its download link at <code>/api/files/&lt;id&gt;?type=blob</code>;</li><li>still has its rename field and the line saying it is attached when the proposal is saved;</li><li>sits inside the region named &quot;3. Attachments&quot;.</li></ul>
+<p>The rest of the case is unchanged: the file is sent with the draft, and after saving, removing it on the edit form sends an empty attachments list. The second case, a refused file staying a new row with its reason and no link, still passes. The workspace had no dependencies installed, so I ran <code>npm ci</code> under <code>app/</code> before the check.</p>
+<p><strong>Not mine to do</strong> The test adapter (<code>tests/adapters/new/index.ts</code>, around line 9442) only looks for a section titled exactly &quot;Attachments&quot;. The approved design titles this part &quot;3. Attachments&quot; on the Code With Us proposal create and edit forms, so the adapter never finds the attachment row. That fix was filed for the stage that owns the adapter, and I did not touch it.</p>
+<p>The other slice 14 criteria were outside this ruling and I left them as built. The next slice will find the Sprint With Us and Team With Us proposal screens, and the criteria for them that the plan answers for in Slice 15, still to come.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip return">return</span> by agent:tech-lead (persona agent · claude claude-opus-5-5) on 2026-10-18 04:24.</p>
+<div class="body"><p>The question is whether slice 14 (a vendor can propose on a Code With Us opportunity) does what its criteria say. It is returned. All 18 criteria the slice claims passed against tree 30edc73. The fail verdict comes only from R-3.28 regressing, and the evidence puts that on the test, not the application. This branch touches no organization screen and no backend file. In both failure snapshots (.sdlc/evidence/slice-14/R-3.28.txt and R-3.28-2.txt) the page shows exactly the service areas that case was polling for: Data professional + Full stack developer, and Agile coach + Full stack developer. Both cases in tests/acceptance/organizations/R-3.28.spec.ts rewrite the approvals of the same seeded organization (00000000-0000-4000-8000-000000000301). Verify runs seven parallel instances, so each case&#39;s poll sees the other&#39;s write and the outcome depends on timing, which is how it passed under slice 13. Another build cannot fix this, so the test is sent to derive-tests. The owed instruction build-slice-14-6#2 is satisfied: StoredNewRow and the proposal branch are gone from app/, decision record 0073 no longer exists, and the rename field is restored and asserted. This becomes an approval once a regenerated R-3.28 binds, passes alongside this slice&#39;s 18 criteria, and verify records a current pass. If R-3.28 still fails with its two cases isolated, the regression is the application&#39;s and the work goes back to build.</p></div>
+<h3>Conditions</h3><ol class="conditions"><li>condition-met build-slice-14-6#2: StoredNewRow and the host === &quot;proposal&quot; branch are removed from app/frontend/src/app/attachments.tsx, docs/decisions/0073 no longer exists on the branch, and app/frontend/tests/proposal-attachments.test.tsx asserts that a stored file on the proposal create form keeps its rename field (attachment-name-field) and its download link.</li><li>addressed-to derive-tests: Rewrite tests/acceptance/organizations/R-3.28.spec.ts so its two cases cannot change each other&#39;s state. Both cases change the approved service areas of the same seeded organization (seed.organizations.qualified, 00000000-0000-4000-8000-000000000301), and verify runs seven instances in parallel. In slice 14&#39;s run, case 1 failed at line 74 while the page showed exactly Data professional + Full stack developer, which is what it was waiting for. Case 2 failed at line 51 while the page showed exactly Agile coach + Full stack developer, which is what it was waiting for. Each poll saw the other case&#39;s write. Run the two cases serially, or give each case an organization the other does not change. Do not let either rely on another case leaving the seed&#39;s approvals in place.</li></ol>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

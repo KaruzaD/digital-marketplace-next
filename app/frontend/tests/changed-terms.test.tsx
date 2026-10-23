@@ -117,6 +117,20 @@ describe("which page carries the announcement (R-7.13)", () => {
     expect(screen.queryByTestId("notify-vendors-button")).toBeNull();
   });
 
+  it("is its own region after the current wording, its button secondary in the actions row", async () => {
+    serve(() => json(200, page("terms-and-conditions")));
+    resetSessionForTests({ status: "signed-in", account: administrator }, fakeIdentity());
+    renderAt("/content/terms-and-conditions/edit");
+    const button = await screen.findByTestId("notify-vendors-button");
+    const region = screen.getByRole("region", { name: "Notify vendors of updated terms" });
+    expect(within(region).getByRole("heading", { level: 2, name: "Notify vendors of updated terms" })).toBeTruthy();
+    expect(region.contains(button)).toBe(true);
+    expect(button.parentElement?.className).toBe("op-actions");
+    expect(button.className).not.toContain("primary");
+    const wording = screen.getByRole("region", { name: "Current wording" });
+    expect(wording.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("is not offered to anybody but an administrator", async () => {
     serve(() => json(200, page("terms-and-conditions")));
     for (const who of [account({}), staff]) {

@@ -1,0 +1,18 @@
+gate: G3
+verdict: return
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Does slice 15 do what its criteria say? Verify recorded fail on R-2.19, so this can't be approved, but all three failures are the adapter misreading a page that shows what the criterion needs. Case 1, phase missing a team: the page says 'This phase’s team is incomplete. Name at least one team member. Not yet held: Frontend Development.' (.sdlc/evidence/slice-15/R-2.19.txt line 52). Case 2, phases missing a capability: both phases say 'This phase’s team is incomplete. Not yet held: …' (R-2.19-2.txt lines 59, 84). Case 3, total over budget: the region '4. Cost' shows 'The proposed cost exceeds the maximum budget for this opportunity.' (R-2.19-3.txt lines 99-103). phaseRequirementLines only recognises lines starting 'Incomplete:' and lines ending ': not held', and costErrorLines only looks for a region named exactly 'Cost', so they read 'complete' and an empty string. The 16 other claimed criteria pass. The restyle follows the approved catalogue and decision record 0078, the new unit tests cover phaseRequirementsSentence and hourlyBid, and no secret, personal data or protected path is in the diff. Nothing is asked of build. The ruling becomes an approval once bind-adapter reads these two places correctly and verify passes R-2.19 on this tree.
+conditions:
+  - "addressed-to bind-adapter: R-2.19: proposalSwuCreate.phaseRequirements (phaseRequirementLines, tests/adapters/new/index.ts:14011-14032) read 'Prototype | complete' for a prototype phase with no team. It only counts a phase as incomplete when a line starts 'Incomplete:'. The page's phase group 'Prototype phase' says 'This phase’s team is incomplete. Name at least one team member. Not yet held: Frontend Development.' (.sdlc/evidence/slice-15/R-2.19.txt line 52). Count a phase as incomplete when its requirements line says 'is incomplete', and complete when it says 'meets its requirements'."
+  - "addressed-to bind-adapter: R-2.19: in the missing-capability case phaseRequirementLines read both phases as complete with nothing missing. It looks for missing capabilities only in lines ending ': not held' (index.ts:14022, 14028). Each phase now gives them in one sentence: 'This phase’s team is incomplete. Not yet held: Frontend Development.' and 'This phase’s team is incomplete. Not yet held: Backend Development.' (.sdlc/evidence/slice-15/R-2.19-2.txt lines 59, 84). Read the missing capabilities from the comma-separated list after 'Not yet held:'."
+  - "addressed-to bind-adapter: R-2.19: proposalSwuCreate.costErrors (costErrorLines, tests/adapters/new/index.ts:13945) read '' for a total cost over the opportunity's budget. It looks for a region named exactly 'Cost', but the page names the region '4. Cost', and inside it, under 'Total proposed cost: $480,000 of the $400,000 maximum budget.', it shows 'The proposed cost exceeds the maximum budget for this opportunity.' (.sdlc/evidence/slice-15/R-2.19-3.txt lines 99-103). Accept a numbered part name such as '4. Cost' when finding the cost region."
+cost: 0.7754789999999999
+turns: 7
+session: "ef4d65a5-65a2-44be-a97a-07c37487ed86"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T16:04:39.897Z

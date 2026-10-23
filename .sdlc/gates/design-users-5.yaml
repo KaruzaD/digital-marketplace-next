@@ -1,0 +1,15 @@
+gate: G-DESIGN
+verdict: approve
+by: agent:ux-reviewer
+held_by: agent
+rationale: |2-
+  Question: do the 60 restyled users-domain stories serve the users criteria and come from the design system? Ruling: approve. design/report.json on the branch scans all 60 users stories with zero axe violations, and typecheck and build pass. spec/contract/surface.yaml and design/screens.yaml are unchanged, so no filled-in test_id moved and no state was lost. A search of the users files finds no inline styles or hex colours; spacing and colour come only from tokens, and the only pixel values are grid minimum widths, one breakpoint and the standard 1px visually-hidden clip. Eight screenshots (user-profile and user-profile-self default, user-list, sign-in, sign-up-complete, the invalid profile form, capabilities, legal, and the deactivated notice) show content in the shared page container lined up with the header, an even large/medium/small rhythm, at most one primary button, consistent H1s, and the error summary title now rendered. user-kit.tsx and user-profile-sections.tsx are built from design-system components and tokens, and DESIGN.md names them as the project's own, which the brief accepts. Gaps 41-44 are open spec questions, not design defects. The tier is STANDARD, so this is not escalated. The ruling would change on any accessibility violation, a moved or missing test_id, content out of line with the header, or doubled spacing in a screen not inspected here.
+conditions: []
+cost: 0.7827692
+turns: 16
+session: "536e0521-11f2-4027-8777-cd15d86ae9cb"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-17T22:00:51.882Z

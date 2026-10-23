@@ -5,7 +5,6 @@ import {
   Checkbox,
   CheckboxGroup,
   Form,
-  Heading,
   Link,
   NumberField,
   Radio,
@@ -54,7 +53,7 @@ import {
 } from "../api/other-programs";
 import type { Attachment } from "../api/opportunities";
 import { AttachmentControl, AttachmentList, useAttachments } from "../app/attachments";
-import { card } from "../app/layout";
+import { Actions, Fieldset, Panel } from "../app/opportunity-kit";
 import { Stack } from "../app/page-layout";
 import { TitledAlert } from "../app/titled-alert";
 import { PublishDialog } from "./opportunity-cwu-form";
@@ -123,10 +122,6 @@ const WEIGHT_WORDS: Readonly<Record<OtherProgram, Readonly<Record<string, { labe
 };
 
 const currency = { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 } as const;
-
-// A bordered group of fields: the card's border and padding, with the fieldset's own margin removed.
-const group = { ...card, margin: "var(--layout-margin-none)" } as const;
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
 
 const BLANK_QUESTION: QuestionEntry = { question: "", guideline: "", score: Number.NaN, minimumScore: Number.NaN, wordLimit: Number.NaN };
 const BLANK_RESOURCE: ResourceEntry = { serviceArea: "", targetAllocation: Number.NaN };
@@ -436,7 +431,7 @@ export function OtherProgramForm({
                 ))}
               </ul>
             ) : (
-              <Text elementType="p">The service could not save it. Nothing you entered has been lost. Try again.</Text>
+              <p className="op-text">The service could not save it. Nothing you entered has been lost. Try again.</p>
             )}
           </TitledAlert>
         </div>
@@ -449,548 +444,484 @@ export function OtherProgramForm({
         }}
       >
         <Stack gap="medium">
-          <section aria-labelledby="form-overview" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-overview">
-                Overview
-              </Heading>
-              <TextField
-                id="opp-title"
-                label="Title"
+          <Panel id="form-overview" title="Overview" level={H}>
+            <TextField
+              id="opp-title"
+              label="Title"
+              isRequired
+              isReadOnly={readOnly}
+              description={`Up to ${TITLE_MAX} characters.`}
+              value={values.title}
+              onChange={(value) => change("title", value)}
+              {...invalid("title")}
+              data-testid="opportunity-title-field"
+            />
+            <TextArea
+              id="opp-teaser"
+              label="Teaser (optional)"
+              isReadOnly={readOnly}
+              description={`A sentence or two shown in the opportunity list. Up to ${TEASER_MAX} characters.`}
+              value={values.teaser}
+              onChange={(value) => change("teaser", value)}
+              {...invalid("teaser")}
+              data-testid="opportunity-teaser-field"
+            />
+            <TextField
+              id="opp-location"
+              label="Location"
+              isRequired
+              isReadOnly={readOnly}
+              value={values.location}
+              onChange={(value) => change("location", value)}
+              {...invalid("location")}
+              data-testid="opportunity-location-field"
+            />
+            <RadioGroup
+              id="opp-remote"
+              label="Is remote work acceptable?"
+              isRequired
+              isReadOnly={readOnly}
+              value={values.remoteOk ? "yes" : "no"}
+              onChange={(value) => change("remoteOk", value === "yes")}
+              {...invalid("remoteOk")}
+              data-testid="opportunity-remote-field"
+            >
+              <Radio value="yes">Yes</Radio>
+              <Radio value="no">No</Radio>
+            </RadioGroup>
+            <TextArea
+              id="opp-remote-description"
+              label="Remote work description"
+              isRequired={values.remoteOk}
+              isReadOnly={readOnly}
+              description={`Say what remote work involves. Required when remote work is acceptable. Up to ${REMOTE_DESC_MAX} characters.`}
+              value={values.remoteDesc}
+              onChange={(value) => change("remoteDesc", value)}
+              {...invalid("remoteDesc")}
+              data-testid="opportunity-remote-description-field"
+            />
+          </Panel>
+          <Panel id="form-budget" title={words.budgetHeading} level={H}>
+            <NumberField
+              id="opp-budget"
+              label={words.budget}
+              isRequired
+              isReadOnly={readOnly}
+              description={words.budgetRule}
+              formatOptions={currency}
+              value={values.budget}
+              onChange={(value) => change("budget", value)}
+              {...invalid(PROGRAM_TERMS[program].budgetKey)}
+              data-testid="opportunity-budget-field"
+            />
+            <p className="op-note">
+              What the service commits to, and what it asks of you, is set out in the{" "}
+              <Link href="/content/service-level-agreement" data-testid="service-level-agreement-link">
+                service level agreement
+              </Link>
+              .
+            </p>
+            {sprint ? (
+              <Select
+                id="opp-skills"
+                label="Skills"
+                selectionMode="multiple"
                 isRequired
-                isReadOnly={readOnly}
-                description={`Up to ${TITLE_MAX} characters.`}
-                value={values.title}
-                onChange={(value) => change("title", value)}
-                {...invalid("title")}
-                data-testid="opportunity-title-field"
+                isDisabled={readOnly}
+                description="Choose at least one skill."
+                items={[...new Set([...CWU_SKILLS, ...values.skills])].map((skill) => ({ id: skill, label: skill }))}
+                value={values.skills}
+                onChange={(keys) => change("skills", (keys as readonly (string | number)[]).map(String))}
+                {...invalid("mandatorySkills")}
+                data-testid="opportunity-skills-field"
               />
-              <TextArea
-                id="opp-teaser"
-                label="Teaser (optional)"
-                isReadOnly={readOnly}
-                description={`A sentence or two shown in the opportunity list. Up to ${TEASER_MAX} characters.`}
-                value={values.teaser}
-                onChange={(value) => change("teaser", value)}
-                {...invalid("teaser")}
-                data-testid="opportunity-teaser-field"
-              />
-              <TextField
-                id="opp-location"
-                label="Location"
-                isRequired
-                isReadOnly={readOnly}
-                value={values.location}
-                onChange={(value) => change("location", value)}
-                {...invalid("location")}
-                data-testid="opportunity-location-field"
-              />
-              <RadioGroup
-                id="opp-remote"
-                label="Is remote work acceptable?"
-                isRequired
-                isReadOnly={readOnly}
-                value={values.remoteOk ? "yes" : "no"}
-                onChange={(value) => change("remoteOk", value === "yes")}
-                {...invalid("remoteOk")}
-                data-testid="opportunity-remote-field"
-              >
-                <Radio value="yes">Yes</Radio>
-                <Radio value="no">No</Radio>
-              </RadioGroup>
-              <TextArea
-                id="opp-remote-description"
-                label="Remote work description"
-                isRequired={values.remoteOk}
-                isReadOnly={readOnly}
-                description={`Say what remote work involves. Required when remote work is acceptable. Up to ${REMOTE_DESC_MAX} characters.`}
-                value={values.remoteDesc}
-                onChange={(value) => change("remoteDesc", value)}
-                {...invalid("remoteDesc")}
-                data-testid="opportunity-remote-description-field"
-              />
-            </Stack>
-          </section>
-          <section aria-labelledby="form-budget" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-budget">
-                {words.budgetHeading}
-              </Heading>
-              <NumberField
-                id="opp-budget"
-                label={words.budget}
-                isRequired
-                isReadOnly={readOnly}
-                description={words.budgetRule}
-                formatOptions={currency}
-                value={values.budget}
-                onChange={(value) => change("budget", value)}
-                {...invalid(PROGRAM_TERMS[program].budgetKey)}
-                data-testid="opportunity-budget-field"
-              />
-              <Text elementType="p">
-                What the service commits to, and what it asks of you, is set out in the{" "}
-                <Link href="/content/service-level-agreement" data-testid="service-level-agreement-link">
-                  service level agreement
-                </Link>
-                .
-              </Text>
-              {sprint ? (
-                <Select
-                  id="opp-skills"
-                  label="Skills"
-                  selectionMode="multiple"
-                  isRequired
-                  isDisabled={readOnly}
-                  description="Choose at least one skill."
-                  items={[...new Set([...CWU_SKILLS, ...values.skills])].map((skill) => ({ id: skill, label: skill }))}
-                  value={values.skills}
-                  onChange={(keys) => change("skills", (keys as readonly (string | number)[]).map(String))}
-                  {...invalid("mandatorySkills")}
-                  data-testid="opportunity-skills-field"
-                />
-              ) : null}
-            </Stack>
-          </section>
-          <section aria-labelledby="form-description" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-description">
-                Description
-              </Heading>
-              <TextArea
-                id="opp-description"
-                label="Description"
-                isRequired
-                isReadOnly={readOnly}
-                description={`Formatted text, up to ${DESCRIPTION_MAX.toLocaleString("en-CA")} characters.`}
-                value={values.description}
-                onChange={(value) => change("description", value)}
-                {...invalid("description")}
-                data-testid="opportunity-description-field"
-              />
-            </Stack>
-          </section>
-          <section aria-labelledby="form-dates" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-dates">
-                Key dates
-              </Heading>
-              <Text elementType="p">Each date must fall on or after the one before it.</Text>
-              {dayField(
-                "proposalDeadline",
-                "opp-deadline",
-                "Proposal deadline",
-                "Proposals close at 4:00 p.m. Pacific time on this day. It cannot be before today.",
-                "opportunity-deadline-field",
-              )}
-              {dayField("assignmentDate", "opp-assignment", "Assignment date", "On or after the proposal deadline.", "opportunity-assignment-date-field")}
-              {sprint ? null : (
-                <>
-                  {dayField("startDate", "opp-start", "Start date", "On or after the assignment date.", "opportunity-start-date-field")}
-                  {dayField(
-                    "completionDate",
-                    "opp-completion",
-                    "Completion date (optional)",
-                    "On or after the start date.",
-                    "opportunity-completion-date-field",
-                    false,
-                  )}
-                </>
-              )}
-            </Stack>
-          </section>
-          {sprint ? (
-            <section aria-labelledby="form-phases" style={card}>
-              <Stack gap="medium">
-                <Heading level={H} id="form-phases">
-                  Phases
-                </Heading>
-                <Text elementType="p">
-                  Every Sprint With Us opportunity has an implementation phase. An inception phase can be added only together with a
-                  prototype phase.
-                </Text>
-                {PHASE_ORDER.map((phase) => {
-                  const entry = values.phases[phase];
-                  if (!entry) return null;
-                  const name = SWU_PHASE_NAMES[phase];
-                  const key = phase.toLowerCase();
-                  return (
-                    <fieldset key={phase} style={group} aria-describedby={phaseProblems.length > 0 ? "opp-phases-error" : undefined}>
-                      <legend style={legend}>{`${name} phase`}</legend>
-                      <Stack gap="medium">
-                        <TextField
-                          id={`opp-${key}-start`}
-                          type="date"
-                          label="Start date"
-                          isRequired
-                          isReadOnly={readOnly}
-                          value={entry.startDate}
-                          onChange={(value) => setPhase(phase, { ...entry, startDate: value })}
-                          {...invalid(`${PHASE_KEYS[phase]}.startDate`)}
-                          data-testid="phase-start-date-field"
-                        />
-                        <TextField
-                          id={`opp-${key}-completion`}
-                          type="date"
-                          label="Completion date"
-                          isRequired
-                          isReadOnly={readOnly}
-                          value={entry.completionDate}
-                          onChange={(value) => setPhase(phase, { ...entry, completionDate: value })}
-                          {...invalid(`${PHASE_KEYS[phase]}.completionDate`)}
-                          data-testid="phase-completion-date-field"
-                        />
-                        <NumberField
-                          id={`opp-${key}-budget`}
-                          label="Maximum budget"
-                          isReadOnly={readOnly}
-                          description={
-                            phase === "IMPLEMENTATION"
-                              ? "What this phase may cost at most. Left blank, it is what the other phases leave of the total."
-                              : "What this phase may cost at most. Part of the total maximum budget."
-                          }
-                          formatOptions={currency}
-                          value={entry.maxBudget}
-                          onChange={(value) => setPhase(phase, { ...entry, maxBudget: value })}
-                          {...invalid(`${PHASE_KEYS[phase]}.maxBudget`)}
-                          data-testid="phase-max-budget-field"
-                        />
-                        <CheckboxGroup
-                          id={`opp-${key}-capabilities`}
-                          label="Required capabilities"
-                          description="What the team on this phase must hold between them."
-                          isDisabled={readOnly}
-                          value={[...entry.requiredCapabilities]}
-                          onChange={(chosen) => setPhase(phase, { ...entry, requiredCapabilities: chosen })}
-                          data-testid="phase-capabilities-field"
-                        >
-                          {[...new Set([...CAPABILITIES.map((capability) => capability.name), ...entry.requiredCapabilities])].map((name) => (
-                            <Checkbox key={name} value={name}>
-                              {name}
-                            </Checkbox>
-                          ))}
-                        </CheckboxGroup>
-                        {phase === "IMPLEMENTATION" || readOnly ? null : (
-                          <div>
-                            <Button variant="tertiary" size="small" onPress={() => setPhase(phase, null)}>
-                              {`Remove ${name.toLowerCase()} phase`}
-                            </Button>
-                          </div>
-                        )}
-                      </Stack>
-                    </fieldset>
-                  );
-                })}
-                {phaseProblems.length > 0 ? (
-                  <Text elementType="p" color="danger" id="opp-phases-error">
-                    {phaseProblems.map((problem) => problem.message).join(" ")}
-                  </Text>
-                ) : null}
-                {!readOnly && ADDABLE_PHASES.some((phase) => !values.phases[phase]) ? (
-                  <Stack direction="row" align="end" gap="medium">
-                    {ADDABLE_PHASES.filter((phase) => !values.phases[phase]).map((phase) => (
-                      <Button key={phase} variant="secondary" onPress={() => setPhase(phase, BLANK_PHASE)} data-testid="add-phase-button">
-                        {`Add ${phase === "INCEPTION" ? "an inception" : "a prototype"} phase`}
-                      </Button>
-                    ))}
-                  </Stack>
-                ) : null}
-              </Stack>
-            </section>
-          ) : (
-            <section aria-labelledby="form-resources-heading" style={card} id="form-resources">
-              <Stack gap="medium">
-                <Heading level={H} id="form-resources-heading">
-                  Resources
-                </Heading>
-                <Text elementType="p">Each resource names one service area and how much of a full-time week it needs.</Text>
-                {problemFor("resources") ? (
-                  <Text elementType="p" color="danger">
-                    {problemFor("resources")}
-                  </Text>
-                ) : null}
-                {values.resources.map((resource, index) => {
-                  const number = index + 1;
-                  return (
-                    <fieldset key={index} style={group}>
-                      <legend style={legend}>{`Resource ${number}`}</legend>
-                      <Stack gap="medium">
-                        <Select
-                          id={`opp-resource-${number}-area`}
-                          label="Service area"
-                          isRequired
-                          isDisabled={readOnly}
-                          items={SERVICE_AREAS.map((area) => ({ id: area.key, label: area.name }))}
-                          value={resource.serviceArea === "" ? null : resource.serviceArea}
-                          onChange={(key) => change("resources", changeAt(values.resources, index, { serviceArea: key === null ? "" : String(key) }))}
-                          {...invalid(`resources.${number}.serviceArea`)}
-                          data-testid="resource-service-area-field"
-                        />
-                        <NumberField
-                          id={`opp-resource-${number}-allocation`}
-                          label="Target allocation (% of full time)"
-                          isRequired
-                          isReadOnly={readOnly}
-                          description="Between 1 and 100."
-                          value={resource.targetAllocation}
-                          onChange={(value) => change("resources", changeAt(values.resources, index, { targetAllocation: value }))}
-                          {...invalid(`resources.${number}.targetAllocation`)}
-                          data-testid="resource-allocation-field"
-                        />
-                        {readOnly ? null : (
-                          <div>
-                            <Button
-                              variant="tertiary"
-                              size="small"
-                              onPress={() => change("resources", values.resources.filter((_, at) => at !== index))}
-                            >
-                              {`Remove resource ${number}`}
-                            </Button>
-                          </div>
-                        )}
-                      </Stack>
-                    </fieldset>
-                  );
-                })}
-                {readOnly ? null : (
-                  <div>
-                    <Button
-                      variant="secondary"
-                      isDisabled={values.resources.length >= LIST_MAX}
-                      onPress={() => change("resources", [...values.resources, BLANK_RESOURCE])}
-                      data-testid="add-resource-button"
-                    >
-                      Add a resource
-                    </Button>
-                  </div>
+            ) : null}
+          </Panel>
+          <Panel id="form-description" title="Description" level={H}>
+            <TextArea
+              id="opp-description"
+              label="Description"
+              isRequired
+              isReadOnly={readOnly}
+              description={`Formatted text, up to ${DESCRIPTION_MAX.toLocaleString("en-CA")} characters.`}
+              value={values.description}
+              onChange={(value) => change("description", value)}
+              {...invalid("description")}
+              data-testid="opportunity-description-field"
+            />
+          </Panel>
+          <Panel id="form-dates" title="Key dates" level={H}>
+            <p className="op-text">Each date must fall on or after the one before it.</p>
+            {dayField(
+              "proposalDeadline",
+              "opp-deadline",
+              "Proposal deadline",
+              "Proposals close at 4:00 p.m. Pacific time on this day. It cannot be before today.",
+              "opportunity-deadline-field",
+            )}
+            {dayField("assignmentDate", "opp-assignment", "Assignment date", "On or after the proposal deadline.", "opportunity-assignment-date-field")}
+            {sprint ? null : (
+              <>
+                {dayField("startDate", "opp-start", "Start date", "On or after the assignment date.", "opportunity-start-date-field")}
+                {dayField(
+                  "completionDate",
+                  "opp-completion",
+                  "Completion date (optional)",
+                  "On or after the start date.",
+                  "opportunity-completion-date-field",
+                  false,
                 )}
-              </Stack>
-            </section>
-          )}
-          <section aria-labelledby={words.questionsId} style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id={words.questionsId}>
-                {words.questionsHeading}
-              </Heading>
-              <Text elementType="p">{`Questions are numbered in the order they appear here. You can add up to ${QUESTIONS_MAX}.`}</Text>
-              {problemFor(PROGRAM_TERMS[program].questionsKey) ? (
-                <Text elementType="p" color="danger">
-                  {problemFor(PROGRAM_TERMS[program].questionsKey)}
+              </>
+            )}
+          </Panel>
+          {sprint ? (
+            <Panel id="form-phases" title="Phases" level={H}>
+              <p className="op-text">
+                Every Sprint With Us opportunity has an implementation phase. An inception phase can be added only together with a
+                prototype phase.
+              </p>
+              {PHASE_ORDER.map((phase) => {
+                const entry = values.phases[phase];
+                if (!entry) return null;
+                const name = SWU_PHASE_NAMES[phase];
+                const key = phase.toLowerCase();
+                return (
+                  <Fieldset key={phase} legend={`${name} phase`} describedBy={phaseProblems.length > 0 ? "opp-phases-error" : undefined}>
+                    <TextField
+                      id={`opp-${key}-start`}
+                      type="date"
+                      label="Start date"
+                      isRequired
+                      isReadOnly={readOnly}
+                      value={entry.startDate}
+                      onChange={(value) => setPhase(phase, { ...entry, startDate: value })}
+                      {...invalid(`${PHASE_KEYS[phase]}.startDate`)}
+                      data-testid="phase-start-date-field"
+                    />
+                    <TextField
+                      id={`opp-${key}-completion`}
+                      type="date"
+                      label="Completion date"
+                      isRequired
+                      isReadOnly={readOnly}
+                      value={entry.completionDate}
+                      onChange={(value) => setPhase(phase, { ...entry, completionDate: value })}
+                      {...invalid(`${PHASE_KEYS[phase]}.completionDate`)}
+                      data-testid="phase-completion-date-field"
+                    />
+                    <NumberField
+                      id={`opp-${key}-budget`}
+                      label="Maximum budget"
+                      isReadOnly={readOnly}
+                      description={
+                        phase === "IMPLEMENTATION"
+                          ? "What this phase may cost at most. Left blank, it is what the other phases leave of the total."
+                          : "What this phase may cost at most. Part of the total maximum budget."
+                      }
+                      formatOptions={currency}
+                      value={entry.maxBudget}
+                      onChange={(value) => setPhase(phase, { ...entry, maxBudget: value })}
+                      {...invalid(`${PHASE_KEYS[phase]}.maxBudget`)}
+                      data-testid="phase-max-budget-field"
+                    />
+                    <CheckboxGroup
+                      id={`opp-${key}-capabilities`}
+                      label="Required capabilities"
+                      description="What the team on this phase must hold between them."
+                      isDisabled={readOnly}
+                      value={[...entry.requiredCapabilities]}
+                      onChange={(chosen) => setPhase(phase, { ...entry, requiredCapabilities: chosen })}
+                      data-testid="phase-capabilities-field"
+                    >
+                      {[...new Set([...CAPABILITIES.map((capability) => capability.name), ...entry.requiredCapabilities])].map((name) => (
+                        <Checkbox key={name} value={name}>
+                          {name}
+                        </Checkbox>
+                      ))}
+                    </CheckboxGroup>
+                    {phase === "IMPLEMENTATION" || readOnly ? null : (
+                      <Actions>
+                        <Button variant="tertiary" size="small" onPress={() => setPhase(phase, null)}>
+                          {`Remove ${name.toLowerCase()} phase`}
+                        </Button>
+                      </Actions>
+                    )}
+                  </Fieldset>
+                );
+              })}
+              {phaseProblems.length > 0 ? (
+                <Text elementType="p" color="danger" id="opp-phases-error">
+                  {phaseProblems.map((problem) => problem.message).join(" ")}
                 </Text>
               ) : null}
-              {values.questions.map((question, index) => {
+              {!readOnly && ADDABLE_PHASES.some((phase) => !values.phases[phase]) ? (
+                <Actions>
+                  {ADDABLE_PHASES.filter((phase) => !values.phases[phase]).map((phase) => (
+                    <Button key={phase} variant="secondary" onPress={() => setPhase(phase, BLANK_PHASE)} data-testid="add-phase-button">
+                      {`Add ${phase === "INCEPTION" ? "an inception" : "a prototype"} phase`}
+                    </Button>
+                  ))}
+                </Actions>
+              ) : null}
+            </Panel>
+          ) : (
+            <Panel id="form-resources" title="Resources" level={H}>
+              <p className="op-text">Each resource names one service area and how much of a full-time week it needs.</p>
+              {problemFor("resources") ? (
+                <Text elementType="p" color="danger">
+                  {problemFor("resources")}
+                </Text>
+              ) : null}
+              {values.resources.map((resource, index) => {
                 const number = index + 1;
-                const field = `${PROGRAM_TERMS[program].questionsKey}.${number}`;
-                const set = (patch: Partial<QuestionEntry>) => change("questions", changeAt(values.questions, index, patch));
                 return (
-                  <fieldset key={index} style={group} data-testid="evaluation-question">
-                    <legend style={legend}>{`Question ${number}`}</legend>
-                    <Stack gap="medium">
-                      <TextArea
-                        id={`opp-question-${number}`}
-                        label="Question"
-                        isRequired
-                        isReadOnly={readOnly}
-                        description="Up to 1,000 characters."
-                        value={question.question}
-                        onChange={(value) => set({ question: value })}
-                        {...invalid(`${field}.question`)}
-                        data-testid="question-text-field"
-                      />
-                      <TextArea
-                        id={`opp-question-${number}-guideline`}
-                        label="Guideline for evaluators"
-                        isRequired
-                        isReadOnly={readOnly}
-                        description="What a strong answer covers. Up to 1,000 characters."
-                        value={question.guideline}
-                        onChange={(value) => set({ guideline: value })}
-                        {...invalid(`${field}.guideline`)}
-                        data-testid="question-guideline-field"
-                      />
-                      <NumberField
-                        id={`opp-question-${number}-score`}
-                        label="Maximum score"
-                        isRequired
-                        isReadOnly={readOnly}
-                        description="At least 1."
-                        value={question.score}
-                        onChange={(value) => set({ score: value })}
-                        {...invalid(`${field}.score`)}
-                        data-testid="question-score-field"
-                      />
-                      <NumberField
-                        id={`opp-question-${number}-minimum`}
-                        label="Minimum score (optional)"
-                        isReadOnly={readOnly}
-                        description="Lower than the maximum score."
-                        value={question.minimumScore}
-                        onChange={(value) => set({ minimumScore: value })}
-                        {...invalid(`${field}.minimumScore`)}
-                        data-testid="question-minimum-score-field"
-                      />
-                      <NumberField
-                        id={`opp-question-${number}-word-limit`}
-                        label="Response word limit"
-                        isRequired
-                        isReadOnly={readOnly}
-                        description="Between 1 and 3,000 words."
-                        value={question.wordLimit}
-                        onChange={(value) => set({ wordLimit: value })}
-                        {...invalid(`${field}.wordLimit`)}
-                        data-testid="question-word-limit-field"
-                      />
-                      {readOnly ? null : (
-                        <div>
-                          <Button
-                            variant="tertiary"
-                            size="small"
-                            onPress={() => change("questions", values.questions.filter((_, at) => at !== index))}
-                          >
-                            {`Remove question ${number}`}
-                          </Button>
-                        </div>
-                      )}
-                    </Stack>
-                  </fieldset>
+                  <Fieldset key={index} legend={`Resource ${number}`}>
+                    <Select
+                      id={`opp-resource-${number}-area`}
+                      label="Service area"
+                      isRequired
+                      isDisabled={readOnly}
+                      items={SERVICE_AREAS.map((area) => ({ id: area.key, label: area.name }))}
+                      value={resource.serviceArea === "" ? null : resource.serviceArea}
+                      onChange={(key) => change("resources", changeAt(values.resources, index, { serviceArea: key === null ? "" : String(key) }))}
+                      {...invalid(`resources.${number}.serviceArea`)}
+                      data-testid="resource-service-area-field"
+                    />
+                    <NumberField
+                      id={`opp-resource-${number}-allocation`}
+                      label="Target allocation (% of full time)"
+                      isRequired
+                      isReadOnly={readOnly}
+                      description="Between 1 and 100."
+                      value={resource.targetAllocation}
+                      onChange={(value) => change("resources", changeAt(values.resources, index, { targetAllocation: value }))}
+                      {...invalid(`resources.${number}.targetAllocation`)}
+                      data-testid="resource-allocation-field"
+                    />
+                    {readOnly ? null : (
+                      <Actions>
+                        <Button
+                          variant="tertiary"
+                          size="small"
+                          onPress={() => change("resources", values.resources.filter((_, at) => at !== index))}
+                        >
+                          {`Remove resource ${number}`}
+                        </Button>
+                      </Actions>
+                    )}
+                  </Fieldset>
                 );
               })}
               {readOnly ? null : (
-                <div>
+                <Actions>
                   <Button
                     variant="secondary"
-                    isDisabled={values.questions.length >= QUESTIONS_MAX}
-                    onPress={() => change("questions", [...values.questions, BLANK_QUESTION])}
-                    data-testid={words.addQuestionTestId}
+                    isDisabled={values.resources.length >= LIST_MAX}
+                    onPress={() => change("resources", [...values.resources, BLANK_RESOURCE])}
+                    data-testid="add-resource-button"
                   >
-                    {words.addQuestion}
+                    Add a resource
                   </Button>
-                </div>
+                </Actions>
               )}
+            </Panel>
+          )}
+          <Panel id={words.questionsId} title={words.questionsHeading} level={H}>
+            <p className="op-text">{`Questions are numbered in the order they appear here. You can add up to ${QUESTIONS_MAX}.`}</p>
+            {problemFor(PROGRAM_TERMS[program].questionsKey) ? (
+              <Text elementType="p" color="danger">
+                {problemFor(PROGRAM_TERMS[program].questionsKey)}
+              </Text>
+            ) : null}
+            {values.questions.map((question, index) => {
+              const number = index + 1;
+              const field = `${PROGRAM_TERMS[program].questionsKey}.${number}`;
+              const set = (patch: Partial<QuestionEntry>) => change("questions", changeAt(values.questions, index, patch));
+              return (
+                <Fieldset key={index} legend={`Question ${number}`} testId="evaluation-question">
+                  <TextArea
+                    id={`opp-question-${number}`}
+                    label="Question"
+                    isRequired
+                    isReadOnly={readOnly}
+                    description="Up to 1,000 characters."
+                    value={question.question}
+                    onChange={(value) => set({ question: value })}
+                    {...invalid(`${field}.question`)}
+                    data-testid="question-text-field"
+                  />
+                  <TextArea
+                    id={`opp-question-${number}-guideline`}
+                    label="Guideline for evaluators"
+                    isRequired
+                    isReadOnly={readOnly}
+                    description="What a strong answer covers. Up to 1,000 characters."
+                    value={question.guideline}
+                    onChange={(value) => set({ guideline: value })}
+                    {...invalid(`${field}.guideline`)}
+                    data-testid="question-guideline-field"
+                  />
+                  <NumberField
+                    id={`opp-question-${number}-score`}
+                    label="Maximum score"
+                    isRequired
+                    isReadOnly={readOnly}
+                    description="At least 1."
+                    value={question.score}
+                    onChange={(value) => set({ score: value })}
+                    {...invalid(`${field}.score`)}
+                    data-testid="question-score-field"
+                  />
+                  <NumberField
+                    id={`opp-question-${number}-minimum`}
+                    label="Minimum score (optional)"
+                    isReadOnly={readOnly}
+                    description="Lower than the maximum score."
+                    value={question.minimumScore}
+                    onChange={(value) => set({ minimumScore: value })}
+                    {...invalid(`${field}.minimumScore`)}
+                    data-testid="question-minimum-score-field"
+                  />
+                  <NumberField
+                    id={`opp-question-${number}-word-limit`}
+                    label="Response word limit"
+                    isRequired
+                    isReadOnly={readOnly}
+                    description="Between 1 and 3,000 words."
+                    value={question.wordLimit}
+                    onChange={(value) => set({ wordLimit: value })}
+                    {...invalid(`${field}.wordLimit`)}
+                    data-testid="question-word-limit-field"
+                  />
+                  {readOnly ? null : (
+                    <Actions>
+                      <Button
+                        variant="tertiary"
+                        size="small"
+                        onPress={() => change("questions", values.questions.filter((_, at) => at !== index))}
+                      >
+                        {`Remove question ${number}`}
+                      </Button>
+                    </Actions>
+                  )}
+                </Fieldset>
+              );
+            })}
+            {readOnly ? null : (
+              <Actions>
+                <Button
+                  variant="secondary"
+                  isDisabled={values.questions.length >= QUESTIONS_MAX}
+                  onPress={() => change("questions", [...values.questions, BLANK_QUESTION])}
+                  data-testid={words.addQuestionTestId}
+                >
+                  {words.addQuestion}
+                </Button>
+              </Actions>
+            )}
+          </Panel>
+          <Panel id="form-weights" title="Scoring weights" level={H}>
+            <p className="op-text">{words.weightRule}</p>
+            <Stack direction="row" align="end" gap="medium">
+              {WEIGHT_FIELDS[program].map((field) => {
+                const weight = WEIGHT_WORDS[program][field] as { label: string; id: string };
+                return (
+                  <NumberField
+                    key={field}
+                    id={weight.id}
+                    label={weight.label}
+                    isRequired
+                    isReadOnly={readOnly}
+                    description="0 to 100."
+                    value={values.weights[field] ?? Number.NaN}
+                    onChange={(value) => change("weights", { ...values.weights, [field]: value })}
+                    {...invalid(WEIGHT_KEYS[field])}
+                    aria-describedby="opp-weights-error"
+                    data-testid="score-weight-field"
+                  />
+                );
+              })}
             </Stack>
-          </section>
-          <section aria-labelledby="form-weights" style={card}>
-            <Stack gap="medium">
-              <Heading level={H} id="form-weights">
-                Scoring weights
-              </Heading>
-              <Text elementType="p">{words.weightRule}</Text>
-              <Stack direction="row" align="end" gap="medium">
-                {WEIGHT_FIELDS[program].map((field) => {
-                  const weight = WEIGHT_WORDS[program][field] as { label: string; id: string };
+            <p className="op-text" role="status">{`Total: ${total}%`}</p>
+            {(weightsEntered && total !== 100) || weightProblem ? (
+              <Text elementType="p" color="danger" id="opp-weights-error" data-testid="score-weight-error">
+                The scoring weights must total 100%.
+              </Text>
+            ) : null}
+          </Panel>
+          {creating ? (
+            <Panel id="form-panel" title="Evaluation panel" level={H}>
+              <Stack gap="medium" data-testid="evaluation-panel-editor">
+                <p className="op-text">
+                  Name at least two public sector employees and mark exactly one of them as chair. The panel can be changed until the
+                  consensus stage begins.
+                </p>
+                {values.panel.map((member, index) => {
+                  const number = index + 1;
+                  const set = (patch: Partial<PanelEntry>) => change("panel", changeAt(values.panel, index, patch));
+                  const problem = memberProblem(number);
                   return (
-                    <NumberField
-                      key={field}
-                      id={weight.id}
-                      label={weight.label}
-                      isRequired
-                      isReadOnly={readOnly}
-                      description="0 to 100."
-                      value={values.weights[field] ?? Number.NaN}
-                      onChange={(value) => change("weights", { ...values.weights, [field]: value })}
-                      {...invalid(WEIGHT_KEYS[field])}
-                      aria-describedby="opp-weights-error"
-                      data-testid="score-weight-field"
-                    />
+                    <Fieldset key={index} legend={`Panel member ${number}`} id={`panel-member-${number}`} testId="evaluation-panel-member-row">
+                      <Select
+                        label="Public sector employee"
+                        isRequired
+                        items={[...candidates]}
+                        value={member.user === "" ? null : member.user}
+                        onChange={(key) => set({ user: key === null ? "" : String(key) })}
+                        isInvalid={problem !== ""}
+                        errorMessage={problem || undefined}
+                        data-testid="evaluation-panel-member-field"
+                      />
+                      <Checkbox isSelected={member.evaluator} onChange={(evaluator) => set({ evaluator })}>
+                        Evaluator
+                      </Checkbox>
+                      <Checkbox
+                        isSelected={member.chair}
+                        onChange={(chair) => set({ chair })}
+                        aria-label={`Chair: panel member ${number}`}
+                        data-testid="evaluation-panel-member-chair"
+                      >
+                        Chair
+                      </Checkbox>
+                      <Actions>
+                        <Button
+                          variant="tertiary"
+                          size="small"
+                          onPress={() => change("panel", values.panel.filter((_, at) => at !== index))}
+                          data-testid="evaluation-panel-remove-member"
+                        >
+                          {`Remove panel member ${number}`}
+                        </Button>
+                      </Actions>
+                    </Fieldset>
                   );
                 })}
-              </Stack>
-              <div role="status">
-                <Text elementType="p">{`Total: ${total}%`}</Text>
-              </div>
-              {(weightsEntered && total !== 100) || weightProblem ? (
-                <Text elementType="p" color="danger" id="opp-weights-error" data-testid="score-weight-error">
-                  The scoring weights must total 100%.
-                </Text>
-              ) : null}
-            </Stack>
-          </section>
-          {creating ? (
-            <section aria-labelledby="form-panel-heading" style={card} id="form-panel">
-              <Stack gap="medium">
-                <Heading level={H} id="form-panel-heading">
-                  Evaluation panel
-                </Heading>
-                <Stack gap="medium" data-testid="evaluation-panel-editor">
-                  <Text elementType="p">
-                    Name at least two public sector employees and mark exactly one of them as chair. The panel can be changed until the
-                    consensus stage begins.
+                {panelGroupProblems.length > 0 ? (
+                  <Text elementType="p" color="danger">
+                    {panelGroupProblems.map((problem) => problem.message).join(" ")}
                   </Text>
-                  {values.panel.map((member, index) => {
-                    const number = index + 1;
-                    const set = (patch: Partial<PanelEntry>) => change("panel", changeAt(values.panel, index, patch));
-                    const problem = memberProblem(number);
-                    return (
-                      <fieldset key={index} style={group} id={`panel-member-${number}`} data-testid="evaluation-panel-member-row">
-                        <legend style={legend}>{`Panel member ${number}`}</legend>
-                        <Stack gap="medium">
-                          <Select
-                            label="Public sector employee"
-                            isRequired
-                            items={[...candidates]}
-                            value={member.user === "" ? null : member.user}
-                            onChange={(key) => set({ user: key === null ? "" : String(key) })}
-                            isInvalid={problem !== ""}
-                            errorMessage={problem || undefined}
-                            data-testid="evaluation-panel-member-field"
-                          />
-                          <Checkbox isSelected={member.evaluator} onChange={(evaluator) => set({ evaluator })}>
-                            Evaluator
-                          </Checkbox>
-                          <Checkbox
-                            isSelected={member.chair}
-                            onChange={(chair) => set({ chair })}
-                            aria-label={`Chair: panel member ${number}`}
-                            data-testid="evaluation-panel-member-chair"
-                          >
-                            Chair
-                          </Checkbox>
-                          <div>
-                            <Button
-                              variant="tertiary"
-                              size="small"
-                              onPress={() => change("panel", values.panel.filter((_, at) => at !== index))}
-                              data-testid="evaluation-panel-remove-member"
-                            >
-                              {`Remove panel member ${number}`}
-                            </Button>
-                          </div>
-                        </Stack>
-                      </fieldset>
-                    );
-                  })}
-                  {panelGroupProblems.length > 0 ? (
-                    <Text elementType="p" color="danger">
-                      {panelGroupProblems.map((problem) => problem.message).join(" ")}
-                    </Text>
-                  ) : null}
-                  <div>
-                    <Button
-                      variant="secondary"
-                      isDisabled={values.panel.length >= LIST_MAX}
-                      onPress={() => change("panel", [...values.panel, BLANK_MEMBER])}
-                      data-testid="evaluation-panel-add-member"
-                    >
-                      Add a panel member
-                    </Button>
-                  </div>
-                </Stack>
+                ) : null}
+                <Actions>
+                  <Button
+                    variant="secondary"
+                    isDisabled={values.panel.length >= LIST_MAX}
+                    onPress={() => change("panel", [...values.panel, BLANK_MEMBER])}
+                    data-testid="evaluation-panel-add-member"
+                  >
+                    Add a panel member
+                  </Button>
+                </Actions>
               </Stack>
-            </section>
+            </Panel>
           ) : null}
           {readOnly ? (
-            <section aria-labelledby="form-attachments" style={card}>
-              <Stack gap="medium">
-                <Heading level={H} id="form-attachments">
-                  Attachments
-                </Heading>
-                {initialAttachments.length > 0 ? (
-                  <AttachmentList attachments={initialAttachments} heading={false} />
-                ) : (
-                  <Text elementType="p">No attachments have been added.</Text>
-                )}
-              </Stack>
-            </section>
+            <Panel id="form-attachments" title="Attachments" level={H}>
+              {initialAttachments.length > 0 ? (
+                <AttachmentList attachments={initialAttachments} heading={false} />
+              ) : (
+                <p className="op-text">No attachments have been added.</p>
+              )}
+            </Panel>
           ) : (
             <AttachmentControl state={attachments} headingLevel={H} saved={!creating} />
           )}

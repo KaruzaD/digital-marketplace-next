@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:tech-lead
+held_by: agent
+rationale: |2-
+  The question is whether the new adapter binds the opportunity list's groups as the application draws them. Both untaken requests from build-slice-8-13 trace to one cause, which the reviewer's evidence established (R-1.3.txt, R-1.3-2.txt, R-1.38.txt): staff and administrators see group headings that carry a count ('Open Opportunities 3', 'Open Opportunities 5'), and the fully anchored OPPORTUNITY_GROUPS patterns did not match them, so groupSection and the heading fallback found nothing and openGroup() returned ''. The diff is three regex edits adding an optional trailing count, plus a comment, all in tests/adapters/new/index.ts, which is exactly the change the evidence calls for and nothing beyond it. Reading opportunityGroup on the branch confirms the stage's claim that the rest of the reader already handles a count: an inline count is now removed by header.test(lines[0]), and a count on its own line by the /^\d+$/ shift. The anchors still exclude anything that is not a group heading, the bare 'Open'/'Closed' headings seen signed out still match, and opportunityStatus shares the patterns and benefits from the same fix. The escalation was triggered by the request-loop limit, not by any inability of the pipeline: each earlier round fixed a different fault, and this one fixes the last at its source. The typecheck passed. The stage did not run the tests or see the counted headings signed in, but the reviewer's evidence quotes those headings directly. This ruling would change if a slice-8 run showed openGroup() still reading '' under a counted heading, or rows starting with the count.
+conditions: []
+cost: 0.30250499999999997
+turns: 2
+session: "5308cd23-cf4f-4478-8cff-062692239765"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T00:46:26.189Z

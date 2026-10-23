@@ -113,9 +113,16 @@ export default function create(
   // A section of a screen by its name. The running build draws its forms' and pages'
   // sections as regions that carry no accessible name of their own, each under a level-2
   // heading ("Resources", "Evaluation panel", "Scope"), so a region is found by its name or,
-  // failing that, by the heading it holds.
-  const regionNamed = (scope: Page | Locator, name: RegExp): Locator =>
-    scope.getByRole("region", { name }).or(scope.getByRole("region").filter({ has: page.getByRole("heading", { name }) }));
+  // failing that, by the heading it holds. Some screens number the parts of a form
+  // ("1. Proponent", "3. Attachments") and others do not, so a name looked for from its start
+  // also matches after a leading part number. Only the anchor is widened: an unanchored name
+  // already matches anywhere, and the rest of the name is left exactly as it was.
+  const partNumbered = (name: RegExp): RegExp =>
+    name.source.startsWith("^") ? new RegExp(`^(?:\\s*\\d+[.)]\\s*)?${name.source.slice(1)}`, name.flags) : name;
+  const regionNamed = (scope: Page | Locator, wanted: RegExp): Locator => {
+    const name = partNumbered(wanted);
+    return scope.getByRole("region", { name }).or(scope.getByRole("region").filter({ has: page.getByRole("heading", { name }) }));
+  };
 
   async function settle(): Promise<void> {
     await page.waitForLoadState("domcontentloaded").catch(() => undefined);
@@ -176,13 +183,17 @@ export default function create(
     return lines.join("\n");
   }
 
-  // The site's footer: its links over "Owned and operated by the B.C. Government.", with no
-  // landmark role of its own. A footer drawn as a contentinfo landmark is taken first.
+  // The site's footer: the element carrying "site-footer", the contentinfo landmark, or, where
+  // the footer has neither, the
+  // block around "Owned and operated by the B.C. Government.". When the landmark holds that line
+  // in a small block of its own, both match; the outermost (first in document order) is the
+  // whole footer, links and all.
   function siteFooter(): Locator {
     return page
-      .getByRole("contentinfo")
+      .getByTestId("site-footer")
+      .or(page.getByRole("contentinfo"))
       .or(page.getByText("Owned and operated by the B.C. Government.", { exact: true }).locator("xpath=.."))
-      .last();
+      .first();
   }
 
   async function textLines(): Promise<string[]> {
@@ -223,6 +234,7 @@ export default function create(
   // Found" screen now, "Page not found" when this adapter was first written.
   async function notFoundShown(): Promise<boolean> {
     await ready();
+    if (await carried("not-found-page")) return true;
     return (
       (await seen(page.getByRole("heading", { name: /^\s*(page )?not found\s*$/i })).count()) > 0
     );
@@ -259,9 +271,88 @@ export default function create(
     return out;
   }
 
+  // ---------------------------------------------------------------- the contract's test IDs
+  //
+  // The rebuilt target marks the element each action and observation works on with the test
+  // ID spec/contract/surface.yaml gives it, and keeps that ID when a screen is drawn again
+  // with other words and another layout. So a member finds its element by test ID wherever
+  // the page carries it, and by role, label or words only where it does not. The test ID
+  // decides where to look and nothing else: what a member hands back is still the element's
+  // own words, in the form the old binding returns.
+
+  const byTestId = (id: string, scope: Scope = page): Locator => seen(scope.getByTestId(id));
+
+  // The elements carrying the ID, or null where the page carries none of them.
+  async function carried(id: string, scope: Scope = page): Promise<Locator | null> {
+    const found = byTestId(id, scope);
+    return (await found.count()) ? found : null;
+  }
+
+  // The words of every element carrying the ID, in page order, each trimmed.
+  async function testIdTexts(id: string, scope: Scope = page): Promise<string[]> {
+    return (await byTestId(id, scope).allInnerTexts().catch(() => [] as string[])).map((words) => words.trim());
+  }
+
+  // The lines of the first element carrying the ID, as textLines() reads the screen.
+  async function testIdLines(id: string, scope: Scope = page): Promise<string[]> {
+    const found = byTestId(id, scope).first();
+    return lined(await found.innerText().catch(() => ""));
+  }
+
+  // The words of the first element carrying the ID, or null where the page carries none.
+  async function testIdText(id: string, scope: Scope = page): Promise<string | null> {
+    const marked = await carried(id, scope);
+    return marked ? (await marked.first().innerText().catch(() => "")).trim() : null;
+  }
+
+  // A section's lines below its own heading: the section carries the test ID, and its first
+  // heading is left off, whatever it says.
+  async function sectionLines(section: Locator): Promise<string[]> {
+    const heading = seen(section.getByRole("heading")).first();
+    const named = (await heading.count()) ? lined(await heading.innerText().catch(() => "")) : [];
+    const lines = lined(await section.innerText().catch(() => ""));
+    return named.length && named.every((line, i) => lines[i] === line) ? lines.slice(named.length) : lines;
+  }
+
+  // The line each element carrying the ID is drawn in ("Closes June 1, 2030 at 4:00 p.m."
+  // around the date that carries the ID), in page order; an element drawn on a line of its
+  // own is its own words.
+  async function holdingLines(id: string, scope: Scope = page): Promise<string[]> {
+    return byTestId(id, scope).evaluateAll((all) =>
+      all.map((element) => {
+        const own = (element as HTMLElement).innerText.trim();
+        let at: HTMLElement = element as HTMLElement;
+        while (at.parentElement && at.parentElement.innerText.trim() === own) at = at.parentElement;
+        const around = at.parentElement ? at.parentElement.innerText.trim() : "";
+        return around && !around.includes("\n") ? around : own;
+      }),
+    );
+  }
+
+  // The value held by the field the element carrying the ID wraps (or is): its box's value,
+  // trimmed; null where the page carries no such element or it holds no box.
+  async function markedValue(id: string, scope: Scope = page): Promise<string | null> {
+    const marked = await carried(id, scope);
+    if (!marked) return null;
+    return marked.first().evaluate((element) => {
+      const box = (element.matches("input, textarea, select") ? element : element.querySelector("input, textarea, select")) as
+        | HTMLInputElement
+        | null;
+      return box ? box.value.trim() : null;
+    });
+  }
+
+  // A value drawn after its label on one line ("Assignment date: September 27, 2026"), the
+  // label left off; a value drawn alone is returned as it is.
+  const afterLabel = (words: string): string => words.replace(/^[^:\d\n]*:\s*/, "").trim();
+
   // ---------------------------------------------------------------- driving controls
 
-  async function findControl(scope: Scope, name: RegExp): Promise<Locator | null> {
+  async function findControl(scope: Scope, name: RegExp, testId?: string): Promise<Locator | null> {
+    if (testId) {
+      const marked = byTestId(testId, scope);
+      if (await marked.count()) return marked.first();
+    }
     for (const role of ["link", "button"] as const) {
       const found = seen(scope.getByRole(role, { name }));
       if (await found.count()) return found.first();
@@ -280,9 +371,9 @@ export default function create(
 
   // A disabled control is the page saying it is not ready, and is reported at once rather
   // than pressed until the test runs out of time.
-  async function press(where: string, name: RegExp, scope: Scope = page): Promise<void> {
+  async function press(where: string, name: RegExp, scope: Scope = page, testId?: string): Promise<void> {
     await ready();
-    const control = await findControl(scope, name);
+    const control = await findControl(scope, name, testId);
     if (!control) {
       throw new Error(`unbound: ${where} — no control named ${name} on ${page.url()}`);
     }
@@ -348,16 +439,37 @@ export default function create(
   //
   // A reader refused the page is shown "Page not found" (or sent to sign in), which is no
   // report or copy: the reading is empty, as the old target's is.
+  // The report carries "opportunity-full-report" and a copy "proposal-export-document": read
+  // where the page carries them (the document alone, without the screen's "Back to …" and
+  // "Print" controls), as the screen's own text otherwise. The report's article is named by
+  // the opportunity's title, an H1 drawn just above it, so the report begins with that title.
   async function documentText(): Promise<string> {
     await ready();
     if (await whyNotHere().catch(() => "")) return "";
+    const report = await carried("opportunity-full-report");
+    const marked = report ?? (await carried("proposal-export-document"));
+    if (marked) {
+      const lines: string[] = [];
+      if (report) {
+        const title = seen(page.getByRole("main").getByRole("heading", { level: 1 })).first();
+        const words = (await title.count()) ? (await title.innerText()).replace(/\s+/g, " ").trim() : "";
+        const inside = (await report.getByRole("heading", { level: 1 }).count()) > 0;
+        if (words && !inside) lines.push(words);
+      }
+      for (const words of await marked.allInnerTexts()) lines.push(...lined(words));
+      return lines.join("\n");
+    }
     return mainText();
   }
 
   // The anonymised name the copy gives its proponent ("Proponent 1"), or nothing where the
-  // copy names the organization itself (the vendor's own copy) or is withheld.
+  // copy names the organization itself (the vendor's own copy) or is withheld. The name
+  // carries "proposal-proponent-name".
   async function anonymousProponentName(): Promise<string> {
     if (!(await documentText())) return "";
+    const marked = (await testIdTexts("proposal-proponent-name")).find((one) => /Proponent\s+\d+/.test(one));
+    if (marked) return marked.trim();
+    if (await carried("proposal-proponent-name")) return "";
     const named = await valueAfter(["Proponent"]);
     if (/Proponent\s+\d+/.test(named)) return named.trim();
     return (await linesMatching(/^Proponent\s+\d+$/)).split("\n")[0] ?? "";
@@ -416,8 +528,13 @@ export default function create(
     await forgetEveryone();
     await page.goto(baseURL + "/sign-in", { waitUntil: "domcontentloaded" });
     await ready();
-    const way = /vendor/i.test(entry.username) ? "Sign in as a vendor" : "Sign in as a public sector employee";
-    const offer = await findControl(page, new RegExp(`^\\s*${way}\\s*$`, "i"));
+    const vendor = /vendor/i.test(entry.username);
+    const way = vendor ? "Sign in as a vendor" : "Sign in as a public sector employee";
+    const offer = await findControl(
+      page,
+      new RegExp(`^\\s*${way}\\s*$`, "i"),
+      vendor ? "sign-in-vendor-button" : "sign-in-public-sector-button",
+    );
     if (!offer) {
       throw new Error(`unbound: ${where} — the sign-in screen at ${page.url()} offers no "${way}" control`);
     }
@@ -538,12 +655,15 @@ export default function create(
 
   const home: S.HomePage = {
     open: () => go("/"),
-    browseOpportunities: () => press("home.browse_opportunities", /^browse opportunities$/i),
-    signIn: () => press("home.sign_in", /^sign in$/i),
-    signUp: () => press("home.sign_up", /^sign up$/i),
+    browseOpportunities: () =>
+      press("home.browse_opportunities", /^browse opportunities$/i, page, "home-browse-opportunities"),
+    signIn: () => press("home.sign_in", /^sign in$/i, page, "home-sign-in"),
+    signUp: () => press("home.sign_up", /^sign up$/i, page, "home-sign-up"),
     // Each figure is drawn over its label ("95" over "TOTAL OPPORTUNITIES AWARDED", the
-    // label shown in capitals).
+    // label shown in capitals); the figure alone carries the test ID.
     totalAwardedOpportunityCount: async () => {
+      await ready();
+      if (await carried("home-awarded-count")) return (await testIdTexts("home-awarded-count"))[0] ?? "";
       const found = await valueAbove(/^total opportunities awarded$/i);
       if (found) return found;
       throw new Error(
@@ -551,32 +671,43 @@ export default function create(
       );
     },
     totalAwardedOpportunityValue: async () => {
+      await ready();
+      if (await carried("home-awarded-value")) return (await testIdTexts("home-awarded-value"))[0] ?? "";
       const found = await valueAbove(/^total value of all opportunities$/i);
       if (found) return found;
       throw new Error(
         `unbound: home.total_awarded_opportunity_value — the home page carries no "Total Value of All Opportunities" figure; it reads: ${(await mainText()).replace(/\n+/g, " | ")}`,
       );
     },
-    readableWhenSignedOut: () => mainText(),
+    // The page's own content, as mainText() reads it: "home-page" holds exactly that.
+    readableWhenSignedOut: async () => {
+      await ready();
+      if (await carried("home-page")) return (await testIdLines("home-page")).join("\n");
+      return mainText();
+    },
   };
 
   // ---------------------------------------------------------------- the service's own status
 
-  // Not a screen. The address answers "OK" as plain text, and requesting it is the act the
-  // contract names — the one a test performs instead of waiting for a clock.
+  // Requested by itself, the address answers "OK" as plain text, and requesting it is the act
+  // the contract names — the one a test performs instead of waiting for a clock. Opened in
+  // the browser, it draws the "Service status" screen ("service-status-page"), whose message
+  // ("service-status-message") reads "The Digital Marketplace is up.".
   const scheduledTransitionTrigger: S.ScheduledTransitionTriggerPage = {
     open: () => go("/status"),
     runPendingTransitions: async () => {
+      const where = "scheduled-transition-trigger.run_pending_transitions";
+      const asked = await page.request.get(`${baseURL}/status`).catch(() => null);
       await visit("/status");
-      const answered = await bodyText();
-      if (!answered) {
-        throw new Error(
-          `unbound: scheduled-transition-trigger.run_pending_transitions — ${baseURL}/status answered nothing`,
-        );
+      await ready();
+      if (!asked && !(await carried("service-status-page")) && !(await bodyText())) {
+        unbound(where, `${baseURL}/status answered nothing`);
       }
     },
     serviceIsUp: async () => {
       if (new URL(page.url()).pathname !== "/status") await visit("/status");
+      await ready();
+      if (await carried("service-status-message")) return (await testIdLines("service-status-message")).join("\n");
       return bodyText();
     },
   };
@@ -585,14 +716,17 @@ export default function create(
 
   const footer = siteFooter;
 
-  async function footerLink(name: RegExp): Promise<string> {
+  async function footerLink(name: RegExp, testId: string): Promise<string> {
     await ready();
+    const marked = await carried(testId);
+    if (marked) return (await marked.first().getAttribute("href")) ?? "";
     if (!(await footer().count())) return "";
     return hrefOf(footer(), name);
   }
 
-  async function openFromFooter(where: string, name: RegExp): Promise<void> {
+  async function openFromFooter(where: string, name: RegExp, testId: string): Promise<void> {
     await ready();
+    if (await carried(testId)) return press(where, name, page, testId);
     if (!(await footer().count())) {
       throw new Error(`unbound: ${where} — this page carries no footer (${page.url()})`);
     }
@@ -601,16 +735,17 @@ export default function create(
 
   const contentFooter: S.ContentFooterPage = {
     open: () => go("/"),
-    openAbout: () => openFromFooter("content-footer.open_about", /^about$/i),
-    openDisclaimer: () => openFromFooter("content-footer.open_disclaimer", /^disclaimer$/i),
-    openPrivacy: () => openFromFooter("content-footer.open_privacy", /^privacy$/i),
-    openAccessibility: () => openFromFooter("content-footer.open_accessibility", /^accessibility$/i),
-    openCopyright: () => openFromFooter("content-footer.open_copyright", /^copyright$/i),
-    aboutLink: () => footerLink(/^about$/i),
-    disclaimerLink: () => footerLink(/^disclaimer$/i),
-    privacyLink: () => footerLink(/^privacy$/i),
-    accessibilityLink: () => footerLink(/^accessibility$/i),
-    copyrightLink: () => footerLink(/^copyright$/i),
+    openAbout: () => openFromFooter("content-footer.open_about", /^about$/i, "footer-about-link"),
+    openDisclaimer: () => openFromFooter("content-footer.open_disclaimer", /^disclaimer$/i, "footer-disclaimer-link"),
+    openPrivacy: () => openFromFooter("content-footer.open_privacy", /^privacy$/i, "footer-privacy-link"),
+    openAccessibility: () =>
+      openFromFooter("content-footer.open_accessibility", /^accessibility$/i, "footer-accessibility-link"),
+    openCopyright: () => openFromFooter("content-footer.open_copyright", /^copyright$/i, "footer-copyright-link"),
+    aboutLink: () => footerLink(/^about$/i, "footer-about-link"),
+    disclaimerLink: () => footerLink(/^disclaimer$/i, "footer-disclaimer-link"),
+    privacyLink: () => footerLink(/^privacy$/i, "footer-privacy-link"),
+    accessibilityLink: () => footerLink(/^accessibility$/i, "footer-accessibility-link"),
+    copyrightLink: () => footerLink(/^copyright$/i, "footer-copyright-link"),
     presentWhenSignedOut: async () => {
       await ready();
       return (await footer().count()) ? (await footer().innerText()).trim() : "";
@@ -620,7 +755,15 @@ export default function create(
   // ---------------------------------------------------------------- the service level agreement link
 
   const slaLink = (): Locator =>
-    seen(page.getByRole("link", { name: /service level agreement/i }));
+    seen(page.getByTestId("service-level-agreement-link").or(page.getByRole("link", { name: /service level agreement/i })));
+
+  // The page a link led to, as mainText() reads it; a published page is the "content-page"
+  // article, which holds exactly that.
+  async function landedText(): Promise<string> {
+    await ready();
+    if (await carried("content-page")) return (await testIdLines("content-page")).join("\n");
+    return mainText();
+  }
 
   // Where following the link last landed, so the answer is read from that page itself.
   let slaFollowedTo: string | null = null;
@@ -654,12 +797,12 @@ export default function create(
     // the page offers no such link (the program explainers carry none on this target).
     answerAtLinkTarget: async () => {
       await ready();
-      if (slaFollowedTo && page.url() === slaFollowedTo) return mainText();
+      if (slaFollowedTo && page.url() === slaFollowedTo) return landedText();
       if (!(await slaLink().count())) return "";
       const href = await slaLink().first().getAttribute("href");
       if (!href) return "";
       await visit(href);
-      return mainText();
+      return landedText();
     },
   };
 
@@ -701,13 +844,15 @@ export default function create(
           `unbound: content-view.follow_body_link — no page is published at ${page.url()}, so there is no body to follow a link in`,
         );
       }
-      // The page is drawn as an article in main: its title, its dates as terms, its body and
-      // a line stating its own address, which carries no link. So every link in the article
-      // is in the body (seen with a page written to link to /content/about).
+      // The page is drawn as an article in main: its title, its dates as terms, its body
+      // ("content-page-body") and a line stating its own address, which carries no link. So
+      // every link in the article is in the body (seen with a page written to link to
+      // /content/about). A link the page marks "content-body-link" is taken first.
       const main = page.getByRole("main");
       const article = seen(main.getByRole("article"));
-      const body = (await article.count()) ? article.first() : main.first();
-      const links = seen(body.getByRole("link"));
+      const marked = await carried("content-page-body");
+      const body = marked ? marked.first() : (await article.count()) ? article.first() : main.first();
+      const links = seen(byTestId("content-body-link", body).or(body.getByRole("link")));
       const count = await links.count();
       for (let i = 0; i < count; i++) {
         const href = (await links.nth(i).getAttribute("href")) ?? "";
@@ -722,21 +867,43 @@ export default function create(
     },
     pageAddress: async () => {
       if (await notFoundShown()) return "";
+      if (await carried("content-page-address")) return (await testIdTexts("content-page-address"))[0] ?? "";
       const stated = await statedAddress();
       return stated || new URL(page.url()).pathname;
     },
     pageTitle: async () => {
       if (await notFoundShown()) return "";
+      if (await carried("content-page-title")) return (await testIdTexts("content-page-title"))[0] ?? "";
       const heading = seen(page.getByRole("heading", { level: 1 }));
       return (await heading.count()) ? (await heading.first().innerText()).trim() : "";
     },
-    pageBody: async () => ((await notFoundShown()) ? "" : pageBodyText()),
+    // The body's paragraphs, one per line, as the old binding reads them.
+    pageBody: async () => {
+      if (await notFoundShown()) return "";
+      const marked = await carried("content-page-body");
+      if (marked) return (await paragraphs(marked.first())).join("\n");
+      return pageBodyText();
+    },
     // Under the title, a list of terms: "Published" over "January 5, 2026", "Last updated"
-    // over "January 7, 2026".
-    publishedDate: async () => ((await notFoundShown()) ? "" : publicDate("published_date", "Published")),
-    updatedDate: async () => ((await notFoundShown()) ? "" : publicDate("updated_date", "Last updated")),
-    readableWhenSignedOut: () => mainText(),
-    notFoundForUnknownAddress: async () => ((await notFoundShown()) ? mainText() : ""),
+    // over "January 7, 2026"; the date itself carries the test ID.
+    publishedDate: async () => {
+      if (await notFoundShown()) return "";
+      if (await carried("content-published-date")) return (await testIdTexts("content-published-date"))[0] ?? "";
+      return publicDate("published_date", "Published");
+    },
+    updatedDate: async () => {
+      if (await notFoundShown()) return "";
+      if (await carried("content-updated-date")) return (await testIdTexts("content-updated-date"))[0] ?? "";
+      return publicDate("updated_date", "Last updated");
+    },
+    // The page's own content, as mainText() reads it: the "content-page" article holds exactly
+    // that.
+    readableWhenSignedOut: () => landedText(),
+    notFoundForUnknownAddress: async () => {
+      if (!(await notFoundShown())) return "";
+      if (await carried("not-found-page")) return (await testIdLines("not-found-page")).join("\n");
+      return mainText();
+    },
   };
 
   // ---------------------------------------------------------------- managing pages
@@ -774,14 +941,26 @@ export default function create(
     return seen(page.getByRole("dialog")).filter({ hasText: /\S/ });
   }
 
-  async function pressOnScreen(where: string, name: RegExp): Promise<void> {
+  const EDIT_PAGE = /^\s*edit page\s*$/i;
+  const DELETE_PAGE = /^\s*delete page\s*$/i;
+
+  // A screen control by its test ID where the page carries it, by its name otherwise.
+  async function screenControlFor(name: RegExp, testId?: string): Promise<Locator> {
+    const marked = testId ? await carried(testId) : null;
+    return marked ? marked.first() : screenControl(name).first();
+  }
+
+  async function pressOnScreen(where: string, name: RegExp, testId?: string): Promise<void> {
     await ready();
     const refused = await refusalShown();
     if (refused) unbound(where, `the management screen did not open at ${page.url()}: ${refused}`);
-    const control = screenControl(name).first();
+    const control = await screenControlFor(name, testId);
     if (!(await control.count())) unbound(where, `no control named ${name} on ${page.url()}`);
     if (await isDisabled(control)) {
-      const said = await linesMatching(/^(fill in|fix \d+ field)/i);
+      const note = seen(page.getByRole("note").filter({ has: page.getByTestId("field-error") }));
+      const said = (await note.count())
+        ? lined(await note.first().innerText()).join("\n")
+        : await linesMatching(/^(fill in|fix \d+ field)/i);
       throw new Error(`${where} — the control named ${name} is disabled on ${page.url()}${said ? `; the page says: ${said}` : ""}`);
     }
     await control.click();
@@ -795,9 +974,10 @@ export default function create(
     return true;
   }
 
-  async function pressInDialog(where: string, name: RegExp): Promise<void> {
+  async function pressInDialog(where: string, name: RegExp, testId?: string): Promise<void> {
     if (!(await dialogShown())) unbound(where, `no confirmation is open on ${page.url()}`);
-    const control = seen(openDialog().first().getByRole("button", { name })).first();
+    const marked = testId ? await carried(testId, openDialog().first()) : null;
+    const control = marked ? marked.first() : seen(openDialog().first().getByRole("button", { name })).first();
     if (!(await control.count())) unbound(where, `the confirmation on ${page.url()} offers no control named ${name}`);
     await control.click();
     await openDialog().first().waitFor({ state: "hidden", timeout: 15000 }).catch(() => undefined);
@@ -806,7 +986,9 @@ export default function create(
 
   async function closeDialog(): Promise<void> {
     for (let attempt = 0; attempt < 3 && (await openDialog().count()); attempt++) {
-      const cancel = seen(openDialog().first().getByRole("button", { name: /^\s*(cancel|close)\s*$/i })).first();
+      const named = seen(openDialog().first().getByRole("button", { name: /^\s*(cancel|close)\s*$/i }));
+      const marked = seen(openDialog().first().getByTestId(/cancel/));
+      const cancel = ((await marked.count()) ? marked : named).first();
       if (await cancel.count()) await cancel.click().catch(() => undefined);
       else await page.keyboard.press("Escape").catch(() => undefined);
       await openDialog().first().waitFor({ state: "hidden", timeout: 2000 }).catch(() => undefined);
@@ -816,14 +998,23 @@ export default function create(
   // The form's three fields, by the start of their labels ("Title(required)", "Address",
   // "Body (required)"); on a page's screen the read-only "Current wording" boxes carry the
   // same names, so the editable one is taken when there is one.
-  const CONTENT_FIELDS: Record<string, { label: RegExp; keys: string[] }> = {
-    title: { label: /^\s*title/i, keys: ["title", "pageTitle", "name"] },
-    slug: { label: /^\s*address/i, keys: ["slug", "address", "path", "url"] },
-    body: { label: /^\s*body/i, keys: ["body", "content", "text", "markdown"] },
+  // Each field is drawn inside an element carrying its test ID ("content-title-field",
+  // "content-slug-field", "content-body-field"), which holds the box and its label; the box is
+  // found inside it where the page carries it, and by its label otherwise.
+  const CONTENT_FIELDS: Record<string, { label: RegExp; keys: string[]; testId: string }> = {
+    title: { label: /^\s*title/i, keys: ["title", "pageTitle", "name"], testId: "content-title-field" },
+    slug: { label: /^\s*address/i, keys: ["slug", "address", "path", "url"], testId: "content-slug-field" },
+    body: { label: /^\s*body/i, keys: ["body", "content", "text", "markdown"], testId: "content-body-field" },
   };
 
   function contentBox(which: string): Locator {
-    return seen(page.getByRole("main").getByRole("textbox", { name: CONTENT_FIELDS[which].label }));
+    const main = page.getByRole("main");
+    return seen(
+      main
+        .getByTestId(CONTENT_FIELDS[which].testId)
+        .getByRole("textbox")
+        .or(main.getByRole("textbox", { name: CONTENT_FIELDS[which].label })),
+    );
   }
 
   async function editableBox(which: string): Promise<Locator | null> {
@@ -861,8 +1052,12 @@ export default function create(
     const refused = await refusalShown();
     if (refused) unbound(where, `the management screen did not open at ${page.url()}: ${refused}`);
     // A page's screen shows its wording read-only until "Edit page" is pressed.
-    if (startIfNeeded && !(await editableBox(Object.keys(values)[0])) && (await screenControl(/^\s*edit page\s*$/i).count())) {
-      await pressOnScreen(where, /^\s*edit page\s*$/i);
+    if (
+      startIfNeeded &&
+      !(await editableBox(Object.keys(values)[0])) &&
+      (await (await screenControlFor(EDIT_PAGE, "content-edit-button")).count())
+    ) {
+      await pressOnScreen(where, EDIT_PAGE, "content-edit-button");
     }
     for (const [which, value] of Object.entries(values)) {
       let box = await editableBox(which);
@@ -903,44 +1098,78 @@ export default function create(
       );
       for (const words of described) if (words && !HELP.test(words)) said.push(words);
     }
-    const notes = seen(page.getByRole("main").getByRole("note", { name: /^\s*fix \d+ field/i }));
+    // The list of fields still to fix is the note holding the "field-error" items; by its
+    // name ("Fix N field(s) to publish the page") where the page carries none.
+    const marked = seen(page.getByRole("main").getByRole("note").filter({ has: page.getByTestId("field-error") }));
+    const notes = (await marked.count())
+      ? marked
+      : seen(page.getByRole("main").getByRole("note", { name: /^\s*fix \d+ field/i }));
     for (let i = 0; i < (await notes.count()); i++) said.push(...lined(await notes.nth(i).innerText()));
     return [...new Set(said.filter(Boolean))].filter((words) => !pattern || pattern.test(words)).join("\n");
   }
 
-  // A status the screen announces ("Page published", "Changes published", "Page removed").
-  async function contentStatus(pattern: RegExp): Promise<string> {
+  // A status the screen announces ("Page published", "Changes published", "Page removed"),
+  // by its test ID where the page carries it.
+  async function contentStatus(pattern: RegExp, testId: string): Promise<string> {
     await ready();
     const statuses = seen(page.getByRole("main").getByRole("status")).filter({ hasText: pattern });
-    await statuses.first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
+    await seen(page.getByTestId(testId).or(statuses))
+      .first()
+      .waitFor({ state: "visible", timeout: 5000 })
+      .catch(() => undefined);
+    if (await carried(testId)) return (await testIdTexts(testId)).join("\n");
     return (await statuses.allInnerTexts()).map((words) => words.trim()).join("\n");
   }
 
-  async function screenControlState(name: RegExp): Promise<string> {
+  async function screenControlState(name: RegExp, testId?: string): Promise<string> {
     await ready();
-    const control = screenControl(name).first();
+    const control = await screenControlFor(name, testId);
     if (!(await control.count())) return "absent";
     return (await isDisabled(control)) ? "disabled" : "enabled";
   }
 
-  // The page list's body rows, once drawn; none when the list is refused.
+  // The page list's body rows ("content-list-row"), once drawn; none when the list is
+  // refused.
   async function contentRows(): Promise<Locator[]> {
     await ready();
     if (await refusalShown()) return [];
     const table = seen(page.getByRole("main").getByRole("table")).first();
-    await seen(table.getByRole("cell")).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
-    const rows = table.getByRole("row").filter({ has: page.getByRole("cell") });
+    await seen(page.getByTestId("content-list-row").or(table.getByRole("cell")))
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 })
+      .catch(() => undefined);
+    const marked = byTestId("content-list-row");
+    const rows = (await marked.count()) ? marked : table.getByRole("row").filter({ has: page.getByRole("cell") });
     const out: Locator[] = [];
     for (let i = 0; i < (await rows.count()); i++) out.push(rows.nth(i));
     return out;
   }
 
+  // A row's columns, each by its test ID where the row carries it: title, public address,
+  // whether the service needs it, created, last updated.
+  const CONTENT_COLUMNS = [
+    "content-list-title-link",
+    "content-list-address-link",
+    "content-list-fixed",
+    "content-list-created",
+    "content-list-updated",
+  ];
+
+  // The link in a row's title or address column.
+  async function contentLink(row: Locator, index: number): Promise<Locator> {
+    const marked = row.getByTestId(CONTENT_COLUMNS[index]);
+    return (await marked.count()) ? marked.first() : row.getByRole("cell").nth(index).getByRole("link").first();
+  }
+
+  async function contentCellText(row: Locator, index: number): Promise<string> {
+    const marked = row.getByTestId(CONTENT_COLUMNS[index]);
+    const cell = (await marked.count()) ? marked.first() : row.getByRole("cell").nth(index);
+    return (await cell.innerText()).trim();
+  }
+
   async function contentColumn(index: number): Promise<string> {
     const lines: string[] = [];
-    for (const row of await contentRows()) {
-      const cell = row.getByRole("cell").nth(index);
-      lines.push((await cell.innerText()).trim());
-    }
+    for (const row of await contentRows()) lines.push(await contentCellText(row, index));
     return lines.join("\n");
   }
 
@@ -957,15 +1186,26 @@ export default function create(
     if (!named) return rows[0];
     const wanted = named.replace(/^\/?content\//, "").replace(/^\//, "");
     for (const row of rows) {
-      const cells = (await row.getByRole("cell").allInnerTexts()).map((words) => words.trim());
+      const cells = [await contentCellText(row, 0), await contentCellText(row, 1)];
       if (cells[0] === named || cells[1] === `/content/${wanted}` || cells[1] === named) return row;
     }
     unbound(where, `no page titled or addressed "${named}" in the list at ${page.url()}`);
   }
 
-  // The value the page's screen gives under one of its terms ("Published", "Published by").
-  async function contentFact(term: string): Promise<{ words: string; href: string }> {
+  // The value the page's screen gives under one of its terms ("Published", "Published by"):
+  // the element carrying its test ID where the page carries it — a link for a person, plain
+  // words for "System" — and the term's following value otherwise.
+  async function contentFact(term: string, testId?: string): Promise<{ words: string; href: string }> {
     await ready();
+    const marked = testId ? await carried(testId) : null;
+    if (marked) {
+      const value = marked.first();
+      const words = (await value.innerText().catch(() => "")).trim();
+      const own = await value.evaluate((element) => (element.tagName === "A" ? element.getAttribute("href") ?? "" : null));
+      const link = seen(value.getByRole("link")).first();
+      const href = own ?? ((await link.count()) ? ((await link.getAttribute("href")) ?? "") : "");
+      return { words, href };
+    }
     const terms = seen(page.getByRole("main").getByRole("term")).filter({ hasText: new RegExp(`^\\s*${term}\\s*$`, "i") });
     if (!(await terms.count())) return { words: "", href: "" };
     const value = terms.first().locator("xpath=following-sibling::*[1]");
@@ -1010,11 +1250,31 @@ export default function create(
     seen(regionNamed(page.getByRole("main"), /^\s*notify vendors of updated terms\s*$/i));
   const NOTIFY_CONTROL = /^\s*notify vendors of updated terms\s*$/i;
 
-  async function announcementSays(role: "status" | "alert", pattern: RegExp): Promise<string> {
+  // The outcome, by its test ID ("notify-vendors-success", "notify-vendors-failure") where the
+  // page carries it, and as the region's status or alert otherwise.
+  async function announcementSays(role: "status" | "alert", pattern: RegExp, testId: string): Promise<string> {
     await ready();
     const said = seen(announcement().getByRole(role)).filter({ hasText: pattern });
-    await said.first().waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
+    await seen(page.getByTestId(testId).or(said))
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 })
+      .catch(() => undefined);
+    if (await carried(testId)) return (await testIdTexts(testId)).join("\n");
     return (await said.allInnerTexts()).map((words) => words.trim()).join("\n");
+  }
+
+  // "Notify vendors of updated terms": by its test ID where the page carries it, by its name
+  // in its region otherwise.
+  async function notifyControl(): Promise<Locator> {
+    const marked = await carried("notify-vendors-button");
+    return marked ? marked.first() : seen(announcement().getByRole("button", { name: NOTIFY_CONTROL })).first();
+  }
+
+  // The confirmation, by its test ID where the page carries it.
+  async function confirmationWords(testId: string): Promise<string> {
+    if (!(await dialogShown())) return "";
+    const marked = await carried(testId);
+    return ((await (marked ?? openDialog()).first().innerText()) || "").trim();
   }
 
   const termsBroadcast: S.NotificationTermsBroadcastPage = {
@@ -1024,7 +1284,7 @@ export default function create(
       await ready();
       const refused = await refusalShown();
       if (refused) unbound(where, `the terms page's management screen did not open at ${page.url()}: ${refused}`);
-      const control = seen(announcement().getByRole("button", { name: NOTIFY_CONTROL })).first();
+      const control = await notifyControl();
       if (!(await control.count())) unbound(where, `no control named ${NOTIFY_CONTROL} on ${page.url()}`);
       if (await isDisabled(control)) {
         throw new Error(`${where} — the control named ${NOTIFY_CONTROL} is disabled on ${page.url()}`);
@@ -1033,22 +1293,26 @@ export default function create(
       await dialogShown();
     },
     confirmNotifyVendors: () =>
-      pressInDialog("notification-terms-broadcast.confirm_notify_vendors", /^\s*notify vendors\s*$/i),
+      pressInDialog(
+        "notification-terms-broadcast.confirm_notify_vendors",
+        /^\s*notify vendors\s*$/i,
+        "notify-vendors-confirm-button",
+      ),
     cancelNotifyVendors: () =>
-      pressInDialog("notification-terms-broadcast.cancel_notify_vendors", /^\s*cancel\s*$/i),
+      pressInDialog("notification-terms-broadcast.cancel_notify_vendors", /^\s*cancel\s*$/i, "notify-vendors-cancel-button"),
     // The control's own words where it is offered; nothing where it is not, the refusal a
     // non-administrator is shown included.
     notifyVendorsControl: async () => {
       await ready();
-      const control = seen(page.getByRole("main").getByRole("button", { name: NOTIFY_CONTROL })).first();
+      const marked = await carried("notify-vendors-button");
+      const control = marked
+        ? marked.first()
+        : seen(page.getByRole("main").getByRole("button", { name: NOTIFY_CONTROL })).first();
       return (await control.count()) ? (await control.innerText()).trim() : "";
     },
-    notifyVendorsConfirmation: async () => {
-      if (!(await dialogShown())) return "";
-      return (await openDialog().first().innerText()).trim();
-    },
-    notifyVendorsSuccess: () => announcementSays("status", /have been notified/i),
-    notifyVendorsFailure: () => announcementSays("alert", /\S/),
+    notifyVendorsConfirmation: () => confirmationWords("notify-vendors-dialog"),
+    notifyVendorsSuccess: () => announcementSays("status", /have been notified/i, "notify-vendors-success"),
+    notifyVendorsFailure: () => announcementSays("alert", /\S/, "notify-vendors-failure"),
   };
 
   // Seen 2026-10-04, signed in as the administrator: /admin/email-notification-reference is
@@ -1088,9 +1352,11 @@ export default function create(
   }
 
   // The lines that follow a label in each message ("Subject" over the subject), written the
-  // way the old binding returns them: "<label>: <value>", one per message.
-  async function emailReferenceValues(where: string, label: string, as: string): Promise<string> {
+  // way the old binding returns them: "<label>: <value>", one per message. The value itself
+  // carries the test ID ("email-reference-subject", "email-reference-summary").
+  async function emailReferenceValues(where: string, label: string, as: string, testId: string): Promise<string> {
     if (!(await emailReferenceShown(where))) return "";
+    if (await carried(testId)) return (await testIdTexts(testId)).map((value) => `${as}: ${value}`).join("\n");
     const lines = await textLines();
     const out: string[] = [];
     for (let i = 0; i < lines.length - 1; i++) if (lines[i] === label) out.push(`${as}: ${lines[i + 1]}`);
@@ -1104,14 +1370,28 @@ export default function create(
     // own heading "Events that send email" is not one.
     messageGroupTitle: async () => {
       if (!(await emailReferenceShown("notification-email-reference.message_group_title"))) return "";
-      const titles = await seen(page.getByRole("main").getByRole("region").getByRole("heading", { level: 2 })).allInnerTexts();
+      const marked = await carried("email-reference-group-title");
+      const titles = marked
+        ? await marked.allInnerTexts()
+        : await seen(page.getByRole("main").getByRole("region").getByRole("heading", { level: 2 })).allInnerTexts();
       return titles.map((title) => title.trim()).filter(Boolean).join("\n");
     },
-    messageSubject: () => emailReferenceValues("notification-email-reference.message_subject", "Subject", "Subject"),
+    messageSubject: () =>
+      emailReferenceValues("notification-email-reference.message_subject", "Subject", "Subject", "email-reference-subject"),
     messageSummary: () =>
-      emailReferenceValues("notification-email-reference.message_summary", "Who receives it and why", "Summary"),
+      emailReferenceValues(
+        "notification-email-reference.message_summary",
+        "Who receives it and why",
+        "Summary",
+        "email-reference-summary",
+      ),
+    // The whole reference as the old binding reads it, every message's body ("email-reference-
+    // body") within it: the "email-reference-page" element holds exactly what mainText() reads.
     messageBody: async () => {
       if (!(await emailReferenceShown("notification-email-reference.message_body"))) return "";
+      if ((await carried("email-reference-body")) && (await carried("email-reference-page"))) {
+        return (await testIdLines("email-reference-page")).join("\n");
+      }
       return mainText();
     },
     refusedForNonAdministrator: () => refusalShown(),
@@ -1122,14 +1402,14 @@ export default function create(
     openPageForEditing: async (input) => {
       const where = "content-list.open_page_for_editing";
       const row = await contentRow(where, input);
-      await row.getByRole("cell").nth(0).getByRole("link").first().click();
+      await (await contentLink(row, 0)).click();
       await page.waitForURL((url) => /\/content\/[^/]+\/edit$/.test(url.pathname), { timeout: 15000 }).catch(() => undefined);
       await ready();
     },
     openPublicPage: async (input) => {
       const where = "content-list.open_public_page";
       const row = await contentRow(where, input);
-      const href = await row.getByRole("cell").nth(1).getByRole("link").first().getAttribute("href");
+      const href = await (await contentLink(row, 1)).getAttribute("href");
       if (!href) unbound(where, `the row on ${page.url()} carries no public address link`);
       await visit(href);
     },
@@ -1138,7 +1418,10 @@ export default function create(
       await ready();
       const refused = await refusalShown();
       if (refused) unbound(where, `the page list did not open at ${page.url()}: ${refused}`);
-      const link = seen(page.getByRole("main").getByRole("link", { name: /^\s*create page\s*$/i })).first();
+      const marked = await carried("content-create-link");
+      const link = marked
+        ? marked.first()
+        : seen(page.getByRole("main").getByRole("link", { name: /^\s*create page\s*$/i })).first();
       if (!(await link.count())) unbound(where, `no "Create page" link on ${page.url()}`);
       await link.click();
       await page.waitForURL((url) => url.pathname === "/content/create", { timeout: 15000 }).catch(() => undefined);
@@ -1150,8 +1433,7 @@ export default function create(
     pageIsFixed: async () => {
       const lines: string[] = [];
       for (const row of await contentRows()) {
-        const cells = (await row.getByRole("cell").allInnerTexts()).map((words) => words.trim());
-        lines.push(`${cells[1]}: ${cells[2]}`);
+        lines.push(`${await contentCellText(row, 1)}: ${await contentCellText(row, 2)}`);
       }
       return lines.join("\n");
     },
@@ -1187,7 +1469,7 @@ export default function create(
       const where = "content-create.publish_page";
       if (await managementRefused()) return;
       await fillContent(where, contentValues(where, input), false);
-      await pressOnScreen(where, /^\s*publish page\s*$/i);
+      await pressOnScreen(where, /^\s*publish page\s*$/i, "content-publish-button");
       if (!(await dialogShown())) {
         throw new Error(`${where} — pressing "Publish page" raised no "Publish this page?" confirmation on ${page.url()}`);
       }
@@ -1196,7 +1478,7 @@ export default function create(
     // alert. Whichever comes first ends the wait.
     confirmPublish: async () => {
       if (await managementRefused()) return;
-      await pressInDialog("content-create.confirm_publish", /^\s*publish page\s*$/i);
+      await pressInDialog("content-create.confirm_publish", /^\s*publish page\s*$/i, "content-publish-confirm");
       await Promise.race([
         page.waitForURL((url) => url.pathname !== "/content/create", { timeout: 15000 }),
         seen(page.getByRole("main").getByRole("alert")).first().waitFor({ state: "visible", timeout: 15000 }),
@@ -1206,21 +1488,44 @@ export default function create(
     cancel: async () => {
       if (await managementRefused()) return;
       await closeDialog();
-      await pressOnScreen("content-create.cancel", /^\s*cancel\s*$/i);
+      await pressOnScreen("content-create.cancel", /^\s*cancel\s*$/i, "content-cancel-button");
     },
     fieldError: () => onScreen(() => contentErrors()),
     // "Use lowercase letters and numbers, in groups joined by single hyphens, like about-us.
     // No capital letters, spaces or underscores, and no hyphen at the start or end."
-    slugRuleHelp: () => onScreen(() => linesMatching(/^use lowercase letters and numbers, in groups/i)),
+    slugRuleHelp: () =>
+      onScreen(async () =>
+        (await carried("content-slug-rule"))
+          ? (await testIdTexts("content-slug-rule")).join("\n")
+          : linesMatching(/^use lowercase letters and numbers, in groups/i),
+      ),
     // "Public address: http://…/content/<slug>", or "shown once the address is valid."
     resultingPublicAddress: () =>
-      onScreen(async () => (await linesMatching(/^public address:/i)).replace(/^public address:\s*/i, "")),
-    publishDisabledUntilValid: () => onScreen(() => screenControlState(/^\s*publish page\s*$/i)),
-    publishConfirmation: async () => ((await dialogShown(2000)) ? (await openDialog().first().innerText()).trim() : ""),
-    publishedSuccess: () => onScreen(() => contentStatus(/page published/i)),
-    duplicateSlugError: () => onScreen(() => contentErrors(/already (in use|uses)/i)),
+      onScreen(async () => {
+        const shown = (await carried("content-resulting-address"))
+          ? (await testIdTexts("content-resulting-address")).join("\n")
+          : await linesMatching(/^public address:/i);
+        return shown.replace(/^public address:\s*/i, "");
+      }),
+    publishDisabledUntilValid: () =>
+      onScreen(() => screenControlState(/^\s*publish page\s*$/i, "content-publish-button")),
+    publishConfirmation: async () => {
+      if (!(await dialogShown(2000))) return "";
+      const marked = await carried("content-publish-dialog");
+      return (await (marked ?? openDialog()).first().innerText()).trim();
+    },
+    publishedSuccess: () => onScreen(() => contentStatus(/page published/i, "content-published-success")),
+    duplicateSlugError: () => onScreen(() => duplicateSlug()),
     refusedForNonAdministrator: () => refusalShown(),
   };
+
+  // The refusal of an address already in use: the alert carrying "content-duplicate-slug-error"
+  // where the page carries it, the form's messages about it otherwise.
+  async function duplicateSlug(): Promise<string> {
+    await ready();
+    if (await carried("content-duplicate-slug-error")) return (await testIdTexts("content-duplicate-slug-error")).join("\n");
+    return contentErrors(/already (in use|uses)/i);
+  }
 
   // What the editor's status line said while the last image was being put in, every wording
   // in order; read by file-embedded-image.uploading_indicator.
@@ -1232,16 +1537,17 @@ export default function create(
   // inserted at the cursor. …"), or refused in an alert ("<name> could not be inserted / It
   // is not a JPEG or PNG image. … Nothing was added to the body.") with the body untouched.
   //
-  // Walked as the administrator on /content/about-us/edit after "Edit page" (and on
-  // /content/create): pressing "Insert image" — by mouse or by Enter — opened no chooser on
-  // the running build, while "Bold" beside it did work on the body. That is the control
-  // failing a person, so it fails the action plainly rather than reporting it unbound.
+  // Walked again as the administrator on /content/create (2026-10-17): "Insert image"
+  // ("content-body-image-button") opens the chooser, and a PNG given to it is written into the
+  // body and announced as above. An earlier build opened no chooser; should one fail to open
+  // again, that is the control failing a person, and the action fails plainly rather than
+  // reporting it unbound.
   async function insertBodyImage(where: string, input: unknown): Promise<void> {
     await ready();
     const refused = await refusalShown();
     if (refused) unbound(where, `the management screen did not open at ${page.url()}: ${refused}`);
-    if (!(await editableBox("body")) && (await screenControl(/^\s*edit page\s*$/i).count())) {
-      await pressOnScreen(where, /^\s*edit page\s*$/i);
+    if (!(await editableBox("body")) && (await (await screenControlFor(EDIT_PAGE, "content-edit-button")).count())) {
+      await pressOnScreen(where, EDIT_PAGE, "content-edit-button");
     }
     const body = await editableBox("body");
     if (!body) unbound(where, `no editable Body on ${page.url()}`);
@@ -1256,7 +1562,7 @@ export default function create(
     const before = await body.inputValue();
     await body.click();
     const chooser = page.waitForEvent("filechooser", { timeout: 10000 }).catch(() => null);
-    await pressOnScreen(where, /^\s*insert image\s*$/i);
+    await pressOnScreen(where, /^\s*insert image\s*$/i, "content-body-image-button");
     const offered = await chooser;
     if (!offered) throw new Error(`${where} — "Insert image" on ${page.url()} opened no file chooser`);
     // Every wording the status line takes from here on, however briefly it is shown.
@@ -1273,6 +1579,12 @@ export default function create(
             if (words && heard[heard.length - 1] !== words) heard.push(words);
           }).observe(line, { subtree: true, childList: true, characterData: true });
         }
+        // The indicator the page marks "embedded-image-uploading", wherever it is drawn.
+        new MutationObserver(() => {
+          const shown = document.querySelector('[data-testid="embedded-image-uploading"]') as HTMLElement | null;
+          const words = shown?.innerText.trim() ?? "";
+          if (words && heard[heard.length - 1] !== words) heard.push(words);
+        }).observe(document.body, { subtree: true, childList: true, characterData: true });
       })
       .catch(() => undefined);
     await offered.setFiles(path);
@@ -1291,7 +1603,7 @@ export default function create(
 
   const contentEdit: S.ContentEditPage = {
     open: (params) => go("/content/:slug/edit", params as unknown as Record<string, string>),
-    startEditing: () => pressOnScreen("content-edit.start_editing", /^\s*edit page\s*$/i),
+    startEditing: () => pressOnScreen("content-edit.start_editing", EDIT_PAGE, "content-edit-button"),
     editTitle: (input) => fillContent("content-edit.edit_title", contentValues("content-edit.edit_title", input, "title"), true),
     editSlug: (input) => fillContent("content-edit.edit_slug", contentValues("content-edit.edit_slug", input, "slug"), true),
     editBody: (input) => fillContent("content-edit.edit_body", contentValues("content-edit.edit_body", input, "body"), true),
@@ -1299,13 +1611,17 @@ export default function create(
     publishChanges: async (input) => {
       const where = "content-edit.publish_changes";
       await fillContent(where, contentValues(where, input), true);
-      await pressOnScreen(where, /^\s*publish changes\s*$/i);
+      await pressOnScreen(where, /^\s*publish changes\s*$/i, "content-publish-changes-button");
       if (!(await dialogShown())) {
         throw new Error(`${where} — pressing "Publish changes" raised no "Publish your changes?" confirmation on ${page.url()}`);
       }
     },
     confirmPublishChanges: async () => {
-      await pressInDialog("content-edit.confirm_publish_changes", /^\s*publish changes\s*$/i);
+      await pressInDialog(
+        "content-edit.confirm_publish_changes",
+        /^\s*publish changes\s*$/i,
+        "content-publish-changes-confirm",
+      );
       await Promise.race([
         seen(page.getByRole("main").getByRole("status")).filter({ hasText: /\S/ }).first().waitFor({ state: "visible", timeout: 15000 }),
         seen(page.getByRole("main").getByRole("alert")).first().waitFor({ state: "visible", timeout: 15000 }),
@@ -1314,21 +1630,24 @@ export default function create(
     },
     cancelEditing: async () => {
       await closeDialog();
-      await pressOnScreen("content-edit.cancel_editing", /^\s*cancel\s*$/i);
+      await pressOnScreen("content-edit.cancel_editing", /^\s*cancel\s*$/i, "content-cancel-button");
     },
     // Withheld from a page the service needs; that is read by delete_withheld_for_fixed_page.
     deletePage: async () => {
       const where = "content-edit.delete_page";
       await ready();
-      if (!(await refusalShown()) && !(await screenControl(/^\s*delete page\s*$/i).count())) {
-        const note = await linesMatching(/cannot change its address or delete it/i);
+      if (!(await refusalShown()) && !(await (await screenControlFor(DELETE_PAGE, "content-delete-button")).count())) {
+        const warning = await carried("content-fixed-page-warning");
+        const note = warning
+          ? lined(await warning.first().innerText()).join(" ")
+          : await linesMatching(/cannot change its address or delete it/i);
         throw new Error(`${where} — no "Delete page" on ${page.url()}${note ? `: ${note}` : ""}`);
       }
-      await pressOnScreen(where, /^\s*delete page\s*$/i);
+      await pressOnScreen(where, DELETE_PAGE, "content-delete-button");
       if (!(await dialogShown())) throw new Error(`${where} — pressing "Delete page" raised no confirmation on ${page.url()}`);
     },
     confirmDeletePage: async () => {
-      await pressInDialog("content-edit.confirm_delete_page", /^\s*delete page\s*$/i);
+      await pressInDialog("content-edit.confirm_delete_page", DELETE_PAGE, "content-delete-confirm");
       await Promise.race([
         page.waitForURL((url) => url.pathname === "/content", { timeout: 15000 }),
         seen(page.getByRole("main").getByRole("alert")).first().waitFor({ state: "visible", timeout: 15000 }),
@@ -1337,47 +1656,70 @@ export default function create(
     },
     // Under "Public address" on the screen, or "Public address: http://…/content/<slug>"
     // while the form is open.
+    // Under "Public address" on the screen ("content-page-address"), or "Public address:
+    // http://…/content/<slug>" ("content-resulting-address") while the form is open.
     pageAddress: () =>
       onPageScreen("content-edit.page_address", async () => {
-        const fact = (await contentFact("Public address")).words;
+        const fact = (await contentFact("Public address", "content-page-address")).words;
         if (fact) return fact;
-        const stated = /(\/content\/[^\s/]+)\s*$/.exec(await linesMatching(/^public address:/i));
+        const resulting = (await carried("content-resulting-address"))
+          ? (await testIdTexts("content-resulting-address")).join("\n")
+          : await linesMatching(/^public address:/i);
+        const stated = /(\/content\/[^\s/]+)\s*$/.exec(resulting);
         return stated ? stated[1] : (/^(\/content\/[^/]+)\/edit$/.exec(new URL(page.url()).pathname)?.[1] ?? "");
       }),
-    publishedDate: () => onPageScreen("content-edit.published_date", async () => (await contentFact("Published")).words),
-    updatedDate: () => onPageScreen("content-edit.updated_date", async () => (await contentFact("Last updated")).words),
+    publishedDate: () =>
+      onPageScreen("content-edit.published_date", async () => (await contentFact("Published", "content-published-date")).words),
+    updatedDate: () =>
+      onPageScreen("content-edit.updated_date", async () => (await contentFact("Last updated", "content-updated-date")).words),
     // A page no person wrote names "System", with no link.
-    publishedBy: () => onPageScreen("content-edit.published_by", async () => (await contentFact("Published by")).words),
-    updatedBy: () => onPageScreen("content-edit.updated_by", async () => (await contentFact("Last updated by")).words),
+    publishedBy: () =>
+      onPageScreen("content-edit.published_by", async () => (await contentFact("Published by", "content-published-by")).words),
+    updatedBy: () =>
+      onPageScreen("content-edit.updated_by", async () => (await contentFact("Last updated by", "content-updated-by")).words),
     publishedByLink: () =>
       onPageScreen("content-edit.published_by_link", async () => {
-        const href = (await contentFact("Published by")).href;
+        const href = (await contentFact("Published by", "content-published-by")).href;
         return href ? new URL(href, baseURL).pathname : "";
       }),
     updatedByLink: () =>
       onPageScreen("content-edit.updated_by_link", async () => {
-        const href = (await contentFact("Last updated by")).href;
+        const href = (await contentFact("Last updated by", "content-updated-by")).href;
         return href ? new URL(href, baseURL).pathname : "";
       }),
     fixedPageWarning: () =>
       onPageScreen("content-edit.fixed_page_warning", async () => {
-        const note = seen(page.getByRole("main").getByRole("note", { name: /service needs this page/i }));
+        const marked = await carried("content-fixed-page-warning");
+        const note = marked ?? seen(page.getByRole("main").getByRole("note", { name: /service needs this page/i }));
         return (await note.count()) ? (await note.first().innerText()).trim() : "";
       }),
-    // "The service needs this page at this address, so the address cannot be changed." on
-    // the form, "… you cannot change its address or delete it." on the screen.
+    // "The service needs this page at this address, so the address cannot be changed." under
+    // the Address field ("content-slug-field") on the form, "… you cannot change its address or
+    // delete it." in the warning on the screen; looked for in those two where the page
+    // carries them.
     slugLockedForFixedPage: () =>
-      onPageScreen("content-edit.slug_locked_for_fixed_page", () =>
-        linesMatching(/address cannot be changed|cannot change its address/i),
-      ),
+      onPageScreen("content-edit.slug_locked_for_fixed_page", async () => {
+        const LOCKED = /address cannot be changed|cannot change its address/i;
+        const marked = [
+          ...(await testIdTexts("content-fixed-page-warning")),
+          ...(await testIdTexts("content-slug-field")),
+        ];
+        if (marked.length) return marked.flatMap(lined).filter((line) => LOCKED.test(line)).join("\n");
+        return linesMatching(LOCKED);
+      }),
     deleteWithheldForFixedPage: () =>
-      onPageScreen("content-edit.delete_withheld_for_fixed_page", () => screenControlState(/^\s*delete page\s*$/i)),
+      onPageScreen("content-edit.delete_withheld_for_fixed_page", () =>
+        screenControlState(DELETE_PAGE, "content-delete-button"),
+      ),
     fieldError: () => onPageScreen("content-edit.field_error", () => contentErrors()),
-    duplicateSlugError: () => onPageScreen("content-edit.duplicate_slug_error", () => contentErrors(/already (in use|uses)/i)),
+    duplicateSlugError: () => onPageScreen("content-edit.duplicate_slug_error", () => duplicateSlug()),
     changesPublishedSuccess: () =>
-      onPageScreen("content-edit.changes_published_success", () => contentStatus(/changes published/i)),
+      onPageScreen("content-edit.changes_published_success", () =>
+        contentStatus(/changes published/i, "content-changes-published-success"),
+      ),
     // Announced on the page list, where the browser lands once the page is gone.
-    deletedSuccess: () => onPageScreen("content-edit.deleted_success", () => contentStatus(/page removed|deleted/i)),
+    deletedSuccess: () =>
+      onPageScreen("content-edit.deleted_success", () => contentStatus(/page removed|deleted/i, "content-deleted-success")),
     refusedForNonAdministrator: () => refusalShown(),
     bodyBeingEdited: () =>
       onPageScreen("content-edit.body_being_edited", async () => {
@@ -1388,7 +1730,8 @@ export default function create(
     // it cannot be viewed or restored from the service."), so this reads empty.
     versionHistory: () =>
       onPageScreen("content-edit.version_history", async () => {
-        const region = seen(regionNamed(page.getByRole("main"), /history|versions/i));
+        const marked = await carried("content-version-history");
+        const region = marked ?? seen(regionNamed(page.getByRole("main"), /history|versions/i));
         return (await region.count()) ? (await region.first().innerText()).trim() : "";
       }),
   };
@@ -1456,27 +1799,31 @@ export default function create(
           await page.waitForTimeout(250);
         }
       }),
-    // The rule the editor states under its toolbar, which "Insert image" is described by.
+    // The rule the editor states under its toolbar ("image-file-rule"), which "Insert image"
+    // is described by.
     onlyJpegAndPngOffered: () =>
       onPageScreen("file-embedded-image.only_jpeg_and_png_offered", async () => {
-        if (!(await editableBox("body")) && (await screenControl(/^\s*edit page\s*$/i).count())) {
-          await pressOnScreen("file-embedded-image.only_jpeg_and_png_offered", /^\s*edit page\s*$/i);
+        const where = "file-embedded-image.only_jpeg_and_png_offered";
+        if (!(await editableBox("body")) && (await (await screenControlFor(EDIT_PAGE, "content-edit-button")).count())) {
+          await pressOnScreen(where, EDIT_PAGE, "content-edit-button");
         }
-        if (!(await screenControl(/^\s*insert image\s*$/i).count())) {
-          unbound(
-            "file-embedded-image.only_jpeg_and_png_offered",
-            `no "Insert image" control over the body on ${page.url()}, after "Edit page" where offered`,
-          );
+        if (!(await (await screenControlFor(/^\s*insert image\s*$/i, "content-body-image-button")).count())) {
+          unbound(where, `no "Insert image" control over the body on ${page.url()}, after "Edit page" where offered`);
         }
+        if (await carried("image-file-rule")) return (await testIdTexts("image-file-rule")).join("\n");
         return linesMatching(/^insert image takes /i);
       }),
     // Every wording the status line took while the last image was being stored that speaks
-    // of it being under way; the status as it stands when no image was put in here.
+    // of it being under way ("embedded-image-uploading" among them); the status as it stands
+    // when no image was put in here.
     uploadingIndicator: () =>
       onPageScreen("file-embedded-image.uploading_indicator", async () => {
         const heard = bodyImageNotices.length
           ? bodyImageNotices
-          : await seen(page.getByRole("main").getByRole("status")).allInnerTexts();
+          : [
+              ...(await testIdTexts("embedded-image-uploading")),
+              ...(await seen(page.getByRole("main").getByRole("status")).allInnerTexts()),
+            ];
         return heard
           .map((words) => words.trim())
           .filter((words) => /uploading|storing|inserting|in progress/i.test(words))
@@ -1495,13 +1842,14 @@ export default function create(
       await ready();
       const refused = await refusalShown();
       if (refused) unbound(where, `the published page did not open at ${page.url()}: ${refused}`);
+      // The images the body draws carry "content-body-image".
       let sources: string[] = [];
       for (let waited = 0; waited <= 5000; waited += 250) {
-        sources = (
-          await seen(page.getByRole("main").getByRole("img")).evaluateAll((images) =>
-            images.map((image) => image.getAttribute("src") ?? ""),
-          )
-        ).filter((source) => source.includes("/api/files/"));
+        const marked = byTestId("content-body-image");
+        const images = (await marked.count()) ? marked : seen(page.getByRole("main").getByRole("img"));
+        sources = (await images.evaluateAll((all) => all.map((image) => image.getAttribute("src") ?? ""))).filter(
+          (source) => source.includes("/api/files/"),
+        );
         if (sources.length) break;
         await page.waitForTimeout(250);
       }
@@ -1550,7 +1898,13 @@ export default function create(
       const said = await bodyText().catch(() => "");
       return /do not have permission|not authori[sz]ed/i.test(said) ? said : "";
     }
-    // "Page not found" over "Back to home" now; "Not Found" over "Go Home" once.
+    // "Page not found" over "Back to home" now; "Not Found" over "Go Home" once. The screen
+    // carries "not-found-page"; its words are read without the link it ends on.
+    const notFound = await carried("not-found-page");
+    if (notFound) {
+      const links = (await seen(notFound.first().getByRole("link")).allInnerTexts().catch(() => [] as string[])).map((one) => one.trim());
+      return (await testIdLines("not-found-page")).filter((line) => !links.includes(line)).join("\n");
+    }
     if (!(await seen(page.getByRole("heading", { name: /^\s*(page )?not found\s*$/i })).count())) return "";
     const lines = await textLines();
     const from = Math.max(0, lines.findIndex((line) => /^(page )?not found$/i.test(line)));
@@ -1579,6 +1933,23 @@ export default function create(
     return textLines();
   }
 
+  // The page is drawn once "Loading opportunity…" has gone: its heading is up while the
+  // progress bar still stands in for the page.
+  async function opportunityLoaded(): Promise<void> {
+    await seen(page.getByRole("progressbar"))
+      .first()
+      .waitFor({ state: "hidden", timeout: 10000 })
+      .catch(() => undefined);
+  }
+
+  // A value the page marks with a test ID: its words, after waiting for the page to be drawn;
+  // null where the page carries no such element.
+  async function opportunityFact(where: string, testId: string): Promise<string | null> {
+    await opportunityLines(where);
+    await opportunityLoaded();
+    return testIdText(testId);
+  }
+
   async function figureAbove(where: string, label: RegExp): Promise<string> {
     const lines = await opportunityLines(where);
     for (let i = 1; i < lines.length; i++) if (label.test(lines[i])) return lines[i - 1];
@@ -1597,8 +1968,13 @@ export default function create(
   // What the award notice says beyond the winner's name. A signed-out visitor is shown only
   // "This opportunity was awarded to <name>."; whatever else a reader permitted to see
   // scores is shown there is picked out by what it looks like.
-  async function awardDetail(where: string, kind: RegExp): Promise<string> {
+  // The award section draws each detail under its own term, carrying its test ID
+  // ("opportunity-successful-proponent-contact", "-score"), to a reader permitted to see it.
+  async function awardDetail(where: string, kind: RegExp, testId?: string): Promise<string> {
     await opportunityLines(where);
+    await opportunityLoaded();
+    const marked = testId ? await testIdText(testId) : null;
+    if (marked !== null) return marked;
     const alerts = seen(page.getByRole("alert"));
     const lines: string[] = [];
     for (let i = 0; i < (await alerts.count()); i++) {
@@ -1615,10 +1991,14 @@ export default function create(
   // opportunities signed out, where the running build raises none, so each reads empty.
   async function pageNotices(where: string): Promise<string> {
     await opportunityLines(where);
-    await seen(page.getByRole("progressbar"))
-      .first()
-      .waitFor({ state: "hidden", timeout: 10000 })
-      .catch(() => undefined);
+    await opportunityLoaded();
+    // The notices the page marks "opportunity-page-messages", where it carries them.
+    const marked = await carried("opportunity-page-messages");
+    if (marked) {
+      const said: string[] = [];
+      for (const words of await marked.allInnerTexts()) said.push(...lined(words));
+      return said.join("\n");
+    }
     const noticeIn = (scope: Page | Locator): Locator =>
       seen(
         scope
@@ -1658,11 +2038,10 @@ export default function create(
   // The first line below the heading, as the old target hands back the name alone; nothing
   // when the page has no such region.
   async function successfulProponentShown(): Promise<string> {
-    // The heading is up while "Loading opportunity…" still stands in for the page.
-    await seen(page.getByRole("progressbar"))
-      .first()
-      .waitFor({ state: "hidden", timeout: 10000 })
-      .catch(() => undefined);
+    await opportunityLoaded();
+    // The name itself carries "opportunity-successful-proponent".
+    const marked = await testIdText("opportunity-successful-proponent");
+    if (marked !== null) return lined(marked)[0] ?? "";
     const region = seen(regionNamed(page.getByRole("main"), /^\s*successful proponent\s*$/i)).first();
     if (!(await region.count())) return "";
     const lines = lined(await region.innerText()).filter((line) => !/^successful proponent$/i.test(line));
@@ -1677,8 +2056,13 @@ export default function create(
   // its heading; an older layout put them behind a row of tabs, read from the tab's heading
   // to the "Got Questions?" box that closes every section. `headings` names the region's
   // heading where it differs from the tab's ("Scope" for "Scope & Contract").
-  async function sectionBehind(where: string, tab: string, headings: string[] = []): Promise<string> {
+  async function sectionBehind(where: string, tab: string, headings: string[] = [], testId?: string): Promise<string> {
     await opportunityLines(where);
+    if (testId) {
+      await opportunityLoaded();
+      const marked = await carried(testId);
+      if (marked) return (await sectionLines(marked.first())).join("\n");
+    }
     for (const heading of [tab, ...headings]) {
       const region = seen(
         page.getByRole("main").getByRole("region").filter({ has: page.getByRole("heading", { name: heading, exact: true }) }),
@@ -1707,7 +2091,13 @@ export default function create(
   // A section of the Details tab below its "Got Questions?" box ("Phases of Work", "Service
   // Areas"), from its heading to the one after it. The Details tab is chosen first if an
   // earlier reader left another tab open.
-  async function detailsSection(where: string, start: RegExp, end: RegExp): Promise<string> {
+  async function detailsSection(where: string, start: RegExp, end: RegExp, testId?: string): Promise<string> {
+    if (testId) {
+      await opportunityLines(where);
+      await opportunityLoaded();
+      const marked = await carried(testId);
+      if (marked) return (await sectionLines(marked.first())).join("\n");
+    }
     let lines = await opportunityLines(where);
     if (!lines.some((line) => start.test(line))) {
       const details = seen(page.getByText("Details", { exact: true })).first();
@@ -1733,7 +2123,14 @@ export default function create(
   // person; pressing it saves at once. An input that says which way it should end up is
   // honoured, and a box already that way is left alone.
   async function toggleWatchBox(where: string, walked: string, input: unknown): Promise<void> {
-    const box = seen(page.getByRole("main").getByRole("checkbox", { name: /^\s*watch( this opportunity)?\s*$/i })).first();
+    // The box sits inside the label carrying "opportunity-watch-toggle".
+    const main = page.getByRole("main");
+    const box = seen(
+      main
+        .getByTestId("opportunity-watch-toggle")
+        .getByRole("checkbox")
+        .or(main.getByRole("checkbox", { name: /^\s*watch( this opportunity)?\s*$/i })),
+    ).first();
     await box.waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
     if (!(await box.count())) {
       unbound(where, `${walked}: the page offers a signed-in person a "Watch this opportunity" box, and on ${page.url()} as ${actingId()} there is none; it offers ${await offered()}`);
@@ -1761,8 +2158,9 @@ export default function create(
   // "View your proposal" in its place (the service keeps one per vendor), which is its one
   // way on from here to that proposal; the old target's binding does the same.
   async function startProposalLink(where: string, walked: string): Promise<void> {
+    await opportunityLoaded();
     const control =
-      (await findControl(page, /^\s*(start|create|submit|write)( a)? proposal\s*$/i)) ??
+      (await findControl(page, /^\s*(start|create|submit|write)( a)? proposal\s*$/i, "opportunity-start-proposal")) ??
       (await findControl(page, /^\s*view (your|my)? ?proposal\s*$/i));
     if (!control) unbound(where, `${walked}: signed in as a vendor on an opportunity still taking proposals the page offers "Start a proposal" (or "View your proposal" once the vendor holds one), and on ${page.url()} as ${actingId()} it offers neither; it offers ${await offered()}`);
     if (await isDisabled(control)) throw new Error(`${where} — "${(await control.innerText().catch(() => "")).trim()}" is disabled on ${page.url()}`);
@@ -1799,13 +2197,16 @@ export default function create(
         await startProposalLink(where("start_proposal"), walked);
       },
       opportunityIdentifier: async () => {
-        await opportunityLines(where("opportunity_identifier"));
+        const shown = await opportunityFact(where("opportunity_identifier"), "opportunity-identifier");
+        if (shown) return shown;
         const segment = new RegExp(`^/opportunities/${program}/([^/?#]+)`).exec(new URL(page.url()).pathname)?.[1] ?? "";
         return segment === "create" ? "" : segment;
       },
       // The value given under the page's "Status" term ("Status" over "Published"); the
       // program's name over its status badge, as an older layout drew it, otherwise.
       status: async () => {
+        const shown = await opportunityFact(where("status"), "opportunity-status");
+        if (shown !== null) return shown;
         const lines = await opportunityLines(where("status"));
         const term = await definitionOf(/^status$/i);
         if (term) return term;
@@ -1813,22 +2214,32 @@ export default function create(
         return at >= 0 && at + 1 < lines.length ? lines[at + 1] : "";
       },
       publishedDate: async () => {
-        await opportunityLines(where("published_date"));
+        const shown = await opportunityFact(where("published_date"), "opportunity-published-date");
+        if (shown !== null) return shown;
         return datedLine("Published");
       },
       createdByName: async () => {
-        await opportunityLines(where("created_by_name"));
+        const shown = await opportunityFact(where("created_by_name"), "opportunity-created-by");
+        if (shown !== null) return shown;
         return valueAfter(["Created By"]);
       },
       lastChangedByName: async () => {
-        await opportunityLines(where("last_changed_by_name"));
+        const shown = await opportunityFact(where("last_changed_by_name"), "opportunity-last-changed-by");
+        if (shown !== null) return shown;
         return valueAfter(["Updated By", "Last Changed By"]);
       },
-      proposalDeadline: async () =>
-        (await opportunityLines(where("proposal_deadline"))).filter((line) => /^Close[sd]\b/.test(line)).join("\n"),
+      // The whole "Closes <date> at <time>" (or "Closed …") line where the page draws one, as
+      // the old binding reads it; the deadline alone, under its term, otherwise.
+      proposalDeadline: async () => {
+        const shown = await opportunityFact(where("proposal_deadline"), "opportunity-proposal-deadline");
+        const lines = await opportunityLines(where("proposal_deadline"));
+        const closes = lines.filter((line) => /^Close[sd]\b/.test(line));
+        if (shown === null) return closes.join("\n");
+        return closes.find((line) => line.includes(shown)) ?? shown;
+      },
       // "There are currently no addenda for this opportunity." is an empty list.
       addenda: async () => {
-        const section = await sectionBehind(where("addenda"), "Addenda");
+        const section = await sectionBehind(where("addenda"), "Addenda", [], "opportunity-addenda");
         return /^(there are currently no addenda|no addenda have been added)/i.test(section) ? "" : section;
       },
       // The "Successful proponent" region's name; an older layout's "awarded to <name>" alert
@@ -1868,6 +2279,21 @@ export default function create(
   async function bodyElementNames(where: string): Promise<string> {
     const refused = await refusalShown();
     if (refused) unbound(where, `no page is published at ${page.url()}: ${refused}`);
+    // The body carries "content-page-body": every element inside it, in document order.
+    const marked = await carried("content-page-body");
+    if (marked) {
+      return marked.first().evaluate((body) => {
+        const names: string[] = [];
+        const walk = (element: Element): void => {
+          for (const child of Array.from(element.children)) {
+            names.push(child.tagName.toLowerCase());
+            walk(child);
+          }
+        };
+        walk(body);
+        return names.join("\n");
+      });
+    }
     const title = seen(page.getByRole("heading", { level: 1 })).first();
     if (!(await title.count())) unbound(where, `the page at ${page.url()} carries no title to find its body by`);
     return title.evaluate((heading) => {
@@ -1946,10 +2372,26 @@ export default function create(
   // whom the screen answers with its refusal is shown none of it: a reading is nothing (the
   // refusal logged), and an action is refused. The administrator refused, or a screen that
   // opened without the section, could not reach the place, and that is unbound.
+  // Each section is the innermost region holding what the contract marks in it by test ID —
+  // the instructions' body, the individual table or its "Submit scores for consensus", the
+  // consensus table or the message withholding it — or the region its name names.
+  const EVALUATION_TAB_IDS: Record<string, string[]> = {
+    Instructions: ["evaluation-instructions-body"],
+    Evaluation: ["evaluation-individual-table", "evaluation-submit-for-consensus"],
+    Consensus: ["evaluation-consensus-table", "evaluation-consensus-withheld-message", "evaluation-submit-consensus"],
+  };
   function evaluationTab(pageId: string, route: string, tab: string) {
     const screen = signedInScreen(pageId, route);
     const where = screen.where;
-    const region = (): Locator => seen(regionNamed(page.getByRole("main"), new RegExp(`^\\s*${tab}\\s*$`, "i"))).first();
+    const region = (): Locator => {
+      const main = page.getByRole("main");
+      const named = regionNamed(main, new RegExp(`^\\s*${tab}\\s*$`, "i"));
+      const ids = EVALUATION_TAB_IDS[tab] ?? [];
+      if (!ids.length) return seen(named).first();
+      let held = page.getByTestId(ids[0]);
+      for (const id of ids.slice(1)) held = held.or(page.getByTestId(id));
+      return seen(main.getByRole("region").filter({ has: held }).or(named)).last();
+    };
     async function shownRefusal(member: string): Promise<string> {
       await ready();
       const why = await refusalShown();
@@ -1992,28 +2434,61 @@ export default function create(
       open: (params?: Record<string, string>) => tab.screen.open(params),
       // The instructions page as rendered in the section; a section left empty (the page
       // could not be read) is nothing.
-      instructionsBody: async (): Promise<string> => ((await tab.reached("instructions_body")) ? tab.words() : ""),
-      // The "Instructions" section link, by its name, to a reader shown it; nothing to one
-      // the screen opens for without it (the owner not on the panel) or refuses.
+      // The instructions as rendered ("evaluation-instructions-body").
+      instructionsBody: async (): Promise<string> => {
+        if (!(await tab.reached("instructions_body"))) return "";
+        if (await carried("evaluation-instructions-body")) return (await testIdLines("evaluation-instructions-body")).join("\n");
+        return tab.words();
+      },
+      // The "Instructions" section link ("opportunity-tab-instructions"), by its name, to a
+      // reader shown it; nothing to one the screen opens for without it (the owner not on the
+      // panel) or refuses.
       visibleToEvaluatorsOnly: async (): Promise<string> => {
         await ready();
         if (await refusalShown()) return "";
+        const marked = await carried("opportunity-tab-instructions");
+        if (marked) return (await marked.first().innerText()).trim();
         const links = seen(page.getByRole("navigation", { name: /opportunity sections/i }).getByRole("link", { name: /^\s*instructions\s*$/i }));
         return (await links.count()) ? (await links.first().innerText()).trim() : "";
       },
     } as unknown as T;
   }
 
-  // The proponent rows of a section's table, one line each, cells joined with " | ".
+  // The proponent rows of a section's table, one line each, cells joined with " | "; each row
+  // carries "evaluation-proponent-row". The Evaluation section draws them as list items with
+  // no cell role ("Your evaluations, by anonymous proponent name": "Proponent 1", "Your
+  // evaluation: Submitted", "Start evaluation"); those read as the same line a table row
+  // would — "Proponent 1 | Submitted | Start evaluation" — from the name
+  // ("proposal-proponent-name"), the status ("evaluation-status") and the link
+  // ("evaluation-open-proponent"), or from the row's children where it carries none of them.
   async function proponentRows(scope: Locator): Promise<string[]> {
+    const marked = byTestId("evaluation-proponent-row", scope);
+    if (await marked.count()) return rowsText(marked, bareProponentRow);
     return tableRows(seen(scope.getByRole("table")).first());
+  }
+
+  async function bareProponentRow(row: Locator): Promise<string> {
+    const words: string[] = [];
+    for (const id of ["proposal-proponent-name", "evaluation-status", "evaluation-open-proponent"]) {
+      const found = seen(row.getByTestId(id));
+      for (let i = 0; i < (await found.count()); i++) {
+        const text = (await found.nth(i).innerText()).replace(/\s+/g, " ").trim();
+        if (text) words.push(text);
+      }
+    }
+    if (words.length) return words.join(" | ");
+    const parts = await row.evaluate((element) =>
+      Array.from(element.children).map((child) => ((child as HTMLElement).innerText ?? "").replace(/\s+/g, " ").trim()),
+    );
+    return parts.filter(Boolean).join(" | ");
   }
 
   // A row picked by the proposal's identifier (the address its link carries), by its place
   // (a number, the first row being 0, as the old binding counts), or by the proponent's
   // anonymous name or other words in it.
   async function proponentRow(where: string, scope: Locator, input: unknown): Promise<Locator> {
-    const rows = seen(scope.getByRole("row")).filter({ has: page.getByRole("cell") });
+    const marked = byTestId("evaluation-proponent-row", scope);
+    const rows = (await marked.count()) ? marked : seen(scope.getByRole("row")).filter({ has: page.getByRole("cell") });
     await rows.first().waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
     const total = await rows.count();
     const proposal = given(input, ["proposal", "proposalId", "id"]) ?? (typeof input === "string" ? input : undefined);
@@ -2043,7 +2518,8 @@ export default function create(
     const tab = evaluationTab(pageId, route, "Evaluation");
     // Why the last "Submit scores for consensus" was refused, for incomplete_evaluation_error.
     let submitRefusal = "";
-    const submit = (): Locator => seen(tab.region().getByRole("button", { name: SUBMIT_FOR_CONSENSUS })).first();
+    const submit = (): Locator =>
+      seen(page.getByTestId("evaluation-submit-for-consensus").or(tab.region().getByRole("button", { name: SUBMIT_FOR_CONSENSUS }))).first();
     const rows = async (member: string): Promise<string> =>
       (await tab.reached(member)) ? (await proponentRows(tab.region())).join("\n") : "";
     return {
@@ -2052,7 +2528,7 @@ export default function create(
         const member = "open_proponent_evaluation";
         await tab.mustReach(member);
         const row = await proponentRow(tab.where(member), tab.region(), input);
-        const link = seen(row.getByRole("link")).first();
+        const link = seen(row.getByTestId("evaluation-open-proponent").or(row.getByRole("link"))).first();
         if (!(await link.count())) unbound(tab.where(member), `the row "${(await row.innerText()).replace(/\s+/g, " ").trim()}" on ${page.url()} carries no link to the evaluation`);
         await link.click();
         await settle();
@@ -2090,9 +2566,12 @@ export default function create(
         await ready();
       },
       proponentRow: () => rows("proponent_row"),
-      // The anonymous names, one per line, from the table's first column.
+      // The anonymous names, one per line, from the table's first column; each carries
+      // "proposal-proponent-name".
       anonymousProponentName: async (): Promise<string> => {
         if (!(await tab.reached("anonymous_proponent_name"))) return "";
+        const marked = await carried("proposal-proponent-name", tab.region());
+        if (marked) return (await testIdTexts("proposal-proponent-name", tab.region())).filter(Boolean).join("\n");
         return (await proponentRows(tab.region())).map((row) => row.split(" | ")[0] ?? "").filter(Boolean).join("\n");
       },
       evaluationStatus: () => rows("evaluation_status"),
@@ -2104,9 +2583,14 @@ export default function create(
         const rule = await linesMatching(/can submit once|complete evaluation/i);
         return `"Submit scores for consensus" is disabled${rule ? `\n${rule}` : ""}`;
       },
+      // The refusal the page draws ("evaluation-incomplete-error", or its alerts about
+      // incomplete evaluations), with why the last submit was refused.
       incompleteEvaluationError: async (): Promise<string> => {
         await ready();
-        const alerts = lined((await seen(page.getByRole("alert")).allInnerTexts().catch(() => [] as string[])).join("\n")).filter((line) => /complete|incomplete/i.test(line));
+        const marked = (await testIdTexts("evaluation-incomplete-error")).flatMap(lined);
+        const alerts = marked.length
+          ? marked
+          : lined((await seen(page.getByRole("alert")).allInnerTexts().catch(() => [] as string[])).join("\n")).filter((line) => /complete|incomplete/i.test(line));
         return [...new Set([...alerts, submitRefusal].filter(Boolean))].join("\n");
       },
       ownEvaluationsOnly: () => rows("own_evaluations_only"),
@@ -2127,23 +2611,24 @@ export default function create(
   function evaluationConsensusListPage<T>(pageId: string, route: string): T {
     const tab = evaluationTab(pageId, route, "Consensus");
     const shows = async (): Promise<string> => `the "Consensus" section on ${page.url()} shows ${actingId()} only: ${(await tab.words()).replace(/\n+/g, " | ") || "nothing"}`;
-    async function control(member: string, name: RegExp, scope?: Locator): Promise<void> {
+    async function control(member: string, name: RegExp, scope?: Locator, testId?: string): Promise<void> {
       await tab.mustReach(member);
-      const found = await findControl(scope ?? tab.region(), name);
+      const found = (testId ? (await carried(testId))?.first() ?? null : null) ?? (await findControl(scope ?? tab.region(), name));
       if (!found) unbound(tab.where(member), `no control named ${name}: ${await shows()} (status: ${(await textLines()).find((line) => /^status:/i.test(line)) ?? "not shown"})`);
       if (await isDisabled(found)) throw new Error(`${tab.where(member)} — refused: the control named ${name} is disabled on ${page.url()}`);
       await found.click();
       await settle();
     }
-    async function inOpenDialog(member: string, name: RegExp): Promise<void> {
+    async function inOpenDialog(member: string, name: RegExp, testId?: string): Promise<void> {
       await tab.mustReach(member);
       await dialog().waitFor({ state: "visible", timeout: 3000 }).catch(() => undefined);
       if (!(await dialog().count())) unbound(tab.where(member), `no dialog is open on ${page.url()}; ${await shows()}`);
-      await press(tab.where(member), name, dialog());
+      await press(tab.where(member), name, dialog(), testId);
     }
     async function table(member: string): Promise<string> {
       if (!(await tab.reached(member))) return "";
-      if (!(await seen(tab.region().getByRole("table")).count())) unbound(tab.where(member), `no table of proponents: ${await shows()}`);
+      const listed = seen(tab.region().getByTestId("evaluation-consensus-table").or(tab.region().getByRole("table")));
+      if (!(await listed.count())) unbound(tab.where(member), `no table of proponents: ${await shows()}`);
       return (await proponentRows(tab.region())).join("\n");
     }
     // "Finalize consensus scores" sits in the screen's "Opportunity actions" bar (beside
@@ -2159,9 +2644,9 @@ export default function create(
     let finalizeRefusal = "";
     async function finalizeControl(member: string): Promise<void> {
       await tab.mustReach(member);
-      const found = await findControl(actionBar(), FINALIZE);
+      const found = (await carried("finalize-consensus-button"))?.first() ?? (await findControl(actionBar(), FINALIZE));
       const bar = (await actionBar().innerText().catch(() => "")).replace(/\s*\n\s*/g, " | ") || "nothing";
-      const status = await labelledValue(["Status"]);
+      const status = (await testIdText("opportunity-status")) ?? (await labelledValue(["Status"]));
       if (!found) {
         // At consensus and not offered: the page withholding it from this reader.
         if (/consensus/i.test(status)) throw new Error(`${tab.where(member)} — refused: the opportunity is at "${status}" but the "Opportunity actions" bar of ${page.url()} offers ${actingId()} no "Finalize consensus scores" (it shows: ${bar})`);
@@ -2178,7 +2663,7 @@ export default function create(
       const alertsNow = async (): Promise<string[]> => seen(page.getByRole("alert")).allInnerTexts().catch(() => [] as string[]);
       const before = new Set(await alertsNow());
       finalizeRefusal = "";
-      await press(tab.where(member), FINALIZE, dialog());
+      await press(tab.where(member), FINALIZE, dialog(), "evaluation-finalize-confirm");
       const deadline = Date.now() + 15000;
       while (Date.now() < deadline) {
         const fresh = (await alertsNow()).filter((words) => !before.has(words));
@@ -2190,7 +2675,7 @@ export default function create(
           break;
         }
         if (fresh.length) break;
-        if (!(await dialog().count()) && !(await findControl(actionBar(), FINALIZE))) break;
+        if (!(await dialog().count()) && !(await carried("finalize-consensus-button")) && !(await findControl(actionBar(), FINALIZE))) break;
         await page.waitForTimeout(250);
       }
       await settle();
@@ -2204,17 +2689,27 @@ export default function create(
       if (await dialog().count()) return true;
       if (finalizeRefusal) return true;
       if (await seen(tab.region().getByRole("button")).count()) return true;
+      if (await carried("finalize-consensus-button")) return true;
       if (await findControl(actionBar(), FINALIZE)) return true;
       return unbound(tab.where(member), `nothing on the section raises it: ${await shows()}`);
     }
-    const dialogWords = async (member: string, only?: RegExp): Promise<string> => {
+    // A dialog of its kind carries its test ID ("evaluation-submit-consensus-dialog",
+    // "evaluation-finalize-dialog"); without them, the open dialog when its words say so.
+    const dialogWords = async (member: string, only: RegExp, testId: string): Promise<string> => {
       if (!(await afterAControl(member))) return "";
+      const marked = await carried(testId);
+      if (marked) return (await marked.first().innerText()).trim();
       if (!(await dialog().count())) return "";
       const said = (await dialog().innerText()).trim();
       return only && !only.test(said) ? "" : said;
     };
-    const alertsAbout = async (member: string, about: RegExp): Promise<string> => {
+    // A refusal by its test ID ("evaluation-not-all-submitted-error", "evaluation-no-
+    // screenable-error"), with what the last finalize was answered; the alerts about it
+    // otherwise.
+    const alertsAbout = async (member: string, about: RegExp, testId: string): Promise<string> => {
       if (!(await afterAControl(member))) return "";
+      const marked = (await testIdTexts(testId)).flatMap(lined);
+      if (marked.length) return [...new Set([...marked, ...lined(finalizeRefusal).filter((line) => about.test(line))])].join("\n");
       const shown = lined((await seen(page.getByRole("alert")).allInnerTexts().catch(() => [] as string[])).join("\n"));
       return [...new Set([...shown, ...lined(finalizeRefusal)].filter((line) => about.test(line)))].join("\n");
     };
@@ -2223,19 +2718,26 @@ export default function create(
       openProponentConsensus: async (input?: unknown): Promise<void> => {
         const member = "open_proponent_consensus";
         await tab.mustReach(member);
-        if (!(await seen(tab.region().getByRole("table")).count())) unbound(tab.where(member), `no proponent to open: ${await shows()}`);
+        const listed = seen(tab.region().getByTestId("evaluation-consensus-table").or(tab.region().getByRole("table")));
+        if (!(await listed.count())) unbound(tab.where(member), `no proponent to open: ${await shows()}`);
         const row = await proponentRow(tab.where(member), tab.region(), input);
-        await seen(row.getByRole("link")).first().click();
+        await seen(row.getByTestId("evaluation-open-consensus").or(row.getByRole("link"))).first().click();
         await settle();
       },
-      submitFinalConsensusScores: () => control("submit_final_consensus_scores", /^\s*submit (final )?consensus( scores)?\s*$/i),
+      submitFinalConsensusScores: () =>
+        control(
+          "submit_final_consensus_scores",
+          /^\s*submit (final )?consensus( scores)?\s*$/i,
+          undefined,
+          "evaluation-submit-consensus",
+        ),
       // Presses the dialog's "Submit consensus scores" and waits for the answer: the note in
       // the section's status, or an alert, which a refusal is reported from.
       confirmSubmitConsensus: async (): Promise<void> => {
         const member = "confirm_submit_consensus";
         const alertsNow = async (): Promise<string[]> => seen(page.getByRole("alert")).allInnerTexts().catch(() => [] as string[]);
         const before = new Set(await alertsNow());
-        await inOpenDialog(member, /^\s*submit (final )?consensus( scores)?\s*$|^\s*submit\s*$/i);
+        await inOpenDialog(member, /^\s*submit (final )?consensus( scores)?\s*$|^\s*submit\s*$/i, "evaluation-submit-consensus-confirm");
         const deadline = Date.now() + 15000;
         while (Date.now() < deadline) {
           const fresh = (await alertsNow()).filter((words) => !before.has(words));
@@ -2249,15 +2751,20 @@ export default function create(
       },
       finalizeConsensusScores: () => finalizeControl("finalize_consensus_scores"),
       confirmFinalizeConsensus: () => confirmFinalize("confirm_finalize_consensus"),
-      cancelModal: () => inOpenDialog("cancel_modal", /^\s*cancel\s*$/i),
+      cancelModal: () => inOpenDialog("cancel_modal", /^\s*cancel\s*$/i, "evaluation-dialog-cancel"),
       proponentRow: () => table("proponent_row"),
       consensusStatus: () => table("consensus_status"),
-      submitConfirmationModal: () => dialogWords("submit_confirmation_modal", /submit/i),
-      finalizeConfirmationModal: () => dialogWords("finalize_confirmation_modal", /finali[sz]e/i),
-      notAllConsensusesSubmittedError: () => alertsAbout("not_all_consensuses_submitted_error", /consensus|all/i),
-      noScreenableProponentError: () => alertsAbout("no_screenable_proponent_error", /screen|proponent/i),
+      submitConfirmationModal: () =>
+        dialogWords("submit_confirmation_modal", /submit/i, "evaluation-submit-consensus-dialog"),
+      finalizeConfirmationModal: () =>
+        dialogWords("finalize_confirmation_modal", /finali[sz]e/i, "evaluation-finalize-dialog"),
+      notAllConsensusesSubmittedError: () =>
+        alertsAbout("not_all_consensuses_submitted_error", /consensus|all/i, "evaluation-not-all-submitted-error"),
+      noScreenableProponentError: () =>
+        alertsAbout("no_screenable_proponent_error", /screen|proponent/i, "evaluation-no-screenable-error"),
       // What the section tells this reader, its heading left off; nothing to a reader the
-      // screen refuses.
+      // screen refuses. To the owner who is not on the panel the section holds the message
+      // carrying "evaluation-consensus-withheld-message", by which it is found.
       emptyForOwnerNotOnPanel: async (): Promise<string> => ((await tab.reached("empty_for_owner_not_on_panel")) ? tab.words() : ""),
     } as unknown as T;
   }
@@ -2275,9 +2782,35 @@ export default function create(
     return 1;
   }
 
+  // A question's box on a score sheet: the n-th "evaluation-question-score-field" or
+  // "evaluation-question-notes-field" holds it, where the sheet carries them.
+  async function sheetBox(kind: "score" | "comment", n: number): Promise<Locator | null> {
+    const wrapper = byTestId(kind === "score" ? "evaluation-question-score-field" : "evaluation-question-notes-field").nth(n - 1);
+    if (!(await wrapper.count())) return null;
+    const box = seen(wrapper.getByRole("textbox").or(wrapper.getByRole("spinbutton"))).first();
+    return (await box.count()) ? box : null;
+  }
+
+  // A sheet's action by its test ID ("evaluation-save-draft" and the rest), by its name
+  // otherwise.
+  async function sheetAction(scope: Locator, names: RegExp[], testId: string): Promise<Locator | null> {
+    const marked = await carried(testId);
+    if (marked) return marked.first();
+    for (const name of names) {
+      const found = seen(scope.getByRole("button", { name }).or(scope.getByRole("link", { name }))).first();
+      if (await found.count()) return found;
+    }
+    return null;
+  }
+
   function scoreSheetPage(pageId: string, route: string) {
     const where = (member: string): string => `${pageId}.${member}`;
-    const submittedNote = (): Locator => seen(page.getByRole("note").filter({ hasText: /has been submitted|cannot be changed/i })).first();
+    const submittedNote = (): Locator =>
+      seen(
+        page
+          .getByTestId("evaluation-read-only-notice")
+          .or(page.getByRole("note").filter({ hasText: /has been submitted|cannot be changed/i })),
+      ).first();
 
     // The sheet as the reader is shown it. A sheet answered with "Page not found" to a reader
     // other than the administrator is the sheet withheld from them (seen as the public sector
@@ -2305,6 +2838,8 @@ export default function create(
     async function box(member: string, kind: "Score" | "Comment", input: unknown): Promise<Locator> {
       await onSheet(member);
       const n = questionNumber(input);
+      const marked = await sheetBox(kind === "Score" ? "score" : "comment", n);
+      if (marked) return marked;
       const found = seen(page.getByRole("textbox", { name: new RegExp(`^\\s*${kind} for question ${n}\\b`, "i") }))
         .or(seen(page.getByRole("spinbutton", { name: new RegExp(`^\\s*${kind} for question ${n}\\b`, "i") })))
         .first();
@@ -2332,18 +2867,11 @@ export default function create(
 
     // Press one of the sheet's actions and wait for the save to answer: the address moving
     // on, an alert, or a status saying it was saved.
-    async function save(member: string, names: RegExp[]): Promise<void> {
+    async function save(member: string, names: RegExp[], testId: string): Promise<void> {
       await onSheet(member);
       const group = seen(page.getByRole("group", { name: /evaluation actions/i })).first();
       const scope = (await group.count()) ? group : page.getByRole("main");
-      let control: Locator | null = null;
-      for (const name of names) {
-        const found = seen(scope.getByRole("button", { name }).or(scope.getByRole("link", { name }))).first();
-        if (await found.count()) {
-          control = found;
-          break;
-        }
-      }
+      const control = await sheetAction(scope, names, testId);
       if (!control) {
         if (await submittedNote().count()) {
           throw new Error(`${where(member)} — refused: the sheet on ${page.url()} says "${(await submittedNote().innerText()).replace(/\s+/g, " ").trim()}" and offers ${await offered()}`);
@@ -2364,11 +2892,15 @@ export default function create(
       await ready();
     }
 
-    // The sheet's messages that match: the alert's lines and each invalid box's own message.
-    async function messagesAbout(member: string, about: RegExp): Promise<string> {
+    // The sheet's messages that match: the alert's lines and each invalid box's own message;
+    // with the sheet's own error elements by test ID ("evaluation-score-error",
+    // "evaluation-notes-error"), whose words are among them, read once.
+    async function messagesAbout(member: string, about: RegExp, testId: string): Promise<string> {
       await ready();
       if (await whyNotHere()) return "";
-      return lined(await formMessages()).filter((line) => about.test(line)).join("\n");
+      const said = lined(await formMessages()).filter((line) => about.test(line));
+      const marked = (await testIdTexts(testId)).flatMap(lined);
+      return [...new Set(said.length ? said : marked)].join("\n");
     }
 
     return {
@@ -2380,11 +2912,14 @@ export default function create(
       open: (params?: Record<string, string>) => go(route, params),
       enterQuestionScore: (input?: unknown) => enterIn("enter_question_score", "Score", input),
       enterQuestionNotes: (input?: unknown) => enterIn("enter_question_notes", "Comment", input),
-      saveAndGoToNextProponent: () => save("save_and_go_to_next_proponent", [/^\s*save and go to next proponent\s*$/i, /^\s*next proponent\b/i]),
+      saveAndGoToNextProponent: () =>
+        save("save_and_go_to_next_proponent", [/^\s*save and go to next proponent\s*$/i, /^\s*next proponent\b/i], "evaluation-save-next"),
       // "Question 1: enter a score between 0 and 5", "Enter a score between 0 and 5 for
       // question 1." — the hint drawn under every box is left out.
-      scoreOutOfRangeError: () => messagesAbout("score_out_of_range_error", /enter a score|out of range|score must|no more than|at least 0/i),
-      emptyNotesError: () => messagesAbout("empty_notes_error", /enter a comment|comment is required|comment.*(empty|blank)/i),
+      scoreOutOfRangeError: () =>
+        messagesAbout("score_out_of_range_error", /enter a score|out of range|score must|no more than|at least 0/i, "evaluation-score-error"),
+      emptyNotesError: () =>
+        messagesAbout("empty_notes_error", /enter a comment|comment is required|comment.*(empty|blank)/i, "evaluation-notes-error"),
       refusedWhenNotPermitted: () => refusalShown(),
     };
   }
@@ -2393,6 +2928,9 @@ export default function create(
   async function sheetProponent(): Promise<string> {
     await ready();
     if (await whyNotHere()) return "";
+    // The name carries "proposal-proponent-name" (it is the sheet's heading).
+    const marked = await testIdText("proposal-proponent-name");
+    if (marked) return marked;
     const heading = seen(page.getByRole("heading", { level: 1 })).first();
     const said = (await heading.count()) ? (await heading.innerText()).trim() : "";
     if (/^Proponent\s+\d+/.test(said)) return said;
@@ -2403,16 +2941,26 @@ export default function create(
     const sheet = scoreSheetPage(pageId, route);
     return {
       ...sheet,
-      // The first save is "Save draft"; once saved the sheet offers "Save changes" in its place.
-      saveDraft: () => sheet.save("save_draft", [/^\s*save draft\s*$/i, /^\s*save changes\s*$/i]),
+      // The first save is "Save draft" ("evaluation-save-draft"); once saved the sheet offers
+      // "Save changes" ("evaluation-save-changes") in its place.
+      saveDraft: async () => {
+        const marked = (await carried("evaluation-save-draft")) ? "evaluation-save-draft" : "evaluation-save-changes";
+        await sheet.save("save_draft", [/^\s*save draft\s*$/i, /^\s*save changes\s*$/i], marked);
+      },
       saveAndGoToPreviousProponent: () =>
-        sheet.save("save_and_go_to_previous_proponent", [/^\s*save and go to previous proponent\s*$/i, /^\s*previous proponent\b/i]),
+        sheet.save(
+          "save_and_go_to_previous_proponent",
+          [/^\s*save and go to previous proponent\s*$/i, /^\s*previous proponent\b/i],
+          "evaluation-save-previous",
+        ),
       anonymousProponentName: () => sheetProponent(),
-      // The sheet as read, the questions with the proponent's responses among them.
+      // The sheet as read, the questions with the proponent's responses
+      // ("evaluation-question-response") among them.
       questionResponse: async (): Promise<string> => ((await sheet.readable("question_response")) ? mainText() : ""),
       duplicateEvaluationError: async (): Promise<string> => {
         await ready();
         if (await whyNotHere()) return "";
+        if (await carried("evaluation-duplicate-error")) return (await testIdTexts("evaluation-duplicate-error")).flatMap(lined).join("\n");
         return lined(await formMessages()).filter((line) => /already|duplicate|exists/i.test(line)).join("\n");
       },
     } as unknown as T;
@@ -2422,10 +2970,13 @@ export default function create(
     const sheet = scoreSheetPage(pageId, route);
     return {
       ...sheet,
-      saveChanges: () => sheet.save("save_changes", [/^\s*save changes\s*$/i]),
-      // "Status: Draft: incomplete", "Status: Draft: complete", "Status: Submitted".
-      evaluationStatus: async (): Promise<string> =>
-        (await sheet.readable("evaluation_status")) ? labelledValue(["Status", "Evaluation status"]) : "",
+      saveChanges: () => sheet.save("save_changes", [/^\s*save changes\s*$/i], "evaluation-save-changes"),
+      // "Status: Draft: incomplete", "Status: Draft: complete", "Status: Submitted"; the value
+      // carries "evaluation-status".
+      evaluationStatus: async (): Promise<string> => {
+        if (!(await sheet.readable("evaluation_status"))) return "";
+        return (await testIdText("evaluation-status")) ?? labelledValue(["Status", "Evaluation status"]);
+      },
       // "read-only" for a submitted sheet, which shows its scores as text and no box to
       // change; nothing for one still open to change, or withheld from this reader.
       readOnlyAfterSubmitted: async (): Promise<string> => {
@@ -2460,8 +3011,14 @@ export default function create(
   function consensusSheetPage<T>(pageId: string, route: string, kind: "create" | "edit"): T {
     const where = (member: string): string => `${pageId}.${member}`;
     const actions = (): Locator => seen(page.getByRole("group", { name: /consensus actions/i })).first();
+    // The note withholding the boxes carries "evaluation-chair-only-message" to an evaluator
+    // who is not the chair; a finalized sheet's note is known by its words.
     const withheldNote = (): Locator =>
-      seen(page.getByRole("note").filter({ hasText: /only the chair|have been finali[sz]ed|no longer changed/i })).first();
+      seen(
+        page
+          .getByTestId("evaluation-chair-only-message")
+          .or(page.getByRole("note").filter({ hasText: /only the chair|have been finali[sz]ed|no longer changed/i })),
+      ).first();
 
     // Why the sheet is not open to this reader: "Page not found" (no consensus may be
     // recorded here, or not by this reader) or the sign-in screen. A hand-off elsewhere is
@@ -2484,6 +3041,8 @@ export default function create(
     async function box(member: string, which: "score" | "comment", input: unknown): Promise<Locator> {
       await onSheet(member);
       const n = questionNumber(input);
+      const marked = await sheetBox(which, n);
+      if (marked) return marked;
       const name = new RegExp(`^\\s*(agreed )?${which} for question ${n}\\b`, "i");
       const found = seen(page.getByRole("textbox", { name })).or(seen(page.getByRole("spinbutton", { name }))).first();
       if (await found.count()) return found;
@@ -2505,12 +3064,12 @@ export default function create(
       await settle();
     }
 
-    async function save(member: string, names: RegExp[]): Promise<void> {
+    async function save(member: string, names: RegExp[], testId: string): Promise<void> {
       await onSheet(member);
-      let control: Locator | null = null;
+      let control: Locator | null = (await carried(testId))?.first() ?? null;
       for (const name of names) {
-        control = await findControl(actions(), name);
         if (control) break;
+        control = await findControl(actions(), name);
       }
       if (!control) {
         const note = await noteWords();
@@ -2542,42 +3101,57 @@ export default function create(
       open: (params?: Record<string, string>) => go(route, params),
       enterQuestionScore: (input?: unknown) => enterIn("enter_question_score", "score", input),
       enterQuestionNotes: (input?: unknown) => enterIn("enter_question_notes", "comment", input),
-      saveAndGoToNextProponent: () => save("save_and_go_to_next_proponent", [/^\s*save and go to next proponent\s*$/i, /^\s*next proponent\b/i]),
+      saveAndGoToNextProponent: () =>
+        save("save_and_go_to_next_proponent", [/^\s*save and go to next proponent\s*$/i, /^\s*next proponent\b/i], "evaluation-save-next"),
+      // The sheet as read, every panel member's score and comment ("evaluation-panel-member-
+      // score", "-notes") on it.
       panelMemberScore: () => sheetText("panel_member_score"),
       panelMemberNotes: () => sheetText("panel_member_notes"),
     };
     if (kind === "create") {
       Object.assign(built, {
-        saveDraft: () => save("save_draft", [/^\s*save draft\s*$/i, /^\s*save changes\s*$/i]),
+        saveDraft: async () => {
+          const marked = (await carried("evaluation-save-draft")) ? "evaluation-save-draft" : "evaluation-save-changes";
+          await save("save_draft", [/^\s*save draft\s*$/i, /^\s*save changes\s*$/i], marked);
+        },
         anonymousProponentName: () => sheetProponent(),
         // Nothing while the sheet offers the chair its boxes; the note that only the chair
-        // records the consensus, or the "Page not found" answer, to a reader refused it.
+        // records the consensus ("evaluation-chair-only-message"), or the "Page not found"
+        // answer, to a reader refused it.
         chairOnly: async (): Promise<string> => {
           await ready();
           const why = await whyNotHere();
           if (why) return why;
+          if (await sheetBox("score", 1)) return "";
           if (await seen(page.getByRole("textbox", { name: /^\s*agreed score for question/i })).count()) return "";
           return noteWords();
         },
         duplicateConsensusError: async (): Promise<string> => {
           await ready();
           if (await whyNotHere()) return "";
+          if (await carried("evaluation-duplicate-consensus-error")) {
+            return (await testIdTexts("evaluation-duplicate-consensus-error")).flatMap(lined).join("\n");
+          }
           return lined(await formMessages()).filter((line) => /already|duplicate|exists/i.test(line)).join("\n");
         },
       });
     } else {
       Object.assign(built, {
-        saveChanges: () => save("save_changes", [/^\s*save changes\s*$/i]),
-        // "Submitted", or the draft's state, from "Status: …"; nothing when withheld.
-        consensusStatus: async (): Promise<string> =>
-          (await refused("consensus_status")) ? "" : labelledValue(["Status", "Consensus status"]),
+        saveChanges: () => save("save_changes", [/^\s*save changes\s*$/i], "evaluation-save-changes"),
+        // "Submitted", or the draft's state, from "Status: …" ("evaluation-consensus-status");
+        // nothing when withheld.
+        consensusStatus: async (): Promise<string> => {
+          if (await refused("consensus_status")) return "";
+          return (await testIdText("evaluation-consensus-status")) ?? labelledValue(["Status", "Consensus status"]);
+        },
         // As the old binding reads it: "enabled" while "Save changes" may be pressed,
         // "disabled" when it is drawn but may not, "absent" when the sheet offers no save
-        // (finalized, not the chair, or refused).
+        // (finalized, not the chair, or refused). The sheet's "This consensus has been
+        // submitted" notice ("evaluation-editable-notice") stands over it.
         editableAfterSubmitted: async (): Promise<string> => {
           await ready();
           if (await whyNotHere()) return "absent";
-          const control = await findControl(actions(), /^\s*save changes\s*$/i);
+          const control = (await carried("evaluation-save-changes"))?.first() ?? (await findControl(actions(), /^\s*save changes\s*$/i));
           if (!control) return "absent";
           return (await isDisabled(control)) ? "disabled" : "enabled";
         },
@@ -4303,41 +4877,103 @@ export default function create(
   // by title or location" search box; the list narrows as each is changed ("Showing N
   // opportunities. The list changes as you choose."). Each card is a link: title, program,
   // status badge, "Closes <date> at <time>" (or "Closed …"), summary, value, location.
-  // The list heads its groups "Unpublished", "Open" and "Closed", each a line of its own.
+  // The list draws each group as a section of its own under a level-2 heading, "Unpublished",
+  // "Open" or "Closed", its name sometimes followed by the group's count ("Open Opportunities
+  // 3"), then a line of description and the group's list of cards. Whatever
+  // follows the last group on the page, such as a panel describing the programs, is no part
+  // of it.
   const OPPORTUNITY_GROUPS = [
-    /^unpublished(?: opportunities)?$/i,
-    /^open(?: opportunities)?$/i,
-    /^closed(?: opportunities)?$/i,
+    /^unpublished(?: opportunities)?(?:\s+\d+)?$/i,
+    /^open(?: opportunities)?(?:\s+\d+)?$/i,
+    /^closed(?: opportunities)?(?:\s+\d+)?$/i,
   ];
 
-  async function opportunityGroup(header: RegExp): Promise<string> {
-    const rows = async (): Promise<string[] | null> => {
-      const lines = await textLines();
-      const start = lines.findIndex((line) => header.test(line));
-      if (start < 0) return null;
-      const body: string[] = [];
-      for (let i = start + 1; i < lines.length; i++) {
-        if (OPPORTUNITY_GROUPS.some((group) => group.test(lines[i]))) break;
-        body.push(lines[i]);
+  // The group's own section: the region, group or disclosure holding that group's heading
+  // (or its header button) and no other group's.
+  async function groupSection(header: RegExp): Promise<Locator | null> {
+    const main = page.getByRole("main");
+    const named = main.getByRole("heading", { name: header }).or(main.getByRole("button", { name: header }));
+    const candidates = seen(
+      main
+        .getByRole("region", { name: header })
+        .or(main.getByRole("group", { name: header }))
+        .or(main.getByRole("region").filter({ has: named }))
+        .or(main.getByRole("group").filter({ has: named })),
+    );
+    let best: Locator | null = null;
+    let bestOthers = Infinity;
+    for (let i = 0; i < (await candidates.count()); i++) {
+      const one = candidates.nth(i);
+      let others = 0;
+      for (const group of OPPORTUNITY_GROUPS) {
+        if (group === header) continue;
+        others += await one.getByRole("heading", { name: group }).or(one.getByRole("button", { name: group })).count();
       }
-      if (body.length && /^\d+$/.test(body[0])) body.shift();
-      return body;
-    };
-    await ready();
-    let body = await rows();
-    // This reader is shown no such group at all: nothing is in it for them.
-    if (body === null) return "";
-    if (!body.length) {
-      // A folded group shows only its header, and opens when that is chosen.
-      const shown = seen(page.getByText(header));
-      const count = await shown.count();
-      if (count) {
-        await shown.nth(count - 1).click();
-        await settle();
-        body = (await rows()) ?? [];
+      if (others < bestOthers) {
+        best = one;
+        bestOthers = others;
       }
     }
-    return body.join("\n");
+    return best && bestOthers === 0 ? best : null;
+  }
+
+  // A group by its test ID ("opportunity-group-open" and the rest) where the list carries it:
+  // a folded group is opened by the button in its heading, and its lines are read below that
+  // heading (its name and the count drawn with it). A list that shows this reader no such
+  // group has nothing in it for them.
+  async function opportunityGroup(header: RegExp, testId: string): Promise<string> {
+    await ready();
+    const marked = await carried(testId);
+    if (marked) {
+      const section = marked.first();
+      const shut = seen(section.getByRole("button", { expanded: false })).first();
+      if (await shut.count()) {
+        await shut.click();
+        await settle();
+        await seen(section.getByRole("button", { expanded: true }))
+          .first()
+          .waitFor({ state: "visible", timeout: 5000 })
+          .catch(() => undefined);
+      }
+      return (await sectionLines(section)).join("\n");
+    }
+    if (await seen(page.getByTestId(/^opportunity-group-/)).count()) return "";
+    const main = page.getByRole("main");
+    // A folded group shows only its header, a button marked collapsed; it is opened before
+    // anything in it is read.
+    const folded = seen(main.getByRole("button", { name: header, expanded: false })).first();
+    if (await folded.count()) {
+      await folded.click();
+      await settle();
+      await seen(main.getByRole("button", { name: header, expanded: true }))
+        .first()
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => undefined);
+    }
+    const section = await groupSection(header);
+    if (!section) {
+      // The list shows this reader no such group at all: nothing is in it for them.
+      const heading = seen(main.getByRole("heading", { name: header }).or(main.getByRole("button", { name: header })));
+      if (!(await heading.count())) return "";
+      unbound(
+        "opportunity-list." + ["unpublished_group", "open_group", "closed_group"][OPPORTUNITY_GROUPS.indexOf(header)],
+        `the list on ${page.url()} shows a group headed ${header} but no section of its own holding that group's cards`,
+      );
+    }
+    // A section drawn as a disclosure that is still shut is opened by its summary.
+    const shut = seen(section.getByRole("button", { name: header, expanded: false })).first();
+    if (await shut.count()) {
+      await shut.click();
+      await settle();
+    }
+    const lines = (await section.innerText())
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    // The section's own heading is not one of its rows, nor the count drawn beside it.
+    while (lines.length && header.test(lines[0])) lines.shift();
+    if (lines.length && /^\d+$/.test(lines[0])) lines.shift();
+    return lines.join("\n");
   }
 
   const PROGRAM_WORDS: [RegExp, string][] = [
@@ -4365,17 +5001,35 @@ export default function create(
   // One of the group's choosers: a button named for its choice and its label ("All programs
   // Program", "All statuses Status") opening a list named for the label. The wanted choice
   // is matched without regard to case; the list narrows as soon as it is chosen.
-  async function listChoice(where: string, button: RegExp, list: RegExp, wanted: string): Promise<void> {
+  //
+  // On the current build each chooser is drawn inside an element carrying its test ID
+  // ("opportunity-filter-program", "opportunity-filter-status"), its button opening a list
+  // whose first choice is the one naming every program or status ("All Opportunity Types",
+  // "All Opportunity Statuses"); asked for all of them, that first choice is taken.
+  async function listChoice(
+    where: string,
+    button: RegExp,
+    list: RegExp,
+    wanted: string,
+    testId: string,
+    every: boolean,
+  ): Promise<void> {
     await ready();
-    const chooser = seen(listFilters().getByRole("button", { name: button })).first();
+    const marked = await carried(testId);
+    const chooser = marked
+      ? seen(marked.first().getByRole("button")).first()
+      : seen(listFilters().getByRole("button", { name: button })).first();
     if (!(await chooser.count())) {
       unbound(where, `no chooser named ${button} among the filters on ${page.url()}; it offers ${await offered()}`);
     }
     await chooser.click();
-    const options = seen(page.getByRole("listbox", { name: list }).getByRole("option"));
+    const options = marked
+      ? seen(page.getByRole("listbox").getByRole("option"))
+      : seen(page.getByRole("listbox", { name: list }).getByRole("option"));
     await options.first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
     const names = (await options.allInnerTexts()).map((one) => one.trim());
-    const at = names.findIndex((one) => one.toLowerCase() === wanted.toLowerCase());
+    let at = names.findIndex((one) => one.toLowerCase() === wanted.toLowerCase());
+    if (at < 0 && every && marked && names.length) at = 0;
     if (at < 0) {
       await page.keyboard.press("Escape").catch(() => undefined);
       unbound(where, `the chooser named ${button} on ${page.url()} offers no "${wanted}" (it offers: ${names.join(", ") || "nothing"})`);
@@ -4391,7 +5045,8 @@ export default function create(
       const named = field(input, "program", "value", "name") || textOf(input);
       if (!named) unbound(where, `the input names no program (${JSON.stringify(input)})`);
       const value = PROGRAM_WORDS.find(([pattern]) => pattern.test(named))?.[1] ?? named;
-      await listChoice(where, /\bprogram$/i, /^program$/i, value);
+      const every = /^(all|any)( programs?)?$/i.test(named.trim());
+      await listChoice(where, /\bprogram$/i, /^program$/i, value, "opportunity-filter-program", every);
     },
     // The "Filter opportunities" search group carries, signed in and signed out alike, a
     // "Status" chooser: a button reading the choice ("All statuses Status") that opens a
@@ -4405,13 +5060,20 @@ export default function create(
       // is matched to the words the chooser uses.
       let wanted = named.replace(/[_-]+/g, " ").trim().toLowerCase();
       if (/^eval/.test(wanted)) wanted = "evaluation";
-      if (/^(all|any)$/.test(wanted)) wanted = "all statuses";
-      await listChoice(where, /\bstatus$/i, /^status$/i, wanted);
+      const every = /^(all|any)( statuses)?$/.test(wanted);
+      if (every) wanted = "all statuses";
+      await listChoice(where, /\bstatus$/i, /^status$/i, wanted, "opportunity-filter-status", every);
     },
     filterRemoteOnly: async (input) => {
       const where = "opportunity-list.filter_remote_only";
       await ready();
-      const box = seen(listFilters().getByRole("checkbox", { name: /^remote work accepted only$/i })).first();
+      // The box sits inside the label carrying "opportunity-filter-remote".
+      const box = seen(
+        page
+          .getByTestId("opportunity-filter-remote")
+          .getByRole("checkbox")
+          .or(listFilters().getByRole("checkbox", { name: /^remote work accepted only$/i })),
+      ).first();
       if (!(await box.count())) unbound(where, `no "Remote work accepted only" box among the filters on ${page.url()}; it offers ${await offered()}`);
       const stated = given(input, ["remote", "remoteOk", "remoteOnly", "checked", "on"]);
       await box.setChecked(stated === undefined || stated === null ? true : saysYes(stated));
@@ -4422,7 +5084,13 @@ export default function create(
       const words = field(input, "query", "search", "term", "text", "title", "location") || textOf(input);
       if (!words) unbound(where, `the input names nothing to search for (${JSON.stringify(input)})`);
       await ready();
-      const box = seen(listFilters().getByRole("searchbox", { name: /^search by title or location$/i })).first();
+      // The box sits inside the element carrying "opportunity-search".
+      const box = seen(
+        page
+          .getByTestId("opportunity-search")
+          .getByRole("searchbox")
+          .or(listFilters().getByRole("searchbox", { name: /^search by title or location$/i })),
+      ).first();
       if (!(await box.count())) unbound(where, `no "Search by title or location" box among the filters on ${page.url()}; it offers ${await offered()}`);
       await box.fill(words);
       await settle();
@@ -4437,14 +5105,20 @@ export default function create(
     toggleWatch: async (input) => {
       const where = "opportunity-list.toggle_watch";
       await ready();
-      await seen(page.getByRole("main").getByText(/^showing \d+ opportunit/i))
+      await seen(page.getByTestId(/^opportunity-group-/).or(page.getByRole("main").getByText(/^showing \d+ opportunit/i)))
         .first()
         .waitFor({ state: "visible", timeout: 10000 })
         .catch(() => undefined);
       const id = field(input, "opportunityId", "id");
       const title = field(input, "title", "opportunity", "name") || (typeof input === "string" ? input : "");
       const cards = seen(page.getByRole("main").getByRole("article"));
-      const watchBox = (card: Locator): Locator => card.getByRole("checkbox", { name: /^\s*watch\b/i }).first();
+      // Each card's box sits inside its label carrying "opportunity-watch-toggle".
+      const watchBox = (card: Locator): Locator =>
+        card
+          .getByTestId("opportunity-watch-toggle")
+          .getByRole("checkbox")
+          .or(card.getByRole("checkbox", { name: /^\s*watch\b/i }))
+          .first();
       let card: Locator | null = null;
       for (let i = 0; i < (await cards.count()); i++) {
         const one = cards.nth(i);
@@ -4485,16 +5159,30 @@ export default function create(
         throw new Error(`${where} — ticking the "Watch" box for ${id || `"${title}"`} on ${page.url()} left it ${was ? "ticked" : "unticked"}`);
       }
     },
-    unpublishedGroup: () => opportunityGroup(OPPORTUNITY_GROUPS[0]),
-    openGroup: () => opportunityGroup(OPPORTUNITY_GROUPS[1]),
-    closedGroup: () => opportunityGroup(OPPORTUNITY_GROUPS[2]),
-    // Every card from the first group down, as the list shows it.
+    unpublishedGroup: () => opportunityGroup(OPPORTUNITY_GROUPS[0], "opportunity-group-unpublished"),
+    openGroup: () => opportunityGroup(OPPORTUNITY_GROUPS[1], "opportunity-group-open"),
+    closedGroup: () => opportunityGroup(OPPORTUNITY_GROUPS[2], "opportunity-group-closed"),
+    // Every card from the first group down, as the list shows it: from the first line of the
+    // first group the list marks ("opportunity-group-…"), each card's status
+    // ("opportunity-status") among them.
     opportunityStatus: async () => {
       const lines = await textLines();
+      const first = seen(page.getByTestId(/^opportunity-group-/)).first();
+      if (await first.count()) {
+        const opening = lined(await first.innerText().catch(() => ""))[0];
+        const at = opening ? lines.indexOf(opening) : -1;
+        if (at >= 0) return lines.slice(at).join("\n");
+      }
       const start = lines.findIndex((line) => OPPORTUNITY_GROUPS.some((group) => group.test(line)));
       return start < 0 ? "" : lines.slice(start).join("\n");
     },
-    proposalDeadline: () => linesMatching(/^Close[sd]\b/),
+    // Each shown card's "Closes <date> at <time>" (or "Closed …") line, the date carrying
+    // "opportunity-proposal-deadline".
+    proposalDeadline: async () => {
+      await ready();
+      if (await carried("opportunity-proposal-deadline")) return (await holdingLines("opportunity-proposal-deadline")).join("\n");
+      return linesMatching(/^Close[sd]\b/);
+    },
   };
 
   // The organization list, a table captioned "Registered organizations by legal name.": read
@@ -4502,8 +5190,19 @@ export default function create(
   // it has "Organization", "Owner", "Team size", "Sprint With Us qualified" and "Team With Us
   // qualified", the last four filled ("Yes"/"No") only for organizations the vendor owns or
   // administers, whose names are links to their screens.
-  async function columnValues(header: RegExp): Promise<string> {
+  // A column by its test ID where the list carries it: one value per row
+  // ("organization-list-row"), "" for a row drawing none.
+  async function columnValues(header: RegExp, testId?: string): Promise<string> {
     await ready();
+    const marked = testId ? await carried("organization-list-row") : null;
+    if (marked && (await carried(testId!))) {
+      const out: string[] = [];
+      for (let i = 0; i < (await marked.count()); i++) {
+        const cell = byTestId(testId!, marked.nth(i));
+        out.push((await cell.count()) ? (await cell.first().innerText()).trim() : "");
+      }
+      return out.join("\n");
+    }
     const headers = seen(page.getByRole("columnheader"));
     let at = -1;
     for (let i = 0; i < (await headers.count()); i++) if (header.test((await headers.nth(i).innerText()).trim())) at = i;
@@ -4528,7 +5227,13 @@ export default function create(
       // The pager is the navigation "Pages of organizations": "Page N of M" and a link "Page
       // n" for each page.
       const name = wanted ? new RegExp(`^(page )?${wanted.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") : /^(next|›|»)( page)?$/i;
-      const control = seen(page.getByRole("button", { name }).or(page.getByRole("link", { name }))).first();
+      // Each page's link carries "organization-list-page-link", named for its page.
+      const control = seen(
+        page
+          .getByTestId("organization-list-page-link")
+          .and(page.getByRole("link", { name }))
+          .or(page.getByRole("button", { name }).or(page.getByRole("link", { name }))),
+      ).first();
       if (!(await control.count())) {
         const pager = seen(page.getByRole("navigation", { name: /pagination|pager|pages of/i }));
         const says = (await pager.count()) ? (await pager.first().innerText()).replace(/\s+/g, " ").trim() : "no pager";
@@ -4541,7 +5246,10 @@ export default function create(
       const where = "organization-list.open_organization";
       const named = field(input, "legalName", "name", "organization") || textOf(input);
       await ready();
-      const link = seen(page.getByRole("link", { name: named ? new RegExp(named.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") : /./ })).first();
+      // Each linked name carries "organization-list-name-link".
+      const nameRx = named ? new RegExp(named.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") : /./;
+      const marked = byTestId("organization-list-name-link").filter({ hasText: nameRx });
+      const link = ((await marked.count()) ? marked : seen(page.getByRole("link", { name: nameRx }))).first();
       if (!named || !(await link.count()) || !(await link.getAttribute("href"))?.startsWith("/organizations/")) {
         unbound(where, `no link named ${JSON.stringify(named)} to an organization's screen on ${page.url()}; signed in, the list links only the organizations the viewer owns and draws the rest as plain text, and an organization's screen ${ORGANIZATIONS_SIGNED_IN}`);
       }
@@ -4550,37 +5258,44 @@ export default function create(
     },
     createOrganization: async () => {
       await ready();
-      if (!(await findControl(page, /^create organization$/i))) {
+      if (!(await findControl(page, /^create organization$/i, "organization-create-link"))) {
         unbound("organization-list.create_organization", `no "Create organization" on ${page.url()} — it is drawn there for a signed-in person, and creating one ${ORGANIZATIONS_SIGNED_IN}`);
       }
-      await press("organization-list.create_organization", /^create organization$/i);
+      await press("organization-list.create_organization", /^create organization$/i, page, "organization-create-link");
     },
     myOrganizations: async () => {
       await ready();
-      if (!(await findControl(page, /^my organizations$/i))) {
+      if (!(await findControl(page, /^my organizations$/i, "organization-list-my-organizations"))) {
         unbound("organization-list.my_organizations", `no "My organizations" on ${page.url()} — it is drawn there for a signed-in person, and a person's own organizations are ${ORGANIZATIONS_SIGNED_IN.replace(/^is/, "are")}`);
       }
-      await press("organization-list.my_organizations", /^my organizations$/i);
+      await press("organization-list.my_organizations", /^my organizations$/i, page, "organization-list-my-organizations");
     },
-    organizationName: () => columnValues(/^(organization|organization name|legal name)$/i),
+    organizationName: () => columnValues(/^(organization|organization name|legal name)$/i, "organization-list-name"),
     // A withheld owner is shown as a dash, which is no name.
     ownerName: async () => {
-      const shown = await columnValues(/^owner$/i);
+      const shown = await columnValues(/^owner$/i, "organization-list-owner");
       return shown
         .split("\n")
         .map((line) => (/^[—–-]$/.test(line) ? "" : line))
         .join("\n")
         .trim();
     },
-    swuQualifiedMark: () => columnValues(/^(swu|sprint with us) qualified\??$/i),
-    twuQualifiedMark: () => columnValues(/^(twu|team with us) qualified\??$/i),
-    // The navigation "Pages of organizations": "Page 1 of 1" and the link "Page 1".
+    swuQualifiedMark: () => columnValues(/^(swu|sprint with us) qualified\??$/i, "organization-swu-qualified-mark"),
+    twuQualifiedMark: () => columnValues(/^(twu|team with us) qualified\??$/i, "organization-twu-qualified-mark"),
+    // The navigation "Pages of organizations" ("organization-list-pagination"): "Page 1 of 1"
+    // and the link "Page 1".
     pagination: async () => {
       await ready();
-      const pager = seen(page.getByRole("navigation", { name: /pagination|pager|pages of/i }));
+      const marked = await carried("organization-list-pagination");
+      const pager = marked ?? seen(page.getByRole("navigation", { name: /pagination|pager|pages of/i }));
       return (await pager.count()) ? (await pager.first().innerText()).trim() : "";
     },
-    refusedWhenNotPermitted: () => refusalShown(),
+    // The refusal the list draws ("organization-list-refused"), or the screen's own refusal.
+    refusedWhenNotPermitted: async () => {
+      await ready();
+      if (await carried("organization-list-refused")) return (await testIdLines("organization-list-refused")).join("\n");
+      return refusalShown();
+    },
   };
 
   // /sign-in: "Sign In", "Choose the kind of account you sign in with.", then a "Vendor"
@@ -4600,34 +5315,72 @@ export default function create(
   const VENDOR_CARD = /^vendor$/i;
   const PUBLIC_SECTOR_CARD = /^public sector employee$/i;
 
+  // A card by its test ID ("sign-in-vendor-card" and the rest), its lines as cardFrom() reads
+  // them; by its words where the page carries none.
+  async function cardMarked(testId: string, start: RegExp, end?: RegExp): Promise<string> {
+    await ready();
+    if (await carried(testId)) return (await testIdLines(testId)).join("\n");
+    return cardFrom(start, end);
+  }
+
+  // A text the page marks with a test ID, one line per line; by its words where it carries
+  // none.
+  async function markedLines(testId: string, fallback: () => Promise<string>): Promise<string> {
+    await ready();
+    if (await carried(testId)) {
+      const lines: string[] = [];
+      for (const words of await testIdTexts(testId)) lines.push(...lined(words));
+      return lines.join("\n");
+    }
+    return fallback();
+  }
+
   const userSignIn: S.UserSignInPage = {
     open: () => go("/sign-in"),
-    signInAsVendor: () => press("user-sign-in.sign_in_as_vendor", /^sign in (as a vendor|using github)$/i),
+    signInAsVendor: () =>
+      press("user-sign-in.sign_in_as_vendor", /^sign in (as a vendor|using github)$/i, page, "sign-in-vendor-button"),
     signInAsPublicSectorEmployee: () =>
-      press("user-sign-in.sign_in_as_public_sector_employee", /^sign in (as a public sector employee|using idir)$/i),
-    goToSignUp: () => press("user-sign-in.go_to_sign_up", /^sign up$/i),
-    vendorCard: () => cardFrom(VENDOR_CARD, PUBLIC_SECTOR_CARD),
-    publicSectorCard: () => cardFrom(PUBLIC_SECTOR_CARD),
+      press(
+        "user-sign-in.sign_in_as_public_sector_employee",
+        /^sign in (as a public sector employee|using idir)$/i,
+        page,
+        "sign-in-public-sector-button",
+      ),
+    goToSignUp: () => press("user-sign-in.go_to_sign_up", /^sign up$/i, page, "sign-in-go-to-sign-up"),
+    vendorCard: () => cardMarked("sign-in-vendor-card", VENDOR_CARD, PUBLIC_SECTOR_CARD),
+    publicSectorCard: () => cardMarked("sign-in-public-sector-card", PUBLIC_SECTOR_CARD),
   };
 
   const userSignUpChooseAccount: S.UserSignUpChooseAccountPage = {
     open: () => go("/sign-up"),
-    signUpAsVendor: () => press("user-sign-up-choose-account.sign_up_as_vendor", /^sign up (as a vendor|using github)$/i),
+    signUpAsVendor: () =>
+      press(
+        "user-sign-up-choose-account.sign_up_as_vendor",
+        /^sign up (as a vendor|using github)$/i,
+        page,
+        "sign-up-vendor-button",
+      ),
     signUpAsPublicSectorEmployee: () =>
       press(
         "user-sign-up-choose-account.sign_up_as_public_sector_employee",
         /^sign up (as a public sector employee|using idir)$/i,
+        page,
+        "sign-up-public-sector-button",
       ),
-    vendorCard: () => cardFrom(VENDOR_CARD, PUBLIC_SECTOR_CARD),
-    publicSectorCard: () => cardFrom(PUBLIC_SECTOR_CARD),
+    vendorCard: () => cardMarked("sign-up-vendor-card", VENDOR_CARD, PUBLIC_SECTOR_CARD),
+    publicSectorCard: () => cardMarked("sign-up-public-sector-card", PUBLIC_SECTOR_CARD),
   };
 
   // /sign-out: "Signed Out" / "You have successfully signed out" / "Sign in again", whether
-  // reached through the header's "Sign out" link (surface.signOut) or opened directly.
+  // reached through the header's "Sign out" link (surface.signOut) or opened directly. The
+  // message itself carries "sign-out-success" ("sign-out-failed" when it failed).
   const userSignOut: S.UserSignOutPage = {
     open: () => go("/sign-out"),
-    signedOutMessage: () => linesMatching(/signed out/i),
-    signOutFailedMessage: () => linesMatching(/(sign.?out|signing out).*(fail|could not|unable)|(fail|could not|unable).*sign.?out/i),
+    signedOutMessage: () => markedLines("sign-out-success", () => linesMatching(/signed out/i)),
+    signOutFailedMessage: () =>
+      markedLines("sign-out-failed", () =>
+        linesMatching(/(sign.?out|signing out).*(fail|could not|unable)|(fail|could not|unable).*sign.?out/i),
+      ),
   };
 
   // /notice/deactivatedOwnAccount: "Account Deactivation Successful", "You have successfully
@@ -4642,9 +5395,10 @@ export default function create(
 
   const userNotice: S.UserNoticePage = {
     open: (params) => go("/notice/:noticeId", params as unknown as Record<string, string>),
-    backToHome: () => press("user-notice.back_to_home", /^(back to home|go home)$/i),
-    deactivatedOwnAccountNotice: () => noticeSaying(/deactivat/i),
-    signInFailedNotice: () => noticeSaying(/^sign.?in failed/i),
+    backToHome: () => press("user-notice.back_to_home", /^(back to home|go home)$/i, page, "notice-back-to-home"),
+    // Each notice carries its test ID; its lines are read.
+    deactivatedOwnAccountNotice: () => markedLines("notice-deactivated-own-account", () => noticeSaying(/deactivat/i)),
+    signInFailedNotice: () => markedLines("notice-sign-in-failed", () => noticeSaying(/^sign.?in failed/i)),
   };
 
   // /proposals once drew the words "Proposal List" and nothing else. Walked on the current
@@ -4657,6 +5411,8 @@ export default function create(
     open: () => go("/proposals"),
     placeholderText: async () => {
       if (new URL(page.url()).pathname !== "/proposals") await go("/proposals");
+      // A built page would carry "proposal-list-placeholder"; it has not been seen, so even
+      // then it is read only by the next binding run.
       if (await notFoundShown()) {
         throw new Error(
           `absent: proposal-list-stub.placeholder_text — /proposals answered ${actingId()} the application's "Page not found" screen at ${page.url()}; walked on the current build signed out and signed in as the administrator and as the organization-owner vendor it answers the same, and no link, tab, menu or button in the application leads to it`,
@@ -4804,12 +5560,15 @@ export default function create(
         lines.push(...lined(said));
       }
     }
+    // Each fault the form lists carries "field-error" (on the opportunity forms, the items of
+    // the refusal's alert, so read above already); read where the form says nothing else.
+    if (!lines.length) for (const said of await testIdTexts("field-error")) lines.push(...lined(said));
     return [...new Set(lines)].join("\n");
   }
 
   // A file offered through the chooser a control opens.
   // Returns the name the file was offered under.
-  async function offerFile(where: string, control: RegExp, input: unknown): Promise<string> {
+  async function offerFile(where: string, control: RegExp, input: unknown, testId?: string): Promise<string> {
     const named = given(input, ["file", "name", "fileName", "image", "logo", "avatar", "picture"]);
     const request = typeof input === "string" ? { name: input } : named && typeof named === "object" ? record(named) : { ...record(input), name: textOf(named) };
     const name = textOf(record(request).name);
@@ -4821,7 +5580,7 @@ export default function create(
       record(request).content as string | Uint8Array | undefined,
       bytesGiven(request) ?? bytesGiven(input),
     );
-    const button = await findControl(page, control);
+    const button = await findControl(page, control, testId);
     if (!button) {
       // A plain file input, found by its label.
       const box = seen(page.getByLabel(control));
@@ -4857,15 +5616,34 @@ export default function create(
     return seen(page.getByRole("dialog").or(page.getByRole("alertdialog"))).last();
   }
 
-  async function inDialog(where: string, name: RegExp): Promise<void> {
+  async function inDialog(where: string, name: RegExp, testId?: string): Promise<void> {
     await dialog().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
     if (!(await dialog().count())) unbound(where, `no dialog is open on ${page.url()} to press ${name} in`);
-    await press(where, name, dialog());
+    await press(where, name, dialog(), testId);
   }
 
-  async function confirmIfAsked(where: string, name: RegExp): Promise<void> {
+  async function confirmIfAsked(where: string, name: RegExp, testId?: string): Promise<void> {
     await dialog().waitFor({ state: "visible", timeout: 3000 }).catch(() => undefined);
-    if (await dialog().count()) await press(where, name, dialog());
+    if (await dialog().count()) await press(where, name, dialog(), testId);
+  }
+
+  // The same for rows found by their own test ID: one line per row, its cells joined with
+  // " | ". A row with no cell role is skipped, unless `bare` is given to read it.
+  async function rowsText(rows: Locator, bare?: (row: Locator) => Promise<string>): Promise<string[]> {
+    const out: string[] = [];
+    for (let i = 0; i < (await rows.count()); i++) {
+      const cells = seen(rows.nth(i).getByRole("cell"));
+      const count = await cells.count();
+      if (!count) {
+        const words = bare ? await bare(rows.nth(i)) : "";
+        if (words) out.push(words);
+        continue;
+      }
+      const words: string[] = [];
+      for (let c = 0; c < count; c++) words.push((await cells.nth(c).innerText()).replace(/\s+/g, " ").trim());
+      out.push(words.join(" | "));
+    }
+    return out;
   }
 
   // One line per table row, its cells joined with " | ".
@@ -4995,12 +5773,16 @@ export default function create(
   // Walked as the owning public sector employee and as the administrator on the seeded
   // closed Sprint With Us and Team With Us opportunities: the management screen's
   // "Opportunity sections" offer an "Evaluation panel" link to ?tab=evaluationPanel, whose
-  // "Evaluation panel" section holds one group per member ("Evaluator 1", "Evaluator 2"),
-  // each with a "Public sector employee (required)" chooser (only public sector people are
-  // offered, by name), a "Chair: evaluator N" box and "Remove evaluator N"; then "Add an
-  // evaluator" (a new group, its chooser reading "Select an item"), a "Chair (required)"
-  // chooser that takes an evaluator or somebody who chairs without evaluating, and "Save
-  // evaluation panel" under "Evaluation panel actions". Ticking an evaluator's Chair box
+  // "Evaluation panel" section first shows the panel read-only: a "Members of the evaluation
+  // panel" list ("Casey Placeholder", "Role: Evaluator" / "Evaluator and chair") over an
+  // "Edit evaluation panel" button. Pressed, it shows one group per member ("Evaluator 1",
+  // "Evaluator 2"), each a paragraph "Name (email)" beside a "Chair: evaluator N" box and
+  // "Remove evaluator N"; then one "Public sector employee to add" chooser (only public
+  // sector people are offered, as "Name (email)") and "Add an evaluator", which seats the
+  // person chosen as a new group and empties the chooser (pressed with nobody chosen it does
+  // nothing); a "Chair (required)" chooser that takes an evaluator or somebody who chairs
+  // without evaluating, and "Save evaluation panel" / "Cancel" under "Evaluation panel
+  // actions" (re-walked 2026-10-18). Ticking an evaluator's Chair box
   // chooses them in the Chair chooser and unticking it empties the chooser. A save says "The
   // evaluation panel has been saved." in a status; a refused one raises an alert "The
   // evaluation panel has N problem(s)" / "The panel was not saved. It is still the panel it
@@ -5014,12 +5796,64 @@ export default function create(
   function evaluationPanelPage<T>(pageId: string, route: string): T {
     const screen = signedInScreen(pageId, route);
     const where = screen.where;
-    const section = (): Locator => seen(regionNamed(page.getByRole("main"), /^evaluation panel$/i)).first();
-    const members = (): Locator => seen(section().getByRole("group", { name: /^evaluator \d+$/i }));
-    const lockNote = (): Locator => seen(section().getByRole("note"));
-    const memberChooser = (group: Locator): Locator => seen(group.getByRole("button", { name: /public sector employee/i })).first();
-    const chairChooser = (): Locator => seen(section().getByRole("button", { name: /^.*\bchair \(required\)\s*$/i })).first();
+    // The section is the innermost region holding the panel's controls by their test IDs
+    // ("evaluation-panel-save", "evaluation-panel-member-row", "evaluation-panel-locked-
+    // message"), or the region so named. Each member is an "evaluation-panel-member-row" (a
+    // group to edit, a table row once locked), its chooser in "evaluation-panel-member-field"
+    // and its Chair box in "evaluation-panel-member-chair"; the chair chooser sits in
+    // "evaluation-panel-chair-field". Once locked, the "Evaluation panel" region holds the
+    // lock note over a nested "Members of the evaluation panel" region holding the rows, so
+    // the section is the outermost such region (the first in page order), which holds both.
+    const section = (): Locator => {
+      const main = page.getByRole("main");
+      const held = page
+        .getByTestId("evaluation-panel-save")
+        .or(page.getByTestId("evaluation-panel-member-row"))
+        .or(page.getByTestId("evaluation-panel-locked-message"));
+      return seen(main.getByRole("region").filter({ has: held }).or(regionNamed(main, /^evaluation panel$/i))).first();
+    };
+    const members = (): Locator =>
+      seen(
+        section()
+          .getByTestId("evaluation-panel-member-row")
+          .or(section().getByRole("group", { name: /^evaluator \d+$/i })),
+      );
+    const lockNote = (): Locator =>
+      seen(section().getByTestId("evaluation-panel-locked-message").or(section().getByRole("note")));
+    const memberChooser = (group: Locator): Locator =>
+      seen(
+        group
+          .getByTestId("evaluation-panel-member-field")
+          .getByRole("button")
+          .or(group.getByRole("button", { name: /public sector employee/i })),
+      ).first();
+    const chairChooser = (): Locator =>
+      seen(
+        section()
+          .getByTestId("evaluation-panel-chair-field")
+          .getByRole("button")
+          .or(section().getByRole("button", { name: /^.*\bchair \(required\)\s*$/i })),
+      ).first();
+    const chairBox = (group: Locator): Locator =>
+      seen(
+        group
+          .getByTestId("evaluation-panel-member-chair")
+          .getByRole("checkbox")
+          .or(group.getByRole("checkbox", { name: /^\s*chair\b/i })),
+      ).first();
+    // While editing, the one chooser a new member is picked in ("evaluation-panel-member-
+    // choice", "Public sector employee to add").
+    const addChooser = (): Locator =>
+      seen(
+        section()
+          .getByTestId("evaluation-panel-member-choice")
+          .getByRole("button")
+          .or(section().getByRole("button", { name: /public sector employee to add/i })),
+      ).first();
     const BLANK = /^\s*select an item\s*$/i;
+    // People are offered and shown as "Name (email)"; the name alone is what is compared and
+    // handed back.
+    const bareName = (words: string): string => words.replace(/\s+/g, " ").replace(/\s*\([^()]*@[^()]*\)\s*$/, "").trim();
 
     async function reached(member: string): Promise<void> {
       await screen.on(member);
@@ -5043,9 +5877,54 @@ export default function create(
       return true;
     }
 
+    // The panel is drawn read-only until "Edit evaluation panel" ("evaluation-panel-edit") is
+    // pressed; every change presses it first, as start_editing does. False when the panel is
+    // locked (noted by editable()).
+    async function editing(member: string): Promise<boolean> {
+      if (!(await editable(member))) return false;
+      const controls = (): Locator =>
+        seen(
+          section()
+            .getByTestId("evaluation-panel-add-member")
+            .or(section().getByTestId("evaluation-panel-save"))
+            .or(section().getByRole("button", { name: /^\s*(add an evaluator|save evaluation panel)\s*$/i })),
+        );
+      if (await controls().count()) return true;
+      const edit = seen(
+        section()
+          .getByTestId("evaluation-panel-edit")
+          .or(section().getByRole("button", { name: /^\s*edit( (the )?(evaluation )?panel)?\s*$/i })),
+      ).first();
+      if (await edit.count()) {
+        if (await isDisabled(edit)) unbound(where(member), `"Edit evaluation panel" is disabled on ${page.url()}`);
+        await edit.click();
+        await settle();
+        await controls().first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
+        if (await controls().count()) return true;
+      }
+      const offered = (await seen(section().getByRole("button")).allInnerTexts().catch(() => [] as string[]))
+        .map((one) => `"${one.trim()}"`)
+        .filter((one) => one !== '""')
+        .join(", ");
+      return unbound(
+        where(member),
+        `the "Evaluation panel" section on ${page.url()} shows no lock note and, ${(await edit.count()) ? 'after "Edit evaluation panel" was pressed' : 'with no "Edit evaluation panel" to press'}, neither "Add an evaluator" nor "Save evaluation panel"; its buttons are ${offered || "none"}`,
+      );
+    }
+
     async function chosen(chooser: Locator): Promise<string> {
       const words = (await chooser.innerText().catch(() => "")).trim();
-      return BLANK.test(words) ? "" : words;
+      return BLANK.test(words) ? "" : bareName(words);
+    }
+
+    // The person a member group holds: its chooser's choice where it has one, else the
+    // paragraph "Name (email)" a seated member shows while editing, else the first line of
+    // the read-only row.
+    async function heldBy(group: Locator): Promise<string> {
+      if (await memberChooser(group).count()) return chosen(memberChooser(group));
+      const label = seen(group.getByRole("paragraph")).first();
+      if (await label.count()) return bareName(await label.innerText().catch(() => ""));
+      return bareName(lined(await group.innerText().catch(() => ""))[0] ?? "");
     }
 
     // Choose a person by name in a chooser. A person the chooser does not offer (a vendor is
@@ -5056,9 +5935,9 @@ export default function create(
       await chooser.click();
       const list = seen(page.getByRole("listbox")).last();
       await list.waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
-      const option = list.getByRole("option", { name: new RegExp(`^\\s*${escapeRx(name)}\\s*$`, "i") });
+      const option = list.getByRole("option", { name: new RegExp(`^\\s*${escapeRx(name)}(\\s*\\([^()]*\\))?\\s*$`, "i") });
       if (!(await option.count())) {
-        const names = (await list.getByRole("option").allInnerTexts().catch(() => [] as string[])).map((one) => one.trim()).filter(Boolean);
+        const names = (await list.getByRole("option").allInnerTexts().catch(() => [] as string[])).map(bareName).filter(Boolean);
         await page.keyboard.press("Escape").catch(() => undefined);
         const found = personOf(person);
         const users = seedGroups.users ?? {};
@@ -5093,22 +5972,22 @@ export default function create(
     async function memberGroup(member: string, input: unknown): Promise<Locator> {
       const place = typeof input === "number" ? input : Number(givenText(input, ["index", "position", "place", "slot"]) || NaN);
       if (Number.isFinite(place) && place > 0) {
-        const at = seen(section().getByRole("group", { name: new RegExp(`^evaluator ${place}$`, "i") })).first();
+        const at = members().nth(place - 1);
         if (await at.count()) return at;
         unbound(where(member), `the panel on ${page.url()} has no "Evaluator ${place}"`);
       }
       const name = await nameOf(member, given(input, ["member", "user", "person", "evaluator"]) ?? input);
       for (let i = 0; i < (await members().count()); i++) {
         const group = members().nth(i);
-        if ((await chosen(memberChooser(group))).toLowerCase() === name.toLowerCase()) return group;
+        if ((await heldBy(group)).toLowerCase() === name.toLowerCase()) return group;
       }
       const there: string[] = [];
-      for (let i = 0; i < (await members().count()); i++) there.push((await chosen(memberChooser(members().nth(i)))) || "nobody chosen");
+      for (let i = 0; i < (await members().count()); i++) there.push((await heldBy(members().nth(i))) || "nobody chosen");
       return unbound(where(member), `no evaluator on the panel at ${page.url()} is "${name}"; it lists ${there.join(", ") || "nobody"}`);
     }
 
     async function tickChair(group: Locator, on: boolean): Promise<void> {
-      const box = seen(group.getByRole("checkbox", { name: /^\s*chair\b/i })).first();
+      const box = chairBox(group);
       if ((await box.isChecked()) !== on) await box.click();
       await settle();
     }
@@ -5117,10 +5996,12 @@ export default function create(
       input === null || input === false || /^(none|nobody|no one|)$/i.test(typeof input === "string" ? input.trim() : "x") ||
       (given(input, ["chair", "member", "user", "person"]) === null);
 
-    // The faults a refused save names, one per line, from its alert.
-    async function faults(member: string, about: RegExp): Promise<string> {
+    // The faults a refused save names, one per line, from its alert; each fault carries its
+    // own test ID ("evaluation-panel-minimum-error" and the rest).
+    async function faults(member: string, about: RegExp, testId: string): Promise<string> {
       await reached(member);
-      await seen(page.getByRole("alert")).first().waitFor({ state: "visible", timeout: 3000 }).catch(() => undefined);
+      await seen(page.getByRole("alert").or(page.getByTestId(testId))).first().waitFor({ state: "visible", timeout: 3000 }).catch(() => undefined);
+      if (await carried(testId)) return [...new Set((await testIdTexts(testId)).flatMap(lined))].join("\n");
       const lines: string[] = [];
       const alerts = seen(page.getByRole("alert"));
       for (let i = 0; i < (await alerts.count()); i++) lines.push(...lined(await alerts.nth(i).innerText().catch(() => "")));
@@ -5130,77 +6011,110 @@ export default function create(
     // Each member as "<name> — <role>", the roles as the locked table words them
     // ("Evaluator", "Evaluator and chair"), with somebody who chairs without evaluating
     // as "<name> — Chair". A member still reading "Select an item" is nobody yet.
+    // A member shown read-only (locked, or before editing starts) is a list item reading its
+    // name, then its role after a visually hidden "Role:" ("Robin Placeholder Role : Evaluator
+    // and chair"), or a table row of cells; either reads as "<name> — <role>".
+    async function shownRow(row: Locator): Promise<string> {
+      const cells = seen(row.getByRole("cell"));
+      if (await cells.count()) {
+        const words: string[] = [];
+        for (let c = 0; c < (await cells.count()); c++) words.push((await cells.nth(c).innerText()).replace(/\s+/g, " ").trim());
+        return words.join(" — ");
+      }
+      const [name = "", ...rest] = lined(await row.innerText().catch(() => ""));
+      const role = rest.join(" ").replace(/\s+/g, " ").replace(/^role\s*:?\s*/i, "").trim();
+      return role ? `${name} — ${role}` : name;
+    }
+
     async function rows(member: string): Promise<string[]> {
       await reached(member);
       if (await lockNote().count()) {
-        return (await tableRows(section())).map((row) => row.replace(/\s*\|\s*/, " — "));
+        const marked = byTestId("evaluation-panel-member-row", section());
+        if (!(await marked.count())) return (await tableRows(section())).map((row) => row.replace(/\s*\|\s*/, " — "));
+        const listed: string[] = [];
+        for (let i = 0; i < (await marked.count()); i++) {
+          const one = await shownRow(marked.nth(i));
+          if (one) listed.push(one);
+        }
+        return listed;
       }
       const out: string[] = [];
       const named: string[] = [];
       for (let i = 0; i < (await members().count()); i++) {
         const group = members().nth(i);
+        // Only a newly added member has a chooser. One already on the panel shows, while
+        // editing, its name ("Robin Placeholder (admin.one@example.test)") over its Chair box,
+        // and before editing starts the read-only row as shown.
+        if (!(await memberChooser(group).count())) {
+          const label = seen(group.getByRole("paragraph")).first();
+          if ((await chairBox(group).count()) && (await label.count())) {
+            const name = bareName(await label.innerText());
+            if (!name) continue;
+            named.push(name.toLowerCase());
+            const chair = await chairBox(group).isChecked().catch(() => false);
+            out.push(`${name} — ${chair ? "Evaluator and chair" : "Evaluator"}`);
+            continue;
+          }
+          const one = await shownRow(group);
+          if (one) out.push(one);
+          continue;
+        }
         const name = await chosen(memberChooser(group));
         if (!name) continue;
         named.push(name.toLowerCase());
-        const chair = await seen(group.getByRole("checkbox", { name: /^\s*chair\b/i })).first().isChecked().catch(() => false);
+        const chair = await chairBox(group).isChecked().catch(() => false);
         out.push(`${name} — ${chair ? "Evaluator and chair" : "Evaluator"}`);
       }
-      const chair = await chosen(chairChooser());
+      const chair = (await chairChooser().count()) ? await chosen(chairChooser()) : "";
       if (chair && !named.includes(chair.toLowerCase())) out.push(`${chair} — Chair`);
       return out;
     }
 
     const built = {
       open: (params?: Record<string, string>) => screen.open(params),
-      // Walked as the administrator on the seeded closed Sprint With Us and Team With Us
-      // opportunities (at "Team questions: individual evaluation" / its Team With Us
-      // counterpart): the tab opens already changeable, its choosers, "Add an evaluator" and
-      // "Save evaluation panel" drawn without any step first. The "Edit" under "Opportunity
-      // actions" is not the panel's: it leaves for ?tab=opportunity to edit the opportunity
-      // itself, so it is never pressed here. Starting to edit is reaching the changeable
-      // panel; an "Edit" drawn inside the section itself is pressed should a build draw the
-      // panel read-only first. A locked panel is noted, as every change to it is, for
-      // panel_locked_after_consensus to report.
+      // Walked as the administrator on the seeded closed Sprint With Us opportunity: the tab
+      // opens read-only, and the section's own "Edit evaluation panel" makes it changeable.
+      // The "Edit" under "Opportunity actions" is not the panel's: it leaves for
+      // ?tab=opportunity to edit the opportunity itself, so it is never pressed here. A
+      // locked panel is noted, as every change to it is, for panel_locked_after_consensus to
+      // report.
       startEditing: async (): Promise<void> => {
-        const member = "start_editing";
-        if (!(await editable(member))) return;
-        const controls = (): Locator =>
-          seen(section().getByRole("button", { name: /^\s*(add an evaluator|save evaluation panel)\s*$/i }));
-        if (await controls().count()) return;
-        const edit = seen(section().getByRole("button", { name: /^\s*edit( (the )?(evaluation )?panel)?\s*$/i })).first();
-        if (await edit.count()) {
-          await edit.click();
-          await settle();
-          if (await controls().count()) return;
-        }
-        const offered = (await seen(section().getByRole("button")).allInnerTexts().catch(() => [] as string[]))
-          .map((one) => `"${one.trim()}"`)
-          .filter((one) => one !== '""')
-          .join(", ");
-        unbound(
-          where(member),
-          `the "Evaluation panel" section on ${page.url()} shows no lock note and neither "Add an evaluator" nor "Save evaluation panel"; its buttons are ${offered || "none"}`,
-        );
+        await editing("start_editing");
       },
-      // Each person named joins the first member still reading "Select an item", or a new
-      // one "Add an evaluator" makes; a chair flag ticks their Chair box.
+      // Each person named is chosen in "Public sector employee to add" and seated by "Add an
+      // evaluator" as a new member; a chair flag ticks their Chair box. Where a build draws a
+      // chooser per member instead, the first still reading "Select an item" is used, or a
+      // new one "Add an evaluator" makes.
       addPanelMember: async (input?: unknown): Promise<void> => {
         const member = "add_panel_member";
-        if (!(await editable(member))) return;
+        if (!(await editing(member))) return;
         const wanted = picks(input);
         if (!wanted.length) unbound(where(member), `the input names nobody to add (${JSON.stringify(input)})`);
         for (const one of wanted) {
           const name = await nameOf(member, one.person);
+          if (await addChooser().count()) {
+            const before = await members().count();
+            // A person the chooser does not offer is refused a place on the panel, raised
+            // here so the test reads the refusal from the action itself.
+            if (!(await pick(member, addChooser(), name, one.person))) {
+              throw new Error(`refused: ${refusalLog[refusalLog.length - 1] ?? `${where(member)} — the chooser on ${page.url()} does not offer "${name}"`}`);
+            }
+            await press(where(member), /^\s*add an evaluator\s*$/i, section(), "evaluation-panel-add-member");
+            await members().nth(before).waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
+            if ((await members().count()) <= before) unbound(where(member), `"${name}" was chosen in "Public sector employee to add" but "Add an evaluator" seated no new member on ${page.url()}`);
+            if (one.chair !== undefined && one.chair !== null) await tickChair(members().last(), saysYes(one.chair));
+            continue;
+          }
           let group: Locator | null = null;
           for (let i = 0; i < (await members().count()); i++) {
-            if (!(await chosen(memberChooser(members().nth(i))))) {
+            if ((await memberChooser(members().nth(i)).count()) && !(await chosen(memberChooser(members().nth(i))))) {
               group = members().nth(i);
               break;
             }
           }
           if (!group) {
             const before = await members().count();
-            await press(where(member), /^\s*add an evaluator\s*$/i, section());
+            await press(where(member), /^\s*add an evaluator\s*$/i, section(), "evaluation-panel-add-member");
             if ((await members().count()) <= before) unbound(where(member), `"Add an evaluator" made no new member on ${page.url()}`);
             group = members().last();
           }
@@ -5214,9 +6128,13 @@ export default function create(
       },
       removePanelMember: async (input?: unknown): Promise<void> => {
         const member = "remove_panel_member";
-        if (!(await editable(member))) return;
+        if (!(await editing(member))) return;
         const group = input === undefined || input === null ? members().last() : await memberGroup(member, input);
-        const remove = seen(group.getByRole("button", { name: /^\s*remove evaluator \d+\s*$/i })).first();
+        const remove = seen(
+          group
+            .getByTestId("evaluation-panel-remove-member")
+            .or(group.getByRole("button", { name: /^\s*remove evaluator \d+\s*$/i })),
+        ).first();
         if (!(await remove.count())) {
           noteRefusal(`${where(member)} — the member on ${page.url()} offers no "Remove"`);
           return;
@@ -5228,7 +6146,7 @@ export default function create(
       // nobody empties it by unticking whichever evaluator's Chair box holds it.
       choosePanelChair: async (input?: unknown): Promise<void> => {
         const member = "choose_panel_chair";
-        if (!(await editable(member))) return;
+        if (!(await editing(member))) return;
         if (namesNoChair(input)) {
           for (let i = 0; i < (await members().count()); i++) await tickChair(members().nth(i), false);
           return;
@@ -5238,7 +6156,7 @@ export default function create(
       },
       markMemberAsChair: async (input?: unknown): Promise<void> => {
         const member = "mark_member_as_chair";
-        if (!(await editable(member))) return;
+        if (!(await editing(member))) return;
         const group = await memberGroup(member, input);
         const flag = given(input, ["chair", "isChair"]);
         await tickChair(group, flag === undefined || flag === null ? true : saysYes(flag));
@@ -5246,7 +6164,7 @@ export default function create(
       saveEvaluationPanel: async (): Promise<void> => {
         const member = "save_evaluation_panel";
         if (!(await editable(member))) return;
-        await press(where(member), /^\s*save evaluation panel\s*$/i, section());
+        await press(where(member), /^\s*save evaluation panel\s*$/i, section(), "evaluation-panel-save");
         const deadline = Date.now() + 10000;
         while (Date.now() < deadline) {
           if (await seen(section().getByRole("status").filter({ hasText: /saved/i })).count()) break;
@@ -5255,23 +6173,29 @@ export default function create(
         }
       },
       panelMemberRow: async (): Promise<string> => (await rows("panel_member_row")).join("\n"),
-      // Who chairs: the "Chair (required)" chooser's choice, or on a locked panel the member
-      // whose role names the chair; nobody chosen reads as nothing.
+      // Who chairs, by name: the "Chair (required)" chooser's choice while editing, or, on a
+      // panel shown read-only (locked, or before "Edit evaluation panel" is pressed), the
+      // member whose role names the chair; nobody chosen reads as nothing.
       chairField: async (): Promise<string> => {
         const member = "chair_field";
         await reached(member);
-        if (await lockNote().count()) {
+        if ((await lockNote().count()) || !(await chairChooser().count())) {
           return (await rows(member)).filter((row) => /chair$/i.test(row)).map((row) => row.replace(/\s+—.*$/, "")).join("\n");
         }
         return chosen(chairChooser());
       },
-      minimumMembersError: () => faults("minimum_members_error", /at least two|minimum|two members/i),
-      duplicateMemberError: () => faults("duplicate_member_error", /already on the panel|more than once|duplicate|named once/i),
-      nonPublicSectorMemberError: () => faults("non_public_sector_member_error", /public sector|vendor/i),
-      missingChairError: () => faults("missing_chair_error", /chair/i),
+      minimumMembersError: () =>
+        faults("minimum_members_error", /at least two|minimum|two members/i, "evaluation-panel-minimum-error"),
+      duplicateMemberError: () =>
+        faults("duplicate_member_error", /already on the panel|more than once|duplicate|named once/i, "evaluation-panel-duplicate-error"),
+      nonPublicSectorMemberError: () =>
+        faults("non_public_sector_member_error", /public sector|vendor/i, "evaluation-panel-not-public-sector-error"),
+      missingChairError: () => faults("missing_chair_error", /chair/i, "evaluation-panel-missing-chair-error"),
       panelLockedAfterConsensus: async (): Promise<string> => {
         await reached("panel_locked_after_consensus");
         if (!(await lockNote().count())) return "";
+        // The message carries "evaluation-panel-locked-message": its title and its words.
+        if (await carried("evaluation-panel-locked-message")) return (await testIdLines("evaluation-panel-locked-message")).join("\n");
         // The note's title and its words, as the section draws them above the table.
         const lines = lined(await section().innerText());
         const to = lines.findIndex((line) => /^members of the evaluation panel$/i.test(line));
@@ -5294,7 +6218,24 @@ export default function create(
   // 2026-10-04 the dashboard also has an "Evaluations" section with a table of its own, so
   // the opportunity readers keep to their section and the page is read whole only when it
   // draws no such section.
-  const ownSection = (): Locator => seen(regionNamed(page.getByRole("main"), /^\s*(my|all) opportunities\s*$/i)).first();
+  // The section is the region holding the table carrying "dashboard-opportunities-table" (or
+  // the empty message "dashboard-empty-message"), found by its heading where the page carries
+  // neither.
+  const ownSection = (): Locator => {
+    const main = page.getByRole("main");
+    return seen(
+      main
+        .getByRole("region")
+        .filter({ has: page.getByTestId("dashboard-opportunities-table").or(page.getByTestId("dashboard-empty-message")) })
+        .or(regionNamed(main, /^\s*(my|all) opportunities\s*$/i)),
+    ).first();
+  };
+  // The section's table: by its test ID where the page carries it.
+  async function ownTable(): Promise<Scope> {
+    const marked = await carried("dashboard-opportunities-table");
+    if (marked) return marked.first();
+    return (await ownSection().count()) ? ownSection() : page;
+  }
   async function dashboardRows(member: string): Promise<string> {
     await dash.on(member);
     const tab = seen(page.getByRole("tab", { name: /opportunities/i }));
@@ -5302,17 +6243,27 @@ export default function create(
       await tab.first().click();
       await settle();
     }
-    return (await tableRows((await ownSection().count()) ? ownSection() : page)).join("\n");
+    return (await tableRows(await ownTable())).join("\n");
   }
   const opportunityDashboard: S.OpportunityDashboardPage = {
     open: () => dash.open(),
-    createOpportunity: () => dash.press("create_opportunity", /^\s*(\+\s*)?create( an?)?( new)? opportunity\s*$/i),
+    createOpportunity: async () => {
+      await dash.on("create_opportunity");
+      await press(
+        dash.where("create_opportunity"),
+        /^\s*(\+\s*)?create( an?)?( new)? opportunity\s*$/i,
+        page,
+        "dashboard-create-opportunity",
+      );
+    },
+    // The opportunity's link ("dashboard-opportunity-link") by the identifier its address
+    // carries or by its title.
     openOpportunity: async (input) => {
       const where = dash.where("open_opportunity");
       await dash.on("open_opportunity");
       const id = seededId(given(input, ["opportunity", "opportunityId", "id"]) ?? "", "opportunities");
       const title = typeof input === "string" ? input : givenText(input, ["title", "name"]);
-      const links = seen(page.getByRole("link"));
+      const links = (await carried("dashboard-opportunity-link")) ?? seen(page.getByRole("link"));
       for (let i = 0; i < (await links.count()); i++) {
         const link = links.nth(i);
         const href = (await link.getAttribute("href")) ?? "";
@@ -5326,14 +6277,24 @@ export default function create(
       unbound(where, `no opportunity link on ${page.url()} for ${JSON.stringify(input)}; the rows read: ${(await tableRows()).join(" / ") || "none"}`);
     },
     myOpportunitiesTable: () => dashboardRows("my_opportunities_table"),
+    // Each row's status ("opportunity-status" in the table), one per row.
     opportunityStatus: async () => {
       await dashboardRows("opportunity_status");
+      const table = await carried("dashboard-opportunities-table");
+      if (table && (await carried("opportunity-status", table.first()))) {
+        return (await testIdTexts("opportunity-status", table.first())).join("\n");
+      }
       return (await columnOf(/^status$/i, (await ownSection().count()) ? ownSection() : page)).join("\n");
     },
+    // Every row of the section's table ("dashboard-opportunity-row"), as the old binding reads
+    // it.
     ownOpportunitiesOnly: () => dashboardRows("own_opportunities_only"),
     allOpportunitiesForAdministrator: () => dashboardRows("all_opportunities_for_administrator"),
-    emptyMyOpportunitiesMessage: () =>
-      dash.lines("empty_my_opportunities_message", /\bno\b.*opportunit|haven.t|have not|nothing to show|get started/i),
+    emptyMyOpportunitiesMessage: async () => {
+      await dash.on("empty_my_opportunities_message");
+      if (await carried("dashboard-empty-message")) return (await testIdLines("dashboard-empty-message")).join("\n");
+      return dash.lines("empty_my_opportunities_message", /\bno\b.*opportunit|haven.t|have not|nothing to show|get started/i);
+    },
   };
 
   // Walked on the current build (2026-10-04): /dashboard draws, under "Dashboard", a
@@ -5346,16 +6307,31 @@ export default function create(
   // ("Evaluator", "Chair") | Status), or, on no panel, "You are not on the evaluation panel
   // of any opportunity. When an opportunity's owner adds you to its panel, it is listed
   // here." A vendor's dashboard has no such section.
-  const panelSection = (): Locator => seen(regionNamed(page.getByRole("main"), /^\s*evaluations\s*$/i)).first();
+  // The section is the region holding "dashboard-panel-opportunities-table" (or the empty
+  // message "dashboard-empty-panel-message"), found by its heading where the page carries
+  // neither.
+  const panelSection = (): Locator => {
+    const main = page.getByRole("main");
+    return seen(
+      main
+        .getByRole("region")
+        .filter({
+          has: page.getByTestId("dashboard-panel-opportunities-table").or(page.getByTestId("dashboard-empty-panel-message")),
+        })
+        .or(regionNamed(main, /^\s*evaluations\s*$/i)),
+    ).first();
+  };
   const sectionMenu = (): Locator => seen(page.getByRole("navigation", { name: /dashboard sections/i })).first();
   async function panelSectionShown(member: string): Promise<boolean> {
     await dash.on(member);
     await panelSection().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
     return (await panelSection().count()) > 0;
   }
-  async function toDashboardSection(member: string, name: RegExp, region: Locator): Promise<void> {
+  // The section's link in the dashboard's menu, by its test ID where the page carries it.
+  async function toDashboardSection(member: string, name: RegExp, region: Locator, testId: string): Promise<void> {
     await dash.on(member);
-    const link = seen(sectionMenu().getByRole("link", { name })).first();
+    const marked = await carried(testId);
+    const link = marked ? marked.first() : seen(sectionMenu().getByRole("link", { name })).first();
     if (await link.count()) {
       await link.click();
       await settle();
@@ -5366,16 +6342,26 @@ export default function create(
   }
   async function panelRows(member: string): Promise<string> {
     if (!(await panelSectionShown(member))) return "";
-    return (await tableRows(panelSection())).join("\n");
+    const marked = await carried("dashboard-panel-opportunities-table");
+    return (await tableRows(marked ? marked.first() : panelSection())).join("\n");
   }
   const panelDashboard: S.EvaluationPanelDashboardPage = {
     open: () => dash.open(),
-    showMyOpportunities: () => toDashboardSection("show_my_opportunities", /^\s*(my|all) opportunities\s*$/i, ownSection()),
-    showPanelOpportunities: () => toDashboardSection("show_panel_opportunities", /^\s*evaluations\s*$/i, panelSection()),
+    showMyOpportunities: () =>
+      toDashboardSection(
+        "show_my_opportunities",
+        /^\s*(my|all) opportunities\s*$/i,
+        ownSection(),
+        "dashboard-show-my-opportunities",
+      ),
+    showPanelOpportunities: () =>
+      toDashboardSection("show_panel_opportunities", /^\s*evaluations\s*$/i, panelSection(), "dashboard-show-evaluations"),
     openOpportunity: (input) => opportunityDashboard.openOpportunity(input as never),
-    // The section's words, its heading left off; nothing on a dashboard without it.
+    // The section's words, its heading left off; nothing on a dashboard without it. The
+    // section is the one the menu's "dashboard-show-evaluations" link leads to.
     evaluationsTab: async () => {
       if (!(await panelSectionShown("evaluations_tab"))) return "";
+      if (await carried("dashboard-show-evaluations")) return (await sectionLines(panelSection())).join("\n");
       const lines = lined(await panelSection().innerText());
       return (/^evaluations$/i.test(lines[0] ?? "") ? lines.slice(1) : lines).join("\n");
     },
@@ -5387,6 +6373,7 @@ export default function create(
     emptyPanelOpportunitiesMessage: async () => {
       if (!(await panelSectionShown("empty_panel_opportunities_message"))) return "";
       if ((await tableRows(panelSection())).length) return "";
+      if (await carried("dashboard-empty-panel-message")) return (await sectionLines(panelSection())).join("\n");
       const lines = lined(await panelSection().innerText());
       return (/^evaluations$/i.test(lines[0] ?? "") ? lines.slice(1) : lines).join("\n");
     },
@@ -5483,7 +6470,7 @@ export default function create(
   // The form's own action, and the confirmation it asks for ("Publish this opportunity?"
   // with "Publish opportunity"). An action the form accepts lands on the new opportunity's
   // management screen; one it refuses stays on the form with its messages.
-  async function cwuSubmit(member: string, input: unknown, name: RegExp): Promise<void> {
+  async function cwuSubmit(member: string, input: unknown, name: RegExp, testId: string): Promise<void> {
     const where = cwuNew.where(member);
     // The form is offered to the administrator and public sector staff; anybody else (a
     // vendor, a visitor) is answered "Page not found", which is the refusal itself. It is
@@ -5501,7 +6488,7 @@ export default function create(
     }
     await cwuNew.on(member);
     await fillCwuForm(where, input);
-    await press(where, name);
+    await press(where, name, page, testId);
     await confirmIfAsked(where, /^\s*(publish|submit|save)( opportunity| for review| draft)?\s*$/i);
     // Accepted, it lands on the new opportunity's management screen; refused, it stays on
     // the form with an alert ("This opportunity has N problems").
@@ -5521,7 +6508,7 @@ export default function create(
   // to attach", "<name> could not be attached").
   async function addAttachmentFile(where: string, input: unknown): Promise<void> {
     const control = /^\s*add attachment\s*$/i;
-    const adder = await findControl(page, control);
+    const adder = await findControl(page, control, "attachment-add-button");
     if (!adder) {
       unbound(where, `no "Add attachment" control on ${page.url()}; it offers ${await offered()}`);
     }
@@ -5534,7 +6521,7 @@ export default function create(
         .join(" ");
       throw new Error(`${where} — "Add attachment" is disabled on ${page.url()}${note ? `, which says "${note}"` : ""}`);
     }
-    const name = await offerFile(where, control, input);
+    const name = await offerFile(where, control, input, "attachment-add-button");
     const region = attachmentRegion();
     const row = seen(region.getByRole("listitem")).filter({ hasText: name }).last();
     const ended = new RegExp(`${escapeRx(name)}.*(too large to attach|could not be attached)`, "i");
@@ -5559,9 +6546,10 @@ export default function create(
 
   const opportunityCwuCreate: S.OpportunityCwuCreatePage = {
     open: () => cwuNew.open(),
-    saveDraft: (input) => cwuSubmit("save_draft", input, /^\s*save draft\s*$/i),
-    submitForReview: (input) => cwuSubmit("submit_for_review", input, /^\s*submit for review\s*$/i),
-    publish: (input) => cwuSubmit("publish", input, /^\s*publish\s*$/i),
+    saveDraft: (input) => cwuSubmit("save_draft", input, /^\s*save draft\s*$/i, "opportunity-save-draft"),
+    submitForReview: (input) =>
+      cwuSubmit("submit_for_review", input, /^\s*submit for review\s*$/i, "opportunity-submit-for-review"),
+    publish: (input) => cwuSubmit("publish", input, /^\s*publish\s*$/i, "opportunity-publish"),
     addAttachment: async (input) => {
       await cwuNew.on("add_attachment");
       await addAttachmentFile(cwuNew.where("add_attachment"), input);
@@ -5663,15 +6651,44 @@ export default function create(
   function programForm(pageId: string, route: string, kind: "sprint" | "team") {
     const screen = signedInScreen(pageId, route);
     const where = screen.where;
+    // Each section is the region holding the control the contract names in it by test ID
+    // (the innermost such region), or the region its heading names.
+    const holding = (testId: string, name: RegExp): Locator =>
+      seen(page.getByRole("region").filter({ has: page.getByTestId(testId) }).or(regionNamed(page, name))).last();
+    const addQuestionTestId = kind === "sprint" ? "add-team-question-button" : "add-resource-question-button";
     const questionsRegion = (): Locator =>
-      seen(regionNamed(page, kind === "sprint" ? /^team questions$/i : /^resource questions$/i)).first();
+      holding(addQuestionTestId, kind === "sprint" ? /^team questions$/i : /^resource questions$/i);
     const addQuestionName = kind === "sprint" ? /^\s*add a team question\s*$/i : /^\s*add a resource question\s*$/i;
+    // The question groups: each carries "evaluation-question", or is a group named "Question N".
+    const questionGroups = (): Locator =>
+      seen(
+        questionsRegion()
+          .getByTestId("evaluation-question")
+          .or(questionsRegion().getByRole("group", { name: /^question \d+$/i })),
+      );
+    // The panel editor ("evaluation-panel-editor") and its member rows
+    // ("evaluation-panel-member-row").
+    const panelEditor = (): Locator =>
+      seen(page.getByTestId("evaluation-panel-editor").or(regionNamed(page, /^evaluation panel$/i))).first();
+    const panelRows = (): Locator =>
+      seen(
+        panelEditor()
+          .getByTestId("evaluation-panel-member-row")
+          .or(panelEditor().getByRole("group", { name: /^panel member \d+$/i })),
+      );
 
     // A chooser drawn as a button that opens a list of options ("Service area", "Public
     // sector employee", "Skills").
     async function choose(member: string, scope: Locator, button: RegExp, value: string): Promise<void> {
       const opener = seen(scope.getByRole("button", { name: button })).first();
       if (!(await opener.count())) unbound(where(member), `no chooser named ${button} on ${page.url()}; it offers ${await offered()}`);
+      await chooseWith(member, opener, value);
+    }
+
+    // Opens the chooser and picks the option of that name from the list it opens.
+    async function chooseWith(member: string, opener: Locator, value: string): Promise<void> {
+      if (!(await opener.count())) unbound(where(member), `no chooser to pick "${value}" with on ${page.url()}; it offers ${await offered()}`);
+      const button = (await opener.innerText().catch(() => "")).trim() || "the chooser";
       await opener.click();
       const list = seen(page.getByRole("listbox")).last();
       await list.waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
@@ -5693,8 +6710,8 @@ export default function create(
 
     // The last question group of the list, or the one at a place in it (the first is 1).
     function questionGroup(at?: number): Locator {
-      const groups = seen(questionsRegion().getByRole("group", { name: /^question \d+$/i }));
-      return at ? seen(questionsRegion().getByRole("group", { name: new RegExp(`^question ${at}$`, "i") })).first() : groups.last();
+      const groups = questionGroups();
+      return at ? groups.nth(at - 1) : groups.last();
     }
 
     async function fillQuestion(member: string, group: Locator, input: unknown): Promise<void> {
@@ -5725,16 +6742,16 @@ export default function create(
     // question given with no text still counts as one more question.)
     async function addQuestion(member: string, input: unknown): Promise<void> {
       await screen.on(member);
-      const groups = seen(questionsRegion().getByRole("group", { name: /^question \d+$/i }));
+      const groups = questionGroups();
       const reuse = (await groups.count()) === 1 && (await isBlankQuestion(questionGroup(1)));
-      if (!reuse) await press(where(member), addQuestionName, questionsRegion());
+      if (!reuse) await press(where(member), addQuestionName, page, addQuestionTestId);
       await fillQuestion(member, questionGroup(), input);
     }
 
     async function addPhase(member: string, input: unknown): Promise<void> {
       await screen.on(member);
       const named = (typeof input === "string" ? input : givenText(input, ["phase", "kind", "type", "name"])).toLowerCase();
-      const region = seen(regionNamed(page, /^phases$/i)).first();
+      const region = holding("add-phase-button", /^phases$/i);
       if (!(await region.count())) unbound(where(member), `no "Phases" section on ${page.url()}; it offers ${await offered()}`);
       let phase = /inception/.test(named) ? "inception" : /implementation/.test(named) ? "implementation" : /prototype/.test(named) ? "prototype" : "";
       if (!phase) {
@@ -5750,7 +6767,16 @@ export default function create(
       }
       // The implementation phase is always there; the others are added.
       if (phase !== "implementation" && !(await seen(region.getByRole("group", { name: new RegExp(`^${phase} phase$`, "i") })).count())) {
-        await press(where(member), new RegExp(`^\\s*add an? ${phase} phase\\s*$`, "i"), region);
+        // Each "Add … phase" button carries "add-phase-button"; the one for this phase is the
+        // one naming it.
+        const adder = byTestId("add-phase-button", region).filter({ hasText: new RegExp(`\\b${phase}\\b`, "i") });
+        if (await adder.count()) {
+          if (await isDisabled(adder.first())) throw new Error(`${where(member)} — "${(await adder.first().innerText()).trim()}" is disabled on ${page.url()}`);
+          await adder.first().click();
+          await settle();
+        } else {
+          await press(where(member), new RegExp(`^\\s*add an? ${phase} phase\\s*$`, "i"), region);
+        }
       }
       const group = seen(region.getByRole("group", { name: new RegExp(`^${phase} phase$`, "i") })).first();
       const start = given(input, ["startDate", "start"]);
@@ -5797,7 +6823,7 @@ export default function create(
 
     async function addResource(member: string, input: unknown): Promise<void> {
       await screen.on(member);
-      const region = seen(regionNamed(page, /^resources$/i)).first();
+      const region = holding("add-resource-button", /^resources$/i);
       if (!(await region.count())) unbound(where(member), `no "Resources" section on ${page.url()}; it offers ${await offered()}`);
       // The form opens with "Resource 1" already there, its "Service area" chooser reading
       // "Select an item": a resource still blank like that takes the one given; otherwise
@@ -5806,7 +6832,7 @@ export default function create(
       const blank =
         (await last.count()) &&
         /^\s*select an item\s*$/i.test(await seen(last.getByRole("button", { name: /service area/i })).first().innerText().catch(() => ""));
-      if (!blank) await press(where(member), /^\s*add a resource\s*$/i, region);
+      if (!blank) await press(where(member), /^\s*add a resource\s*$/i, region, "add-resource-button");
       const group = seen(region.getByRole("group", { name: /^resource \d+$/i })).last();
       const area = typeof input === "string" ? input : givenText(input, ["serviceArea", "area", "role"]);
       if (area) {
@@ -5822,11 +6848,11 @@ export default function create(
     // its Evaluator and Chair boxes set when the input says, and any member past them removed.
     async function setPanel(member: string, input: unknown): Promise<void> {
       await screen.on(member);
-      const region = seen(regionNamed(page, /^evaluation panel$/i)).first();
+      const region = panelEditor();
       if (!(await region.count())) unbound(where(member), `no "Evaluation panel" section on ${page.url()}; it offers ${await offered()}`);
       const members = [Array.isArray(input) ? input : given(input, ["members", ...PANEL_KEYS]) ?? input].flat().filter((one) => one !== undefined && one !== null);
       if (!members.length) unbound(where(member), `the input names nobody for the panel (${JSON.stringify(input)})`);
-      const groups = () => seen(region.getByRole("group", { name: /^panel member \d+$/i }));
+      const groups = () => panelRows();
       // A chair named beside the members ({ members, chair }) rather than flagged on one of
       // them: the member it names gets the Chair box, and every other member goes without.
       const named = Array.isArray(input) ? undefined : given(input, ["chair", "panelChair", "chairperson"]);
@@ -5843,25 +6869,42 @@ export default function create(
         if (chairAt < 0) unbound(where(member), `the chair the input names (${JSON.stringify(named)}) is none of the members it gives for the panel`);
       }
       for (let i = 0; i < members.length; i++) {
-        if ((await groups().count()) <= i) await press(where(member), /^\s*add a panel member\s*$/i, region);
-        const group = seen(region.getByRole("group", { name: new RegExp(`^panel member ${i + 1}$`, "i") })).first();
+        if ((await groups().count()) <= i) {
+          await press(where(member), /^\s*add a panel member\s*$/i, region, "evaluation-panel-add-member");
+        }
+        const group = groups().nth(i);
         const one = members[i];
         const name = await personName(given(one, ["user", "person", "member", "evaluator"]) ?? one);
         if (!name) unbound(where(member), `panel member ${i + 1} of the input names nobody the chooser could offer (${JSON.stringify(one)})`);
-        const opener = seen(group.getByRole("button", { name: /public sector employee/i })).first();
+        // The chooser sits inside "evaluation-panel-member-field".
+        const opener = seen(
+          group
+            .getByTestId("evaluation-panel-member-field")
+            .getByRole("button")
+            .or(group.getByRole("button", { name: /public sector employee/i })),
+        ).first();
         if (((await opener.innerText().catch(() => "")).trim().toLowerCase()) !== name.toLowerCase()) {
-          await choose(member, group, /public sector employee/i, name);
+          await chooseWith(member, opener, name);
         }
-        for (const [box, keys] of [[/^\s*evaluator\s*$/i, ["evaluator", "isEvaluator"]], [/^\s*chair\b/i, ["chair", "isChair"]]] as [RegExp, string[]][]) {
+        for (const [box, keys, testId] of [
+          [/^\s*evaluator\s*$/i, ["evaluator", "isEvaluator"], ""],
+          [/^\s*chair\b/i, ["chair", "isChair"], "evaluation-panel-member-chair"],
+        ] as [RegExp, string[], string][]) {
           const said = chairAt >= 0 && keys[0] === "chair" ? chairAt === i : given(one, keys);
           if (said === undefined || said === null) continue;
-          const tick = seen(group.getByRole("checkbox", { name: box })).first();
+          // The chair box sits inside the label carrying "evaluation-panel-member-chair".
+          const tick = seen(
+            (testId ? group.getByTestId(testId).getByRole("checkbox") : group.getByRole("checkbox", { name: box })).or(
+              group.getByRole("checkbox", { name: box }),
+            ),
+          ).first();
           if (!(await tick.count())) unbound(where(member), `panel member ${i + 1} on ${page.url()} offers no box named ${box}`);
           if ((await tick.isChecked()) !== saysYes(said)) await tick.click();
         }
       }
       for (let n = await groups().count(); n > members.length; n--) {
-        await press(where(member), new RegExp(`^\\s*remove panel member ${n}\\s*$`, "i"), region);
+        // The row's own "Remove" carries "evaluation-panel-remove-member".
+        await press(where(member), new RegExp(`^\\s*remove panel member ${n}\\s*$`, "i"), groups().nth(n - 1), "evaluation-panel-remove-member");
       }
     }
 
@@ -5920,7 +6963,7 @@ export default function create(
     // actions they may take (the administrator no "Submit for review", a public sector
     // employee no "Publish"). Either is the refusal itself, logged rather than thrown, so the
     // test's own follow-up reading decides.
-    async function submit(member: string, input: unknown, name: RegExp): Promise<void> {
+    async function submit(member: string, input: unknown, name: RegExp, testId: string): Promise<void> {
       await ready();
       const why = await whyNotHere();
       if (why && !actingMay(/^create opportunity$/i)) {
@@ -5928,11 +6971,14 @@ export default function create(
         return;
       }
       await screen.on(member);
+      // The action carries its test ID ("opportunity-save-draft", "opportunity-submit-for-
+      // review", "opportunity-publish"); by its name in "Opportunity actions" otherwise.
+      const marked = await carried(testId);
       const actions = seen(page.getByRole("group", { name: /^opportunity actions$/i })).first();
-      if (!(await actions.count())) unbound(where(member), `no "Opportunity actions" on ${page.url()}; it offers ${await offered()}`);
-      const control = seen(actions.getByRole("button", { name })).first();
+      if (!marked && !(await actions.count())) unbound(where(member), `no "Opportunity actions" on ${page.url()}; it offers ${await offered()}`);
+      const control = marked ? marked.first() : seen(actions.getByRole("button", { name })).first();
       if (!(await control.count())) {
-        const there = (await actions.getByRole("button").allInnerTexts()).map((one) => `"${one.trim()}"`).join(", ");
+        const there = (await actions.getByRole("button").allInnerTexts().catch(() => [] as string[])).map((one) => `"${one.trim()}"`).join(", ");
         noteRefusal(`${where(member)} — no control named ${name} among the actions ${actingId()} is offered on ${page.url()} (${there})`);
         return;
       }
@@ -5952,9 +6998,10 @@ export default function create(
 
     return {
       open: () => screen.open(),
-      saveDraft: (input?: unknown) => submit("save_draft", input, /^\s*save draft\s*$/i),
-      submitForReview: (input?: unknown) => submit("submit_for_review", input, /^\s*submit for review\s*$/i),
-      publish: (input?: unknown) => submit("publish", input, /^\s*publish\s*$/i),
+      saveDraft: (input?: unknown) => submit("save_draft", input, /^\s*save draft\s*$/i, "opportunity-save-draft"),
+      submitForReview: (input?: unknown) =>
+        submit("submit_for_review", input, /^\s*submit for review\s*$/i, "opportunity-submit-for-review"),
+      publish: (input?: unknown) => submit("publish", input, /^\s*publish\s*$/i, "opportunity-publish"),
       addQuestion,
       addPhase,
       addResource,
@@ -5962,8 +7009,13 @@ export default function create(
       fillForm,
       fieldError: () => screen.messages("field_error"),
       // The weights are shown as a "Total: N%" status; only a message the form raises about
-      // them is an error. A total other than 100% raised none when saved or put forward.
-      scoreWeightError: () => screen.messages("score_weight_error", /weight|total|100\s*%/i),
+      // them is an error: the form's messages about them, and the message under the weights
+      // carrying "score-weight-error" (drawn while they do not total 100%).
+      scoreWeightError: async () => {
+        const said = lined(await screen.messages("score_weight_error", /weight|total|100\s*%/i));
+        const marked = await testIdTexts("score-weight-error");
+        return [...new Set([...said, ...marked.flatMap(lined)])].join("\n");
+      },
       // The fields one question offers, in the criteria's words, one per line, for the
       // question at a given place (the first by default); empty when there is none there.
       evaluationQuestionFields: async (place?: unknown): Promise<string> => {
@@ -6027,18 +7079,25 @@ export default function create(
     return {
       open: (params: Record<string, string>) => screen.open(params),
       acceptTerms: async (): Promise<void> => {
-        await screen.press("accept_terms", /^\s*accept terms and conditions\s*$/i);
+        await screen.on("accept_terms");
+        await press(screen.where("accept_terms"), /^\s*accept terms and conditions\s*$/i, page, "organization-accept-terms-button");
         await confirmIfAsked(screen.where("accept_terms"), /accept/i);
       },
-      cancel: () => screen.press("cancel", /^\s*cancel\s*$/i),
+      cancel: async (): Promise<void> => {
+        await screen.on("cancel");
+        await press(screen.where("cancel"), /^\s*cancel\s*$/i, page, "organization-terms-cancel");
+      },
       termsBody: async (): Promise<string> => {
         await screen.on("terms_body");
-        const region = seen(regionNamed(page.getByRole("main"), /^\s*terms and conditions\s*$/i)).first();
+        const marked = await carried("organization-terms-body");
+        const region = marked ? marked.first() : seen(regionNamed(page.getByRole("main"), /^\s*terms and conditions\s*$/i)).first();
         return (await region.count()) ? (await region.innerText()).trim() : "";
       },
-      // Empty while the terms are unaccepted.
+      // Empty while the terms are unaccepted; the notice carries "organization-terms-accepted-on".
       acceptedOnNotice: async (): Promise<string> => {
         await screen.on("accepted_on_notice");
+        const marked = await carried("organization-terms-accepted-on");
+        if (marked) return (await marked.allInnerTexts()).map((one) => one.replace(/\s+/g, " ").trim()).join("\n");
         const said = (await paragraphs(page.getByRole("main"))).map((one) => one.replace(/\s+/g, " ").trim());
         return said.filter((one) => /\baccepted these terms on\b/i.test(one)).join("\n");
       },
@@ -6062,7 +7121,18 @@ export default function create(
     twu: /team with us/i,
     changelog: /history|change\s*log/i,
   };
+  // Each section's link carries its test ID.
+  const ORG_TAB_ID = new Map<RegExp, string>([
+    [ORG_TAB.organization, "organization-tab-organization"],
+    [ORG_TAB.team, "organization-tab-team"],
+    [ORG_TAB.swu, "organization-tab-swu-qualification"],
+    [ORG_TAB.twu, "organization-tab-twu-qualification"],
+    [ORG_TAB.changelog, "organization-tab-changelog"],
+  ]);
   async function orgSectionLink(name: RegExp): Promise<Locator | null> {
+    const testId = ORG_TAB_ID.get(name);
+    const marked = testId ? await carried(testId) : null;
+    if (marked) return marked.first();
     const link = seen(page.getByRole("navigation", { name: /organization sections/i }).getByRole("link", { name }));
     if (await link.count()) return link.first();
     const tab = seen(page.getByRole("tab", { name }));
@@ -6131,14 +7201,35 @@ export default function create(
     }
     return [...new Set(said)].join("\n");
   }
+  // The organization's form is open while its "Save changes" ("organization-save-button") is
+  // drawn.
+  async function orgFormOpen(): Promise<boolean> {
+    if (await carried("organization-save-button")) return true;
+    return (await seen(page.getByRole("main").getByRole("button", { name: /^\s*save changes\s*$/i })).count()) > 0;
+  }
+  // A badge drawn under the organization's name, whichever section is open.
+  async function orgBadge(member: string, testId: string, pattern: RegExp): Promise<string> {
+    await orgEdit.on(member);
+    if (await carried(testId)) return (await testIdTexts(testId)).join("\n");
+    return linesMatching(pattern);
+  }
+  async function editServiceAreasControl(): Promise<Locator> {
+    return (
+      (await carried("organization-edit-service-areas-button")) ??
+      seen(page.getByRole("main").getByRole("button", { name: /^\s*edit service areas\s*$/i }))
+    ).first();
+  }
   async function orgTabLines(member: string, name: RegExp, pattern: RegExp): Promise<string> {
     await orgTabOpen(member, name);
     return linesMatching(pattern);
   }
   // A requirement's whole list item, status included ("Met …" / "Not met …"); a section that
   // opened without the list, or without that requirement, reads as nothing.
-  async function requirementItem(member: string, tab: RegExp, list: RegExp, pattern: RegExp): Promise<string> {
+  async function requirementItem(member: string, tab: RegExp, list: RegExp, pattern: RegExp, testId: string): Promise<string> {
     await orgTabOpen(member, tab);
+    // The requirement's own item carries its test ID.
+    const marked = await carried(testId);
+    if (marked) return (await marked.allInnerTexts()).map((one) => one.replace(/\s+/g, " ").trim()).join("\n");
     const items = seen(page.getByRole("main").getByRole("list", { name: list }).getByRole("listitem"));
     const said = (await items.allInnerTexts()).map((one) => one.replace(/\s+/g, " ").trim());
     return said.filter((one) => pattern.test(one)).join("\n");
@@ -6155,13 +7246,21 @@ export default function create(
     const inMain = (): Locator => seen(page.getByRole("main").getByRole("checkbox"));
     if (!(await inMain().count())) {
       await orgTabOpen(member, ORG_TAB.twu);
-      const edit = seen(page.getByRole("main").getByRole("button", { name: /^\s*edit service areas\s*$/i })).first();
+      const edit = await editServiceAreasControl();
       if (!(await edit.count())) return null;
       if (await isDisabled(edit)) throw new Error(`${orgEdit.where(member)} — "Edit service areas" is disabled on ${page.url()}`);
       await edit.click();
       await settle();
       await inMain().first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
     }
+    // Each box carries "organization-service-area-checkbox" (on itself or its label).
+    const marked = seen(
+      page
+        .getByTestId("organization-service-area-checkbox")
+        .getByRole("checkbox")
+        .or(page.getByRole("checkbox").and(page.getByTestId("organization-service-area-checkbox"))),
+    );
+    if (await marked.count()) return marked;
     const group = seen(page.getByRole("group", { name: /service areas/i }).getByRole("checkbox"));
     if (await group.count()) return group;
     return (await inMain().count()) ? inMain() : null;
@@ -6171,9 +7270,9 @@ export default function create(
   // earlier step entered in it is kept.
   async function orgEditing(member: string): Promise<void> {
     await orgEdit.on(member);
-    if (await seen(page.getByRole("main").getByRole("button", { name: /^\s*save changes\s*$/i })).count()) return;
+    if (await orgFormOpen()) return;
     await orgTabOpen(member, ORG_TAB.organization);
-    const edit = await findControl(page, /^\s*edit( organization)?\s*$/i);
+    const edit = await findControl(page, /^\s*edit( organization)?\s*$/i, "organization-edit-button");
     if (edit && !(await isDisabled(edit))) {
       await edit.click();
       await settle();
@@ -6181,11 +7280,11 @@ export default function create(
   }
   // A row that names the person but offers no such control (the owner's row offers none) is
   // the screen's answer, reported as such rather than as a control never found.
-  async function orgInRow(member: string, input: unknown, control: RegExp, confirm: RegExp): Promise<void> {
+  async function orgInRow(member: string, input: unknown, control: RegExp, confirm: RegExp, testId: string): Promise<void> {
     await orgTabOpen(member, ORG_TAB.team);
     const where = orgEdit.where(member);
     const row = await rowNaming(where, input, ["users"]);
-    if (!(await findControl(row, control))) {
+    if (!(await findControl(row, control, testId))) {
       throw new Error(
         `${where} — the row "${(await row.innerText()).replace(/\s+/g, " ").trim()}" in the team table on ${page.url()} offers no control named ${control}`,
       );
@@ -6201,12 +7300,25 @@ export default function create(
         { timeout: 15000 },
       )
       .catch(() => undefined);
-    await press(where, control, row);
+    // Once it has arrived, the person's row is redrawn — gone after a removal ("Remove <name>
+    // from the team?", confirmed by "Remove from team", draws no status line), "Member" after an
+    // approval — or the refusal is drawn; whichever comes first is waited for, so that a read of
+    // the table straight after does not find the row as it was.
+    const before = ((await row.innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+    await press(where, control, row, testId);
     await confirmIfAsked(where, confirm);
     if (await answered) {
       await settle();
       const team = seen(regionNamed(page.getByRole("main"), /^\s*team( members)?\s*$/i)).first();
-      await team.getByRole("alert").first().waitFor({ state: "visible", timeout: 2000 }).catch(() => undefined);
+      const refused = team.getByRole("alert").first();
+      const until = Date.now() + 5000;
+      while (Date.now() < until) {
+        if (await refused.isVisible().catch(() => false)) return;
+        if (!(await row.count())) return;
+        const now = ((await row.innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+        if (now !== before) return;
+        await page.waitForTimeout(100);
+      }
     }
   }
   // Walked as the organization's owner and as the administrator on the seeded qualified
@@ -6233,7 +7345,9 @@ export default function create(
   // of the account it is, looked up from the organization's memberships (each carries its
   // user's identifier and name) and the seed, so that a row can be matched to a persona.
   async function teamRowsNamed(): Promise<string[]> {
-    const rows = await tableRows(seen(page.getByRole("main")));
+    // Each row carries "organization-team-member-row".
+    const marked = await carried("organization-team-member-row");
+    const rows = marked ? await rowsText(marked) : await tableRows(seen(page.getByRole("main")));
     const orgId = /\/organizations\/([^/?#]+)\/edit/.exec(page.url())?.[1] ?? "";
     const byName = new Map<string, string>();
     const known = await peek(`${baseURL}/api/affiliations?organization=${encodeURIComponent(orgId)}`);
@@ -6265,7 +7379,7 @@ export default function create(
     if (!orgAdminTermsLeftOpen) return;
     orgAdminTermsLeftOpen = false;
     const open = dialog();
-    if (!(await open.count()) || !(await seen(open.getByRole("checkbox", { name: ADMIN_TERMS })).count())) return;
+    if (!(await open.count()) || !(await adminTermsBox(open).count())) return;
     const cancel = seen(open.getByRole("button", { name: /^\s*(cancel|close)\s*$/i })).first();
     if (await cancel.count()) await cancel.click().catch(() => undefined);
     else await page.keyboard.press("Escape").catch(() => undefined);
@@ -6274,15 +7388,24 @@ export default function create(
   }
   const ADMIN_TERMS = /statement|terms|agree|confirm/i;
   const ADMIN_GIVE = /^\s*give administrator rights\s*$/i;
+  // The statement box carries "organization-admin-terms-checkbox" (on itself or its label).
+  const adminTermsBox = (scope: Locator): Locator =>
+    seen(
+      scope
+        .getByTestId("organization-admin-terms-checkbox")
+        .getByRole("checkbox")
+        .or(scope.getByRole("checkbox").and(scope.getByTestId("organization-admin-terms-checkbox")))
+        .or(scope.getByRole("checkbox", { name: ADMIN_TERMS })),
+    ).first();
   async function adminTermsDialog(): Promise<Locator | null> {
     const open = dialog();
     await open.waitFor({ state: "visible", timeout: 3000 }).catch(() => undefined);
     if (!(await open.count())) return null;
-    return (await seen(open.getByRole("checkbox", { name: ADMIN_TERMS })).count()) ? open : null;
+    return (await adminTermsBox(open).count()) ? open : null;
   }
   async function answerAdminTerms(where: string, open: Locator, wanted: boolean): Promise<void> {
     orgAdminTermsLeftOpen = false;
-    const box = seen(open.getByRole("checkbox", { name: ADMIN_TERMS })).first();
+    const box = adminTermsBox(open);
     await box.setChecked(wanted);
     await settle();
     if (!wanted) return;
@@ -6296,26 +7419,35 @@ export default function create(
     open: (params) => orgEdit.open(params as unknown as Record<string, string>),
     editOrganization: async () => {
       await orgTabOpen("edit_organization", ORG_TAB.organization);
-      await press(orgEdit.where("edit_organization"), /^\s*edit( organization)?\s*$/i);
+      await press(orgEdit.where("edit_organization"), /^\s*edit( organization)?\s*$/i, page, "organization-edit-button");
     },
     saveChanges: async (input) => {
       const where = orgEdit.where("save_changes");
       await orgEditing("save_changes");
       const logo = LOGO_KEYS.map((key) => given(input, [key])).find((one) => one !== undefined);
       await fillFrom(where, input, ORG_FIELDS, LOGO_KEYS);
-      if (logo !== undefined) await offerFile(where, ORG_LOGO, logo);
-      await press(where, /^\s*save( changes)?\s*$/i);
+      if (logo !== undefined) await offerFile(where, ORG_LOGO, logo, "organization-logo-button");
+      await press(where, /^\s*save( changes)?\s*$/i, page, "organization-save-button");
       await confirmIfAsked(where, /^\s*save( changes)?\s*$/i);
     },
-    cancelEditing: () => orgEdit.press("cancel_editing", /^\s*cancel\s*$/i),
+    cancelEditing: async () => {
+      await orgEdit.on("cancel_editing");
+      await press(orgEdit.where("cancel_editing"), /^\s*cancel\s*$/i, page, "organization-cancel-edit-button");
+    },
     archiveOrganization: async () => {
-      await orgEdit.press("archive_organization", /^\s*archive( organization)?\s*$/i);
+      await orgEdit.on("archive_organization");
+      await press(
+        orgEdit.where("archive_organization"),
+        /^\s*archive( organization)?\s*$/i,
+        page,
+        "organization-archive-button",
+      );
       await confirmIfAsked(orgEdit.where("archive_organization"), /^\s*archive( organization)?\s*$/i);
     },
     addTeamMembers: async (input) => {
       const where = orgEdit.where("add_team_members");
       await orgTabOpen("add_team_members", ORG_TAB.team);
-      await press(where, /add team members?/i);
+      await press(where, /add team members?/i, page, "organization-add-team-members-button");
       const emails = [given(input, ["emails", "email", "members", "member", "users"]) ?? input]
         .flat()
         .map((one) => personOf(one)?.email || textOf(one))
@@ -6345,11 +7477,18 @@ export default function create(
     // Offered to the service administrator only: a pending row's "Approve <name>" makes the
     // person a member at once, with no confirmation. The organization's owner is shown the
     // pending row with only "Remove <name>", which is reported as the row's answer.
-    approvePendingMember: (input) => orgInRow("approve_pending_member", input, /^\s*approve\b/i, /^\s*approve\b/i),
+    approvePendingMember: (input) =>
+      orgInRow("approve_pending_member", input, /^\s*approve\b/i, /^\s*approve\b/i, "organization-member-approve-button"),
     // Each row's "Remove" asks "Remove <name> from the team?" and is confirmed by "Remove from
     // team". The owner's row offers no Remove.
     removeTeamMember: (input) =>
-      orgInRow("remove_team_member", input, /^\s*remove\s*$/i, /^\s*remove( team member| from team)?\s*$/i),
+      orgInRow(
+        "remove_team_member",
+        input,
+        /^\s*remove\s*$/i,
+        /^\s*remove( team member| from team)?\s*$/i,
+        "organization-member-remove-button",
+      ),
     // A row offers "Give administrator rights to <name>" or "Remove administrator rights from
     // <name>". The input may say which is wanted (admin / isAdmin / grant: true or false);
     // otherwise whichever the row offers is pressed. Giving the rights opens the statement
@@ -6367,7 +7506,14 @@ export default function create(
           : giving
             ? /^\s*give administrator rights/i
             : /^\s*remove administrator rights/i;
-      const button = seen(row.getByRole("button", { name: control })).first();
+      // The row's toggle carries "organization-member-admin-toggle"; which way it goes is
+      // read from its own words.
+      const button = seen(
+        row
+          .getByTestId("organization-member-admin-toggle")
+          .filter({ hasText: control })
+          .or(row.getByRole("button", { name: control })),
+      ).first();
       if (!(await button.count())) {
         throw new Error(
           `${where} — the row "${(await row.innerText()).replace(/\s+/g, " ").trim()}" in the team table on ${page.url()} offers no control named ${control}`,
@@ -6398,7 +7544,12 @@ export default function create(
       if (!open && named !== undefined) {
         await orgTabOpen("accept_org_admin_terms", ORG_TAB.team);
         const row = await rowNaming(where, input, ["users"]);
-        const give = seen(row.getByRole("button", { name: /^\s*give administrator rights/i })).first();
+        const give = seen(
+          row
+            .getByTestId("organization-member-admin-toggle")
+            .filter({ hasText: /^\s*give administrator rights/i })
+            .or(row.getByRole("button", { name: /^\s*give administrator rights/i })),
+        ).first();
         if (!(await give.count())) {
           throw new Error(
             `${where} — the row "${(await row.innerText()).replace(/\s+/g, " ").trim()}" in the team table on ${page.url()} offers no "Give administrator rights", so there is no statement to confirm`,
@@ -6423,7 +7574,7 @@ export default function create(
     changeOwner: async (input) => {
       const where = orgEdit.where("change_owner");
       await orgTabOpen("change_owner", ORG_TAB.team);
-      await press(where, /^\s*change owner\s*$/i, seen(page.getByRole("main")));
+      await press(where, /^\s*change owner\s*$/i, seen(page.getByRole("main")), "organization-change-owner-button");
       await dialog().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
       if (!(await dialog().count())) unbound(where, `pressing "Change owner" on ${page.url()} opened no dialog`);
       const scope = dialog();
@@ -6449,7 +7600,7 @@ export default function create(
     },
     editServiceAreas: async () => {
       await orgTabOpen("edit_service_areas", ORG_TAB.twu);
-      await press(orgEdit.where("edit_service_areas"), /edit( service areas)?/i);
+      await press(orgEdit.where("edit_service_areas"), /edit( service areas)?/i, page, "organization-edit-service-areas-button");
     },
     // Pressed by the service administrator: "Edit service areas" under "Approved service
     // areas" on the Team With Us qualification section turns the list into the group "Service
@@ -6474,41 +7625,66 @@ export default function create(
       for (let i = 0; i < names.length; i++) {
         await boxes.nth(i).setChecked(areas.some((area) => labelFor(area).test(names[i])));
       }
-      await press(where, /^\s*save service areas\s*$/i);
+      await press(where, /^\s*save service areas\s*$/i, page, "organization-save-service-areas-button");
       await confirmIfAsked(where, /^\s*save/i);
     },
     // "Read the Sprint With Us terms and conditions" / "Read the Team With Us terms and
     // conditions", the link closing each qualification section, to the terms screen.
     viewSwuTerms: async () => {
       await orgTabOpen("view_swu_terms", ORG_TAB.swu);
-      await press(orgEdit.where("view_swu_terms"), /^\s*read the sprint with us terms( and conditions)?\s*$/i, page.getByRole("main"));
+      await press(
+        orgEdit.where("view_swu_terms"),
+        /^\s*read the sprint with us terms( and conditions)?\s*$/i,
+        page.getByRole("main"),
+        "organization-view-swu-terms-link",
+      );
     },
     viewTwuTerms: async () => {
       await orgTabOpen("view_twu_terms", ORG_TAB.twu);
-      await press(orgEdit.where("view_twu_terms"), /^\s*read the team with us terms( and conditions)?\s*$/i, page.getByRole("main"));
+      await press(
+        orgEdit.where("view_twu_terms"),
+        /^\s*read the team with us terms( and conditions)?\s*$/i,
+        page.getByRole("main"),
+        "organization-view-twu-terms-link",
+      );
     },
     changeLogo: async (input) => {
       await orgEditing("change_logo");
-      await offerFile(orgEdit.where("change_logo"), ORG_LOGO, input);
+      await offerFile(orgEdit.where("change_logo"), ORG_LOGO, input, "organization-logo-button");
     },
     // The closed form's "Logo" group holds the image "<legal name> logo"; an organization
     // with none says "No logo has been added." instead. The logo held is what the screen shows
     // with the form closed, so an open form is left by drawing the screen again.
     currentLogo: async () => {
       await orgEdit.on("current_logo");
-      if (await seen(page.getByRole("main").getByRole("button", { name: /^\s*save changes\s*$/i })).count()) {
+      if (await orgFormOpen()) {
         await visit(page.url());
         await orgEdit.on("current_logo");
       }
       await orgTabOpen("current_logo", ORG_TAB.organization);
+      // The logo carries "organization-current-logo" (the image, or the element holding it).
+      const marked = await carried("organization-current-logo");
+      if (marked) {
+        const own = await marked.first().evaluate((element) =>
+          element.tagName === "IMG" ? element.getAttribute("src") ?? "" : element.querySelector("img")?.getAttribute("src") ?? "",
+        );
+        return own;
+      }
       const image = seen(page.getByRole("main").getByRole("img", { name: /logo/i }));
       return (await image.count()) ? ((await image.first().getAttribute("src")) ?? "") : "";
     },
     // A refused file is answered in the form's "Logo (optional)" group by an alert ("<name>
     // cannot be used as a logo", then "… Please select a different logo image. The current
-    // logo has been kept."). No alert there, or no form open, reads as nothing.
+    // logo has been kept.") carrying "organization-logo-refused-error". No alert there, or no
+    // form open, reads as nothing.
     logoRefusedError: async () => {
       await orgEdit.on("logo_refused_error");
+      const marked = await carried("organization-logo-refused-error");
+      if (marked) {
+        const said: string[] = [];
+        for (const words of await marked.allInnerTexts()) said.push(...lined(words));
+        return said.join("\n");
+      }
       const group = seen(page.getByRole("main").getByRole("group", { name: /logo/i }));
       if (!(await group.count())) return "";
       const alerts = seen(group.first().getByRole("alert"));
@@ -6519,6 +7695,8 @@ export default function create(
     // Drawn under the organization's name as "Organization ID: <id>".
     organizationIdentifier: async () => {
       await orgEdit.on("organization_identifier");
+      const marked = await testIdText("organization-identifier");
+      if (marked !== null) return marked;
       const line = (await textLines()).find((one) => /^organization id:/i.test(one));
       return line ? line.replace(/^organization id:\s*/i, "").trim() : "";
     },
@@ -6530,15 +7708,18 @@ export default function create(
     // Drawn under the organization's name, whichever section is open: "Sprint With Us
     // qualified" and "Team With Us qualified" for the seeded qualified organization, neither
     // for the unqualified one.
-    swuQualifiedBadge: () => orgEdit.lines("swu_qualified_badge", /^sprint with us qualified$/i),
-    twuQualifiedBadge: () => orgEdit.lines("twu_qualified_badge", /^team with us qualified$/i),
-    // The team table's Membership cells that read "Owner" / "Pending".
+    swuQualifiedBadge: () => orgBadge("swu_qualified_badge", "organization-swu-qualified-badge", /^sprint with us qualified$/i),
+    twuQualifiedBadge: () => orgBadge("twu_qualified_badge", "organization-twu-qualified-badge", /^team with us qualified$/i),
+    // The team table's Membership cells that read "Owner" / "Pending"; each badge carries
+    // "organization-owner-badge" / "organization-pending-badge".
     ownerBadge: async () => {
       await orgTabOpen("owner_badge", ORG_TAB.team);
+      if (await carried("organization-owner-badge")) return (await testIdTexts("organization-owner-badge")).join("\n");
       return teamColumn(/^membership$/i, /^owner$/i);
     },
     pendingBadge: async () => {
       await orgTabOpen("pending_badge", ORG_TAB.team);
+      if (await carried("organization-pending-badge")) return (await testIdTexts("organization-pending-badge")).join("\n");
       return teamColumn(/^membership$/i, /^pending$/i);
     },
     // One line per row, the name followed by the account's address and persona. A person who
@@ -6554,37 +7735,85 @@ export default function create(
     // held".
     teamCapabilities: async () => {
       await orgTabOpen("team_capabilities", ORG_TAB.team);
-      // The innermost region: "Team members" holds the "Team capabilities" heading too.
-      const region = seen(regionNamed(page.getByRole("main"), /^\s*team capabilities\s*$/i)).last();
+      // The section carries "organization-team-capabilities"; otherwise the innermost region
+      // so named ("Team members" holds the "Team capabilities" heading too).
+      const marked = await carried("organization-team-capabilities");
+      const region = marked ? marked.first() : seen(regionNamed(page.getByRole("main"), /^\s*team capabilities\s*$/i)).last();
       if (!(await region.count())) return "";
       return (await seen(region.getByRole("listitem")).allInnerTexts()).map((one) => one.trim()).filter(Boolean).join("\n");
     },
     // Each requirement is one item of the list "Sprint With Us requirements" / "Team With Us
     // requirements", read whole: "Met <requirement>" or "Not met <requirement>".
     swuRequirementTwoMembers: () =>
-      requirementItem("swu_requirement_two_members", ORG_TAB.swu, /sprint with us requirements/i, /\b(two|2)\b.*member/i),
+      requirementItem(
+        "swu_requirement_two_members",
+        ORG_TAB.swu,
+        /sprint with us requirements/i,
+        /\b(two|2)\b.*member/i,
+        "organization-swu-requirement-two-members",
+      ),
     swuRequirementAllCapabilities: () =>
-      requirementItem("swu_requirement_all_capabilities", ORG_TAB.swu, /sprint with us requirements/i, /capabilit/i),
+      requirementItem(
+        "swu_requirement_all_capabilities",
+        ORG_TAB.swu,
+        /sprint with us requirements/i,
+        /capabilit/i,
+        "organization-swu-requirement-all-capabilities",
+      ),
     swuRequirementTermsAccepted: () =>
-      requirementItem("swu_requirement_terms_accepted", ORG_TAB.swu, /sprint with us requirements/i, /terms/i),
+      requirementItem(
+        "swu_requirement_terms_accepted",
+        ORG_TAB.swu,
+        /sprint with us requirements/i,
+        /terms/i,
+        "organization-swu-requirement-terms-accepted",
+      ),
     twuRequirementServiceArea: () =>
-      requirementItem("twu_requirement_service_area", ORG_TAB.twu, /team with us requirements/i, /service area/i),
+      requirementItem(
+        "twu_requirement_service_area",
+        ORG_TAB.twu,
+        /team with us requirements/i,
+        /service area/i,
+        "organization-twu-requirement-service-area",
+      ),
     twuRequirementTermsAccepted: () =>
-      requirementItem("twu_requirement_terms_accepted", ORG_TAB.twu, /team with us requirements/i, /terms/i),
+      requirementItem(
+        "twu_requirement_terms_accepted",
+        ORG_TAB.twu,
+        /team with us requirements/i,
+        /terms/i,
+        "organization-twu-requirement-terms-accepted",
+      ),
     // The approved service areas only, one per line: with the editor open (the service
     // administrator's "Edit service areas"), the areas whose boxes are ticked; with it closed,
-    // the items under "Approved service areas". Where the editor is offered it is opened to read
-    // the ticked boxes, then cancelled. An unticked area is never named.
+    // the items under "Approved service areas", even where "Edit service areas" is offered
+    // beneath them. Only a section drawn with no such list has its editor opened to read the
+    // ticked boxes, then cancelled. An unticked area is never named. Whether the section is
+    // being edited is decided once it is open: a section drawn with its boxes showing at once
+    // (an administrator's "Service areas this organization is approved for" over "Save service
+    // areas") is read as it stands. Boxes already showing — an earlier step's unsaved ticks —
+    // are read without reopening the section.
     serviceAreaCheckbox: async () => {
       await orgEdit.on("service_area_checkbox");
-      const editing = (await seen(page.getByRole("main").getByRole("checkbox")).count()) > 0;
-      if (!editing) await orgTabOpen("service_area_checkbox", ORG_TAB.twu);
-      const edit = seen(page.getByRole("main").getByRole("button", { name: /^\s*edit service areas\s*$/i })).first();
-      if (!editing && !(await edit.count())) {
+      const boxesShown = async (): Promise<boolean> => (await seen(page.getByRole("main").getByRole("checkbox")).count()) > 0;
+      let editing = await boxesShown();
+      if (!editing) {
+        await orgTabOpen("service_area_checkbox", ORG_TAB.twu);
+        editing = await boxesShown();
+      }
+      if (!editing) {
+        // With the form closed the approvals are the "Approved service areas" list, whether or
+        // not an "Edit service areas" is offered beneath it. Each approved area carries
+        // "organization-service-area".
+        const areas = await carried("organization-service-area");
+        if (areas) return (await areas.allInnerTexts()).map((one) => one.trim()).filter(Boolean).join("\n");
         const section = seen(regionNamed(page.getByRole("main"), /^\s*approved service areas\s*$/i)).last();
-        if (!(await section.count())) return "";
-        const items = (await seen(section.getByRole("listitem")).allInnerTexts()).map((one) => one.trim()).filter(Boolean);
-        return items.join("\n");
+        if (await section.count()) {
+          const items = (await seen(section.getByRole("listitem")).allInnerTexts()).map((one) => one.trim()).filter(Boolean);
+          return items.join("\n");
+        }
+        // No list drawn at all: the ticked boxes of the editor, where one is offered.
+        if (!(await (await editServiceAreasControl()).count())) return "";
       }
       const boxes = await serviceAreaBoxes("service_area_checkbox");
       if (!boxes) return "";
@@ -6602,10 +7831,21 @@ export default function create(
       }
       return out.join("\n");
     },
-    // The notice belongs to a qualification section, read from the Sprint With Us one.
-    notQualifiedNotice: () => orgTabLines("not_qualified_notice", ORG_TAB.swu, /not (yet )?qualified/i),
+    // The notice belongs to a qualification section, read from the Sprint With Us one: its
+    // first line ("This organization is not qualified for Sprint With Us"), the notice
+    // carrying "organization-not-qualified-notice".
+    notQualifiedNotice: async () => {
+      await orgTabOpen("not_qualified_notice", ORG_TAB.swu);
+      if (await carried("organization-not-qualified-notice")) {
+        return (await testIdTexts("organization-not-qualified-notice")).map((one) => lined(one)[0] ?? "").join("\n");
+      }
+      return linesMatching(/not (yet )?qualified/i);
+    },
+    // One line per change, each row carrying "organization-changelog-entry".
     changelogEntry: async () => {
       await orgTabOpen("changelog_entry", ORG_TAB.changelog);
+      const marked = await carried("organization-changelog-entry");
+      if (marked) return (await rowsText(marked)).join("\n");
       return (await tableRows()).join("\n");
     },
     // Fields marked invalid on the organization's form, and, on the team section, the warning
@@ -6616,6 +7856,9 @@ export default function create(
     fieldError: async () => {
       await orgEdit.on("field_error");
       const said = lined(await orgFieldErrors());
+      // The same faults listed as "field-error" items, read only where no field is marked
+      // invalid.
+      if (!said.length) for (const words of await testIdTexts("field-error")) said.push(...lined(words));
       const team = seen(regionNamed(page.getByRole("main"), /^\s*team( members)?\s*$/i)).first();
       if (await team.count()) {
         const alerts = seen(team.getByRole("alert"));
@@ -6656,6 +7899,8 @@ export default function create(
   // fields to create the organization" lists them. A created organization opens at
   // /organizations/<id>/edit.
   const orgCreate = signedInScreen("organization-create", "/organizations/create");
+  const PROVINCE_LABEL = /^\s*province\s*(or|\/)\s*state/i;
+  const POSTAL_LABEL = /^\s*postal\s*(code|\/\s*zip)/i;
   const ORG_FIELDS: Record<string, RegExp> = {
     legalName: /^\s*legal name/i,
     name: /^\s*legal name/i,
@@ -6680,17 +7925,19 @@ export default function create(
     streetAddressLineTwo: /^\s*address line 2/i,
     secondAddressLine: /^\s*address line 2/i,
     city: /^\s*city/i,
-    region: /^\s*province or state/i,
-    province: /^\s*province or state/i,
-    state: /^\s*province or state/i,
-    provinceOrState: /^\s*province or state/i,
-    stateOrProvince: /^\s*province or state/i,
-    mailCode: /^\s*postal code/i,
-    postalCode: /^\s*postal code/i,
-    zip: /^\s*postal code/i,
-    zipCode: /^\s*postal code/i,
-    postalOrZipCode: /^\s*postal code/i,
-    postalCodeOrZipCode: /^\s*postal code/i,
+    // "Province or state" / "Postal code or ZIP code" here; the proposal form draws the same
+    // fields as "Province / State" and "Postal / ZIP Code", and either wording is taken.
+    region: PROVINCE_LABEL,
+    province: PROVINCE_LABEL,
+    state: PROVINCE_LABEL,
+    provinceOrState: PROVINCE_LABEL,
+    stateOrProvince: PROVINCE_LABEL,
+    mailCode: POSTAL_LABEL,
+    postalCode: POSTAL_LABEL,
+    zip: POSTAL_LABEL,
+    zipCode: POSTAL_LABEL,
+    postalOrZipCode: POSTAL_LABEL,
+    postalCodeOrZipCode: POSTAL_LABEL,
     country: /^\s*country/i,
     contactName: /^\s*contact name/i,
     contactTitle: /^\s*contact title/i,
@@ -6706,15 +7953,18 @@ export default function create(
       await orgCreate.on("create_organization");
       await fillFrom(where, input, ORG_FIELDS, LOGO_KEYS);
       const logo = LOGO_KEYS.map((key) => given(input, [key])).find((one) => one !== undefined);
-      if (logo !== undefined) await offerFile(where, ORG_LOGO, logo);
-      await press(where, /^\s*create organization\s*$/i, seen(page.getByRole("main")));
+      if (logo !== undefined) await offerFile(where, ORG_LOGO, logo, "organization-logo-button");
+      await press(where, /^\s*create organization\s*$/i, seen(page.getByRole("main")), "organization-submit-button");
       await page.waitForURL(/\/organizations\/[^/?#]+\/edit/, { timeout: 10000 }).catch(() => undefined);
       await settle();
     },
-    cancel: () => orgCreate.press("cancel", /^\s*cancel\s*$/i),
+    cancel: async () => {
+      await orgCreate.on("cancel");
+      await press(orgCreate.where("cancel"), /^\s*cancel\s*$/i, page, "organization-create-cancel");
+    },
     changeLogo: async (input) => {
       await orgCreate.on("change_logo");
-      await offerFile(orgCreate.where("change_logo"), ORG_LOGO, input);
+      await offerFile(orgCreate.where("change_logo"), ORG_LOGO, input, "organization-logo-button");
     },
     // The message of every field marked invalid — the last of what describes it, its hint
     // coming first — or nothing when no field is.
@@ -6735,11 +7985,17 @@ export default function create(
           .catch(() => "");
         said.push(...lined(words));
       }
+      // The form also lists each fault as a "field-error" item ("Legal name: enter …"), the
+      // same faults in other words; read only where no field is marked invalid.
+      if (!said.length) for (const words of await testIdTexts("field-error")) said.push(...lined(words));
       return [...new Set(said)].join("\n");
     },
     submitDisabledUntilValid: async () => {
       await orgCreate.on("submit_disabled_until_valid");
-      const control = seen(page.getByRole("main").getByRole("button", { name: /^\s*create organization\s*$/i })).first();
+      const marked = await carried("organization-submit-button");
+      const control = marked
+        ? marked.first()
+        : seen(page.getByRole("main").getByRole("button", { name: /^\s*create organization\s*$/i })).first();
       if (!(await control.count())) return "absent";
       return (await isDisabled(control)) ? "disabled" : "enabled";
     },
@@ -6786,20 +8042,38 @@ export default function create(
   const AFFILIATED = /^\s*organizations you belong to\s*$/i;
   function membershipScreen(pageId: string, route: string) {
     const screen = signedInScreen(pageId, route);
-    async function region(member: string, name: RegExp, heading: string): Promise<Locator> {
+    // Each section is the region holding its table or its empty message, by their test IDs,
+    // or the region its heading names.
+    async function region(member: string, name: RegExp, heading: string, testIds: string[]): Promise<Locator> {
       await screen.on(member);
-      const found = seen(regionNamed(page.getByRole("main"), name)).first();
+      const main = page.getByRole("main");
+      const held = page.getByTestId(testIds[0]).or(page.getByTestId(testIds[1]));
+      const found = seen(main.getByRole("region").filter({ has: held }).or(regionNamed(main, name))).last();
       await found.waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
       if (!(await found.count())) {
         unbound(screen.where(member), `${page.url()} shows no "${heading}" section; it offers ${await offered()}`);
       }
       return found;
     }
-    const owned = (member: string) => region(member, OWNED, "Organizations you own");
-    const affiliated = (member: string) => region(member, AFFILIATED, "Organizations you belong to");
-    // One column of the owned table, each value after the organization it belongs to.
-    async function ownedColumn(member: string, header: RegExp): Promise<string> {
+    const owned = (member: string) =>
+      region(member, OWNED, "Organizations you own", ["membership-owned-table", "membership-empty-owned"]);
+    const affiliated = (member: string) =>
+      region(member, AFFILIATED, "Organizations you belong to", ["membership-affiliated-table", "membership-empty-affiliated"]);
+    // One column of the owned table, each value after the organization it belongs to; the
+    // value carries its test ID in each row where the table carries it.
+    async function ownedColumn(member: string, header: RegExp, testId: string): Promise<string> {
       const scope = await owned(member);
+      const table = await carried("membership-owned-table");
+      if (table && (await carried(testId, table.first()))) {
+        const rows = seen(table.first().getByRole("row")).filter({ has: page.getByRole("cell") });
+        const out: string[] = [];
+        for (let i = 0; i < (await rows.count()); i++) {
+          const name = (await rows.nth(i).getByRole("cell").first().innerText()).replace(/\s+/g, " ").trim();
+          const value = byTestId(testId, rows.nth(i));
+          out.push(`${name} | ${(await value.count()) ? (await value.first().innerText()).replace(/\s+/g, " ").trim() : ""}`);
+        }
+        return out.join("\n");
+      }
       const headers = seen(scope.getByRole("columnheader"));
       let at = -1;
       for (let i = 0; i < (await headers.count()); i++) if (header.test((await headers.nth(i).innerText()).trim())) at = i;
@@ -6809,22 +8083,74 @@ export default function create(
         .map((cells) => `${cells[0]} | ${cells[at] ?? ""}`)
         .join("\n");
     }
-    // A paragraph of a section, drawn only when its table is not.
-    async function emptyNote(scope: Locator): Promise<string> {
+    // A paragraph of a section, drawn only when its table is not; the message carries its test
+    // ID ("membership-empty-owned", "membership-empty-affiliated").
+    async function emptyNote(scope: Locator, testId: string): Promise<string> {
       if (await seen(scope.getByRole("table")).count()) return "";
+      if (await carried(testId, scope)) return (await testIdTexts(testId, scope)).join("\n");
       return (await paragraphs(scope)).join("\n");
+    }
+    // The rows of the screen's tables that name an organization, as their words read.
+    async function rowsNaming(named: string): Promise<string[]> {
+      const rows = seen(page.getByRole("main").getByRole("row")).filter({ hasText: named });
+      const out: string[] = [];
+      for (let i = 0; i < (await rows.count()); i++) {
+        out.push(((await rows.nth(i).innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim());
+      }
+      return out;
+    }
+    // Walked as the organization member, the invited vendor and the vendor: once an answer is
+    // confirmed the screen's status says "You have joined <org>." (the row then reads "Member"
+    // with "Leave"), "You have left <org>." or "You have declined the invitation from <org>."
+    // (the row is gone, or the table gives way to "You do not belong to any other
+    // organizations…"). The answer returns once the organization's row has changed from what
+    // it read before — a read straight after leaving otherwise still finds the row the table
+    // has not yet redrawn. With no row to watch, the status naming the organization is the
+    // sign. Neither within ten seconds of confirming, the screen is left as it is for the test
+    // to read.
+    async function untilAnswered(named: string, before: string[]): Promise<void> {
+      if (!named) return;
+      const status = seen(page.getByRole("main").getByRole("status")).filter({ hasText: named });
+      const until = Date.now() + 10000;
+      while (Date.now() < until) {
+        // The confirmation is still open; the table behind it is not yet the answer.
+        if (await dialog().count()) {
+          await page.waitForTimeout(100);
+          continue;
+        }
+        if (before.length) {
+          const now = await rowsNaming(named);
+          if (now.length !== before.length || now.some((row, i) => row !== before[i])) return;
+        } else if (await status.count()) {
+          return;
+        }
+        await page.waitForTimeout(100);
+      }
     }
     // An invitation or membership answered from the row that names the organization. Arrived
     // from the invitation email, the screen already holds this answer's dialog open, and it is
     // confirmed there; a dialog of another kind is cancelled before the row is pressed.
-    async function answer(member: string, input: unknown, control: RegExp, confirm: RegExp, kind: RegExp): Promise<void> {
+    async function answer(
+      member: string,
+      input: unknown,
+      control: RegExp,
+      confirm: RegExp,
+      kind: RegExp,
+      testId: string,
+      dialogId: string,
+    ): Promise<void> {
       const where = screen.where(member);
       await screen.on(member);
       if (await dialog().count()) {
         const said = (await dialog().innerText()).trim();
         const named = orgNamed(input);
-        if (kind.test(said) && (!named || said.toLowerCase().includes(named.toLowerCase()))) {
+        // The answer's own dialog carries its test ID ("membership-accept-dialog",
+        // "membership-decline-dialog", "membership-leave-dialog").
+        const ownKind = dialogId ? (await carried(dialogId)) !== null : kind.test(said);
+        if (ownKind && (!named || said.toLowerCase().includes(named.toLowerCase()))) {
+          const before = named ? await rowsNaming(named) : [];
           await press(where, confirm, dialog());
+          await untilAnswered(named, before);
           return;
         }
         await closeDialog();
@@ -6836,15 +8162,18 @@ export default function create(
       if (!(await row.count())) {
         unbound(where, `no row of "Organizations you belong to" on ${page.url()} names ${JSON.stringify(input)}; the rows read: ${(await tableRows(scope)).join(" / ") || "none"}`);
       }
-      const found = await findControl(row, control);
+      const found = await findControl(row, control, testId);
       if (!found || !(await found.evaluate((one) => one.matches("a, button, [role=button], [role=link]")).catch(() => false))) {
         unbound(
           where,
           `the row "${(await row.innerText()).replace(/\s+/g, " ").trim()}" in "Organizations you belong to" on ${page.url()} offers no control named ${control} — a pending row offers "Accept the invitation from <org>" and "Decline the invitation from <org>", a member's row "Leave <org>"`,
         );
       }
-      await press(where, control, row);
+      const watched = named || (await row.getByRole("cell").first().innerText()).replace(/\s+/g, " ").trim();
+      const before = await rowsNaming(watched);
+      await press(where, control, row, testId);
       await confirmIfAsked(where, confirm);
+      await untilAnswered(watched, before);
     }
     // The dialog an invitation answer lands on, open on the screen; none open is unbound,
     // since the answer could not be brought to this screen to be confirmed.
@@ -6853,57 +8182,110 @@ export default function create(
     // <org>" opens "Decline the invitation from <org>?" (confirmed by "Decline invitation").
     // Each read returns the open dialog only when it is its own kind; the screen open with the
     // other dialog, or with none, shows no such confirmation.
-    async function answerDialog(member: string, kind: RegExp): Promise<string> {
+    async function answerDialog(member: string, kind: RegExp, testId: string): Promise<string> {
       await screen.on(member);
-      await dialog().waitFor({ state: "visible", timeout: 3000 }).catch(() => undefined);
+      await seen(page.getByTestId(testId).or(dialog()))
+        .first()
+        .waitFor({ state: "visible", timeout: 3000 })
+        .catch(() => undefined);
+      // The dialog of this kind carries its test ID.
+      const marked = await carried(testId);
+      if (marked) return (await marked.first().innerText()).trim();
       if (!(await dialog().count())) return "";
       const said = (await dialog().innerText()).trim();
       return kind.test(said) ? said : "";
     }
+    // A table by its test ID, or the section's own table.
+    async function tableOf(scope: Locator, testId: string): Promise<Scope> {
+      const marked = await carried(testId, scope);
+      return marked ? marked.first() : scope;
+    }
     return {
       open: (params?: Record<string, string>) => screen.open(params),
       approveInvitation: (input?: unknown) =>
-        answer("approve_invitation", input, /^\s*(approve|accept)\b/i, /^\s*join organization\s*$/i, /^\s*join\b/i),
+        answer(
+          "approve_invitation",
+          input,
+          /^\s*(approve|accept)\b/i,
+          /^\s*join organization\s*$/i,
+          /^\s*join\b/i,
+          "membership-approve-button",
+          "membership-accept-dialog",
+        ),
       rejectInvitation: (input?: unknown) =>
-        answer("reject_invitation", input, /^\s*(reject|decline)\b/i, /^\s*decline invitation\s*$/i, /^\s*decline the invitation/i),
+        answer(
+          "reject_invitation",
+          input,
+          /^\s*(reject|decline)\b/i,
+          /^\s*decline invitation\s*$/i,
+          /^\s*decline the invitation/i,
+          "membership-reject-button",
+          "membership-decline-dialog",
+        ),
       leaveOrganization: (input?: unknown) =>
-        answer("leave_organization", input, /^\s*leave\b/i, /^\s*leave organization\s*$/i, /^\s*leave\b/i),
+        answer(
+          "leave_organization",
+          input,
+          /^\s*leave\b/i,
+          /^\s*leave organization\s*$/i,
+          /^\s*leave\b/i,
+          "membership-leave-button",
+          "membership-leave-dialog",
+        ),
       createOrganization: async () => {
         const scope = await owned("create_organization");
-        await press(screen.where("create_organization"), /^\s*create organization\s*$/i, scope);
+        await press(screen.where("create_organization"), /^\s*create organization\s*$/i, scope, "organization-create-link");
       },
       // Each name in either table is a link to that organization's screen when the viewer
-      // owns it; a member's or invitee's row names it in plain text.
+      // owns it ("membership-organization-link"); a member's or invitee's row names it in
+      // plain text.
       openOrganization: async (input?: unknown) => {
         const where = screen.where("open_organization");
         await screen.on("open_organization");
         const named = orgNamed(input);
         const exactly = named ? new RegExp(`^\\s*${named.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : undefined;
-        const links = seen(page.getByRole("main").getByRole("table").getByRole("link", exactly ? { name: exactly } : {}));
+        const marked = exactly
+          ? byTestId("membership-organization-link").filter({ hasText: exactly })
+          : byTestId("membership-organization-link");
+        const links = (await marked.count())
+          ? marked
+          : seen(page.getByRole("main").getByRole("table").getByRole("link", exactly ? { name: exactly } : {}));
         if (!(await links.count())) {
           unbound(where, `no organization link${named ? ` named "${named}"` : ""} in the tables on ${page.url()}; the owned table links each organization the viewer owns, and "Organizations you belong to" names its organizations in plain text; the rows read: ${(await tableRows()).join(" / ") || "none"}`);
         }
         await links.first().click();
         await settle();
       },
-      ownedOrganizationsTable: async () => (await tableRows(await owned("owned_organizations_table"))).join("\n"),
-      affiliatedOrganizationsTable: async () => (await tableRows(await affiliated("affiliated_organizations_table"))).join("\n"),
+      ownedOrganizationsTable: async () => {
+        const scope = await owned("owned_organizations_table");
+        return (await tableRows(await tableOf(scope, "membership-owned-table"))).join("\n");
+      },
+      affiliatedOrganizationsTable: async () => {
+        const scope = await affiliated("affiliated_organizations_table");
+        return (await tableRows(await tableOf(scope, "membership-affiliated-table"))).join("\n");
+      },
       // The rows of "Organizations you belong to" whose Membership cell reads "Pending" (the
-      // Actions cell, "Accept … Decline …", follows it).
+      // Actions cell, "Accept … Decline …", follows it): the rows holding
+      // "organization-pending-badge" where the table carries it.
       pendingBadge: async () => {
         const scope = await affiliated("pending_badge");
+        if (await carried("organization-pending-badge", scope)) {
+          const rows = seen(scope.getByRole("row")).filter({ has: page.getByTestId("organization-pending-badge") });
+          return (await rowsText(rows)).join("\n");
+        }
         const headers = seen(scope.getByRole("columnheader"));
         let at = -1;
         for (let i = 0; i < (await headers.count()); i++) if (/^membership$/i.test((await headers.nth(i).innerText()).trim())) at = i;
         if (at < 0) return "";
         return (await tableRows(scope)).filter((row) => /^pending$/i.test((row.split(" | ")[at] ?? "").trim())).join("\n");
       },
-      teamMemberCount: () => ownedColumn("team_member_count", /^team members$/i),
-      swuQualifiedMark: () => ownedColumn("swu_qualified_mark", /^sprint with us qualified$/i),
-      emptyOwnedMessage: async () => emptyNote(await owned("empty_owned_message")),
-      emptyAffiliatedMessage: async () => emptyNote(await affiliated("empty_affiliated_message")),
-      acceptConfirmation: () => answerDialog("accept_confirmation", /^\s*join\b|join organization/i),
-      declineConfirmation: () => answerDialog("decline_confirmation", /^\s*decline\b|decline invitation/i),
+      teamMemberCount: () => ownedColumn("team_member_count", /^team members$/i, "membership-team-member-count"),
+      swuQualifiedMark: () => ownedColumn("swu_qualified_mark", /^sprint with us qualified$/i, "organization-swu-qualified-mark"),
+      emptyOwnedMessage: async () => emptyNote(await owned("empty_owned_message"), "membership-empty-owned"),
+      emptyAffiliatedMessage: async () => emptyNote(await affiliated("empty_affiliated_message"), "membership-empty-affiliated"),
+      acceptConfirmation: () => answerDialog("accept_confirmation", /^\s*join\b|join organization/i, "membership-accept-dialog"),
+      declineConfirmation: () =>
+        answerDialog("decline_confirmation", /^\s*decline\b|decline invitation/i, "membership-decline-dialog"),
     };
   }
 
@@ -6925,7 +8307,9 @@ export default function create(
     await settle();
     // The page sends people on after it loads, so wait for the form or for the move away.
     await Promise.race([
-      seen(page.getByRole("heading", { name: /complete your profile/i })).first().waitFor({ state: "visible", timeout: 10000 }),
+      seen(page.getByTestId("sign-up-complete-button").or(page.getByRole("heading", { name: /complete your profile/i })))
+        .first()
+        .waitFor({ state: "visible", timeout: 10000 }),
       page.waitForURL((url) => url.pathname !== "/sign-up/complete", { timeout: 10000 }),
     ]).catch(() => undefined);
     await settle();
@@ -6942,11 +8326,28 @@ export default function create(
       unbound(signUp.where(member), `/sign-up/complete sent the browser on to ${page.url()} instead of showing the profile form; it is shown only to a vendor who has still to agree to the terms`);
     }
   }
-  async function setBox(where: string, name: RegExp, wanted: boolean | undefined): Promise<void> {
-    const box = seen(page.getByRole("checkbox", { name }));
+  // A box by its test ID (on the box or on the label holding it), by its name otherwise.
+  const markedBox = (name: RegExp, testId?: string): Locator =>
+    testId
+      ? seen(
+          page
+            .getByTestId(testId)
+            .getByRole("checkbox")
+            .or(page.getByRole("checkbox").and(page.getByTestId(testId)))
+            .or(page.getByRole("checkbox", { name })),
+        )
+      : seen(page.getByRole("checkbox", { name }));
+  async function setBox(where: string, name: RegExp, wanted: boolean | undefined, testId?: string): Promise<void> {
+    const box = markedBox(name, testId);
     if (!(await box.count())) unbound(where, `no box named ${name} on ${page.url()}; it offers ${await offered()}`);
     await box.first().setChecked(wanted ?? !(await box.first().isChecked()));
     await settle();
+  }
+  // A field's box inside the element carrying its test ID, by its label otherwise.
+  async function signUpField(label: RegExp, testId: string): Promise<Locator | null> {
+    const inside = seen(page.getByTestId(testId).getByRole("textbox")).first();
+    if (await inside.count()) return inside;
+    return fieldLabelled(label, false);
   }
   const boxWanted = (input: unknown, keys: string[]): boolean | undefined => {
     if (typeof input === "boolean") return input;
@@ -6964,25 +8365,34 @@ export default function create(
     open: () => signUp.open(),
     changeAvatar: async (input) => {
       await onSignUpForm("change_avatar");
-      await offerFile(signUp.where("change_avatar"), /avatar|choose image|upload image|picture|photo/i, input);
+      await offerFile(signUp.where("change_avatar"), /avatar|choose image|upload image|picture|photo/i, input, "change-avatar");
     },
     acceptAppTerms: async (input) => {
       await onSignUpForm("accept_app_terms");
-      await setBox(signUp.where("accept_app_terms"), TERMS_BOX, boxWanted(input, TERMS_KEYS) ?? true);
+      await setBox(signUp.where("accept_app_terms"), TERMS_BOX, boxWanted(input, TERMS_KEYS) ?? true, "sign-up-terms-checkbox");
     },
     toggleNewOpportunityNotifications: async (input) => {
       await onSignUpForm("toggle_new_opportunity_notifications");
-      await setBox(signUp.where("toggle_new_opportunity_notifications"), NOTICES_BOX, boxWanted(input, NOTICE_KEYS));
+      await setBox(
+        signUp.where("toggle_new_opportunity_notifications"),
+        NOTICES_BOX,
+        boxWanted(input, NOTICE_KEYS),
+        "sign-up-notifications-checkbox",
+      );
     },
     completeProfile: async (input) => {
       const where = signUp.where("complete_profile");
       await onSignUpForm("complete_profile");
-      if (given(input, TERMS_KEYS) !== undefined) await setBox(where, TERMS_BOX, boxWanted(input, TERMS_KEYS) ?? true);
-      if (given(input, NOTICE_KEYS) !== undefined) await setBox(where, NOTICES_BOX, boxWanted(input, NOTICE_KEYS) ?? true);
+      if (given(input, TERMS_KEYS) !== undefined) {
+        await setBox(where, TERMS_BOX, boxWanted(input, TERMS_KEYS) ?? true, "sign-up-terms-checkbox");
+      }
+      if (given(input, NOTICE_KEYS) !== undefined) {
+        await setBox(where, NOTICES_BOX, boxWanted(input, NOTICE_KEYS) ?? true, "sign-up-notifications-checkbox");
+      }
       const picture = given(input, ["avatar", "image", "picture"]);
       await fillFrom(where, input, PROFILE_FIELDS, [...TERMS_KEYS, ...NOTICE_KEYS, "avatar", "image", "picture"]);
-      if (picture !== undefined) await offerFile(where, /avatar|choose image|upload image|picture|photo/i, picture);
-      await press(where, /^\s*complete( profile)?\s*$/i);
+      if (picture !== undefined) await offerFile(where, /avatar|choose image|upload image|picture|photo/i, picture, "change-avatar");
+      await press(where, /^\s*complete( profile)?\s*$/i, page, "sign-up-complete-button");
       const left = await page
         .waitForURL((url) => url.pathname !== "/sign-up/complete", { timeout: 20000 })
         .then(() => true)
@@ -6997,34 +8407,34 @@ export default function create(
     // form: no form is what an account with nothing to complete, or a signed-out visitor, sees.
     idpUsernameReadonly: async () => {
       if (!(await signUpFormShown("idp_username_readonly"))) return "";
-      const box = await fieldLabelled(/github|idir|user\s*name/i, false);
+      const box = await signUpField(/github|idir|user\s*name/i, "idp-username-field");
       return box ? valueOf(box) : "";
     },
     nameField: async () => {
       if (!(await signUpFormShown("name_field"))) return "";
-      const box = await fieldLabelled(PROFILE_FIELDS.name, false);
+      const box = await signUpField(PROFILE_FIELDS.name, "name-field");
       return box ? valueOf(box) : "";
     },
     emailField: async () => {
       if (!(await signUpFormShown("email_field"))) return "";
-      const box = await fieldLabelled(PROFILE_FIELDS.email, false);
+      const box = await signUpField(PROFILE_FIELDS.email, "email-field");
       return box ? valueOf(box) : "";
     },
     jobTitleField: async () => {
       if (!(await signUpFormShown("job_title_field"))) return "";
-      const box = await fieldLabelled(PROFILE_FIELDS.jobTitle, false);
+      const box = await signUpField(PROFILE_FIELDS.jobTitle, "job-title-field");
       return box ? valueOf(box) : "";
     },
     termsCheckbox: async () => {
       if (!(await signUpFormShown("terms_checkbox"))) return "";
-      const box = seen(page.getByRole("checkbox", { name: TERMS_BOX }));
+      const box = markedBox(TERMS_BOX, "sign-up-terms-checkbox");
       return (await box.count()) ? ((await box.first().isChecked()) ? "checked" : "unchecked") : "";
     },
     completeDisabledUntilTermsAccepted: async () => {
       if (!(await signUpFormShown("complete_disabled_until_terms_accepted"))) return "";
-      const box = seen(page.getByRole("checkbox", { name: TERMS_BOX }));
+      const box = markedBox(TERMS_BOX, "sign-up-terms-checkbox");
       if (!(await box.count()) || (await box.first().isChecked())) return "";
-      const control = await findControl(page, /^\s*complete( profile)?\s*$/i);
+      const control = await findControl(page, /^\s*complete( profile)?\s*$/i, "sign-up-complete-button");
       return control && (await isDisabled(control)) ? "disabled" : "";
     },
     fieldError: async () => {
@@ -7054,16 +8464,18 @@ export default function create(
     notifications: /^\s*notifications\s*$/i,
     legal: /policies|terms|legal|agreements/i,
   };
-  async function profileSection(where: string, name: RegExp, key: string): Promise<string> {
+  // Each section's link carries its test ID ("profile-tab-capabilities" and the rest).
+  async function profileSection(where: string, name: RegExp, key: string, testId?: string): Promise<string> {
+    const marked = testId ? await carried(testId) : null;
     const tab = seen(page.getByRole("tab", { name }));
-    if (await tab.count()) {
+    if (!marked && (await tab.count())) {
       await tab.first().click();
       await settle();
       const panel = seen(page.getByRole("tabpanel"));
       return (await panel.count()) ? (await panel.first().innerText()).trim() : mainText();
     }
     const sections = page.getByRole("navigation", { name: /profile sections/i });
-    const link = seen(sections.getByRole("link", { name }));
+    const link = marked ?? seen(sections.getByRole("link", { name }));
     // A screen that opened without that section reads as nothing.
     if (!(await link.count())) return "";
     await link.first().click();
@@ -7074,7 +8486,8 @@ export default function create(
     if (wanted && !wanted.test(heading)) {
       unbound(where, `the "${key}" link under "Profile sections" goes to ${page.url()}, which draws "${heading}" (the Profile section again) and no ${key} section`);
     }
-    const names = lined(await sections.innerText().catch(() => ""));
+    const menu = (await sections.count()) ? sections : marked ? marked.first().locator("xpath=ancestor::nav[1]") : sections;
+    const names = lined(await menu.innerText().catch(() => ""));
     return (await textLines()).filter((line) => !names.includes(line)).join("\n");
   }
 
@@ -7086,7 +8499,9 @@ export default function create(
     const on = async (member: string): Promise<void> => {
       await signedIn.on(member);
       await Promise.race([
-        seen(page.getByText(/^\s*status:/i)).first().waitFor({ state: "visible", timeout: 10000 }),
+        seen(page.getByTestId("profile-status-badge").or(page.getByText(/^\s*status:/i)))
+          .first()
+          .waitFor({ state: "visible", timeout: 10000 }),
         page.waitForURL((url) => url.pathname === "/sign-up/complete", { timeout: 10000 }),
       ]).catch(() => undefined);
       if (new URL(page.url()).pathname === "/sign-up/complete") {
@@ -7098,13 +8513,13 @@ export default function create(
     const screen = {
       ...signedIn,
       on,
-      press: async (member: string, name: RegExp): Promise<void> => {
+      press: async (member: string, name: RegExp, testId?: string): Promise<void> => {
         await on(member);
-        await press(signedIn.where(member), name);
+        await press(signedIn.where(member), name, page, testId);
       },
-      tab: async (member: string, name: RegExp, key = ""): Promise<string> => {
+      tab: async (member: string, name: RegExp, key = "", testId?: string): Promise<string> => {
         await on(member);
-        return profileSection(signedIn.where(member), name, key);
+        return profileSection(signedIn.where(member), name, key, testId);
       },
       messages: async (member: string): Promise<string> => {
         await on(member);
@@ -7112,14 +8527,23 @@ export default function create(
       },
     };
     const w = screen.where;
-    const profileField = async (member: string, label: RegExp, shownAs: string[]): Promise<string> => {
+    // A field's box inside the element carrying its test ID ("name-field" and the rest), by
+    // its label otherwise; the value drawn beside its label where there is no box.
+    const profileField = async (member: string, label: RegExp, shownAs: string[], testId: string): Promise<string> => {
       await screen.on(member);
+      const marked = await carried(testId);
+      if (marked) {
+        const inside = seen(marked.first().getByRole("textbox"));
+        if (await inside.count()) return valueOf(inside.first());
+      }
       const box = await fieldLabelled(label, false);
       return box ? valueOf(box) : labelledValue(shownAs);
     };
+    const EDIT_PROFILE = /^\s*edit( profile)?\s*$/i;
+    const PICTURE = /avatar|choose image|upload image|picture|photo/i;
     return {
       open: (params?: Record<string, string>) => screen.open(params),
-      editProfile: () => screen.press("edit_profile", /^\s*edit( profile)?\s*$/i),
+      editProfile: () => screen.press("edit_profile", EDIT_PROFILE, "profile-edit-button"),
       // What the test gave is entered first, opening the form for editing when it is not
       // already; a disabled save is the form refusing, and is reported at once.
       saveChanges: async (input?: unknown) => {
@@ -7128,38 +8552,43 @@ export default function create(
         const values = Object.keys(record(input)).length > 0;
         if (values || picture !== undefined) {
           // The profile draws its boxes read-only until "Edit profile" is pressed.
-          const name = await fieldLabelled(PROFILE_FIELDS.name, false);
+          const marked = seen(page.getByTestId("name-field").getByRole("textbox")).first();
+          const name = (await marked.count()) ? marked : await fieldLabelled(PROFILE_FIELDS.name, false);
           if (!name || (await isDisabled(name)) || !(await name.isEditable().catch(() => false))) {
-            const edit = await findControl(page, /^\s*edit( profile)?\s*$/i);
+            const edit = await findControl(page, EDIT_PROFILE, "profile-edit-button");
             if (edit) {
               await edit.click();
               await settle();
             }
           }
           await fillFrom(w("save_changes"), input, PROFILE_FIELDS, ["avatar", "image", "picture"]);
-          if (picture !== undefined) await offerFile(w("save_changes"), /avatar|choose image|upload image|picture|photo/i, picture);
+          if (picture !== undefined) await offerFile(w("save_changes"), PICTURE, picture, "change-avatar");
         }
-        await press(w("save_changes"), /^\s*save( changes)?\s*$/i);
+        await press(w("save_changes"), /^\s*save( changes)?\s*$/i, page, "profile-save-button");
         await confirmIfAsked(w("save_changes"), /^\s*save( changes)?\s*$/i);
       },
-      cancelEditing: () => screen.press("cancel_editing", /^\s*cancel\s*$/i),
+      cancelEditing: () => screen.press("cancel_editing", /^\s*cancel\s*$/i, "profile-cancel-button"),
       changeAvatar: async (input?: unknown) => {
         await screen.on("change_avatar");
         // The picture is chosen on the form "Edit profile" opens.
-        if (!(await findControl(page, /^\s*choose (a |a different )?profile picture\s*$/i))) {
-          const edit = await findControl(page, /^\s*edit( profile)?\s*$/i);
+        if (!(await findControl(page, /^\s*choose (a |a different )?profile picture\s*$/i, "change-avatar"))) {
+          const edit = await findControl(page, EDIT_PROFILE, "profile-edit-button");
           if (edit && !(await isDisabled(edit))) {
             await edit.click();
             await settle();
           }
         }
-        await offerFile(w("change_avatar"), /avatar|choose image|upload image|picture|photo/i, input);
+        await offerFile(w("change_avatar"), PICTURE, input, "change-avatar");
       },
-      deactivateAccount: () => screen.press("deactivate_account", /deactivate( account)?/i),
-      reactivateAccount: () => screen.press("reactivate_account", /reactivate( account)?/i),
+      deactivateAccount: () => screen.press("deactivate_account", /deactivate( account)?/i, "profile-deactivate-button"),
+      reactivateAccount: () => screen.press("reactivate_account", /reactivate( account)?/i, "profile-reactivate-button"),
       confirmActivationChange: async () => {
         await screen.on("confirm_activation_change");
-        await inDialog(w("confirm_activation_change"), /deactivate|reactivate|confirm|^\s*yes\s*$/i);
+        await inDialog(
+          w("confirm_activation_change"),
+          /deactivate|reactivate|confirm|^\s*yes\s*$/i,
+          "activation-confirm-button",
+        );
         // The change is answered once the dialog has closed and the profile says so
         // ("… account has been reactivated. They have been told by email."); a reading
         // taken before then still shows the status the profile had.
@@ -7172,64 +8601,91 @@ export default function create(
       },
       cancelActivationChange: async () => {
         await screen.on("cancel_activation_change");
-        await inDialog(w("cancel_activation_change"), /^\s*(cancel|no)\s*$/i);
+        await inDialog(w("cancel_activation_change"), /^\s*(cancel|no)\s*$/i, "activation-cancel-button");
       },
       toggleAdminPermission: async () => {
         await screen.on("toggle_admin_permission");
-        const box = seen(page.getByRole("checkbox", { name: /admin/i }).or(page.getByRole("switch", { name: /admin/i })));
+        const box = adminBox();
         if (!(await box.count())) unbound(w("toggle_admin_permission"), `no administrator box on ${page.url()}; it offers ${await offered()}`);
         if (await isDisabled(box.first())) throw new Error(`${w("toggle_admin_permission")} — the administrator box is disabled on ${page.url()}`);
         await box.first().click();
         await confirmIfAsked(w("toggle_admin_permission"), /^\s*(yes|confirm|save|ok|update)\b/i);
         await settle();
       },
+      // The identifier the profile shows ("profile-user-identifier"), the one its address
+      // holds, or the signed-in person's own.
       userIdentifier: async () => {
         await screen.on("user_identifier");
+        const shown = await testIdText("profile-user-identifier");
+        if (shown) return shown;
         const named = /^\/users\/([^/?#]+)/.exec(new URL(page.url()).pathname)?.[1] ?? "";
         return named && named !== "me" ? named : textOf((await ownAccount()).id);
       },
       profileTab: async () => {
         await screen.on("profile_tab");
         const tab = seen(page.getByRole("tab", { name: /^\s*profile\s*$/i }));
-        if (await tab.count()) return screen.tab("profile_tab", /^\s*profile\s*$/i);
+        if (!(await carried("profile-tab-profile")) && (await tab.count())) return screen.tab("profile_tab", /^\s*profile\s*$/i);
         return mainText();
       },
-      capabilitiesTab: () => screen.tab("capabilities_tab", /capabilities/i, "capabilities"),
-      notificationsTab: () => screen.tab("notifications_tab", /notifications/i, "notifications"),
-      legalTab: () => screen.tab("legal_tab", /policies|terms|legal|agreements/i, "legal"),
-      organizationsTab: () => screen.tab("organizations_tab", /organizations/i, "organizations"),
+      capabilitiesTab: () => screen.tab("capabilities_tab", /capabilities/i, "capabilities", "profile-tab-capabilities"),
+      notificationsTab: () => screen.tab("notifications_tab", /notifications/i, "notifications", "profile-tab-notifications"),
+      legalTab: () => screen.tab("legal_tab", /policies|terms|legal|agreements/i, "legal", "profile-tab-legal"),
+      organizationsTab: () => screen.tab("organizations_tab", /organizations/i, "organizations", "profile-tab-organizations"),
       // Signed in, the profile draws "Account type: Vendor", "Status: Active" and "Account ID: …"
       // each on a line of its own, the value beside its label ("Status:" and its value in one
-      // paragraph); on() waits for that line, which is drawn after the heading.
+      // paragraph); on() waits for that line, which is drawn after the heading. Each value
+      // carries its test ID.
       statusBadge: async () => {
         await screen.on("status_badge");
-        return labelledValue(["Status", "Account Status"]);
+        return (await testIdText("profile-status-badge")) ?? labelledValue(["Status", "Account Status"]);
       },
       accountType: async () => {
         await screen.on("account_type");
-        return labelledValue(["Account Type"]);
+        return (await testIdText("profile-account-type")) ?? labelledValue(["Account Type"]);
       },
       permissionsLabel: async () => {
         await screen.on("permissions_label");
-        return labelledValue(["Permissions", "Permission", "Permission(s)"]);
+        return (await testIdText("profile-permissions-label")) ?? labelledValue(["Permissions", "Permission", "Permission(s)"]);
       },
       adminCheckbox: async () => {
         await screen.on("admin_checkbox");
-        const box = seen(page.getByRole("checkbox", { name: /admin/i }).or(page.getByRole("switch", { name: /admin/i })));
+        const box = adminBox();
         return (await box.count()) ? ((await box.first().isChecked()) ? "checked" : "unchecked") : "";
       },
       // Signed in, "Details" carries "Sign-in username", "Name" and "Email address" as
       // labelled text boxes; a label drawn with its value as text is read beside or under it.
-      idpUsernameReadonly: () => profileField("idp_username_readonly", /github|idir|user\s*name/i, ["Sign-in username", "GitHub", "IDIR", "Username"]),
-      nameField: () => profileField("name_field", PROFILE_FIELDS.name, ["Name"]),
-      emailField: () => profileField("email_field", PROFILE_FIELDS.email, ["Email", "Email Address"]),
-      jobTitleField: () => profileField("job_title_field", PROFILE_FIELDS.jobTitle, ["Job Title"]),
+      idpUsernameReadonly: () =>
+        profileField(
+          "idp_username_readonly",
+          /github|idir|user\s*name/i,
+          ["Sign-in username", "GitHub", "IDIR", "Username"],
+          "idp-username-field",
+        ),
+      nameField: () => profileField("name_field", PROFILE_FIELDS.name, ["Name"], "name-field"),
+      emailField: () => profileField("email_field", PROFILE_FIELDS.email, ["Email", "Email Address"], "email-field"),
+      jobTitleField: () => profileField("job_title_field", PROFILE_FIELDS.jobTitle, ["Job Title"], "job-title-field"),
       fieldError: () => screen.messages("field_error"),
+      // The dialog carries "activation-modal".
       activationModal: async () => {
         await screen.on("activation_modal");
+        const marked = await carried("activation-modal");
+        if (marked) return (await marked.first().innerText()).trim();
         return (await dialog().count()) ? (await dialog().innerText()).trim() : "";
       },
     };
+  }
+
+  // The administrator box ("profile-admin-checkbox", on the box or its label), or a box or
+  // switch named for it.
+  function adminBox(): Locator {
+    return seen(
+      page
+        .getByTestId("profile-admin-checkbox")
+        .getByRole("checkbox")
+        .or(page.getByRole("checkbox").and(page.getByTestId("profile-admin-checkbox")))
+        .or(page.getByRole("checkbox", { name: /admin/i }))
+        .or(page.getByRole("switch", { name: /admin/i })),
+    );
   }
 
   // /users/:userId is a screen this build serves: walked signed in, it opens for the signed-in
@@ -7337,7 +8793,49 @@ export default function create(
     };
   }
 
+  // Each row ("user-list-row") carries its values by test ID: the status badge, the account
+  // type, the name's link and the administrator mark. Null where the list carries none.
+  const USER_LIST_IDS = {
+    status: "user-list-status-badge",
+    type: "user-list-account-type",
+    name: "user-list-profile-link",
+    admin: "user-list-admin-check",
+  } as const;
+  async function userListMarked(): Promise<Record<"status" | "type" | "name" | "admin", string>[] | null> {
+    if (await onUserList()) return null;
+    await seen(page.getByTestId("user-list-row").or(page.getByText(/\bof \d+ (people|person) shown\b/i)))
+      .first()
+      .waitFor({ state: "visible", timeout: 8000 })
+      .catch(() => undefined);
+    const rows = await carried("user-list-row");
+    if (!rows || !(await carried(USER_LIST_IDS.status))) return null;
+    // Every row and its four cells in one call to the browser: read one lookup at a time,
+    // a list grown long by the accounts the tests register outlasts the tests' waits. A cell
+    // counts only where it is shown, as byTestId() finds it, and the first shown one is read.
+    return rows.evaluateAll((all, ids) => {
+      const shown = (element: Element): boolean => {
+        const style = getComputedStyle(element);
+        if (style.visibility !== "visible") return false;
+        if (style.display === "contents") return Array.from(element.children).some(shown);
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && box.height > 0;
+      };
+      const read = (row: Element, id: string): string => {
+        const found = Array.from(row.querySelectorAll(`[data-testid="${id}"]`)).find(shown) as HTMLElement | undefined;
+        return found ? (found.innerText ?? "").replace(/\s+/g, " ").trim() : "";
+      };
+      return all.map((row) => ({
+        status: read(row, ids.status),
+        type: read(row, ids.type),
+        name: read(row, ids.name),
+        admin: read(row, ids.admin),
+      }));
+    }, USER_LIST_IDS);
+  }
+
   async function userListColumn(which: "status" | "type" | "name" | "admin"): Promise<string> {
+    const marked = await userListMarked();
+    if (marked) return marked.map((row) => row[which]).join("\n");
     const rows = await userListRows();
     if (!rows.length) return "";
     const at = (await userListColumns())[which];
@@ -7347,12 +8845,15 @@ export default function create(
   // The export dialog, opened when it is not already.
   async function exportDialog(member: string): Promise<Locator> {
     await userListOrUnbound(member);
-    if (!(await dialog().count())) await press(`user-list.${member}`, /^\s*export contact list\s*$/i);
+    if (!(await dialog().count())) {
+      await press(`user-list.${member}`, /^\s*export contact list\s*$/i, page, "contact-list-open-export");
+    }
     await dialog().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
     if (!(await dialog().count())) {
       unbound(`user-list.${member}`, `"Export contact list" on ${page.url()} was pressed and no dialog opened`);
     }
-    return dialog();
+    // The dialog carries "contact-list-modal".
+    return (await carried("contact-list-modal")) ? byTestId("contact-list-modal").first() : dialog();
   }
 
   // What a test calls an account type or a field, as the dialog labels it.
@@ -7379,8 +8880,16 @@ export default function create(
     return said === undefined ? undefined : saysYes(said);
   }
 
+  // Each box sits inside its label carrying "contact-list-user-type" or "contact-list-field",
+  // named for what it exports.
   async function setExportBox(member: string, scope: Locator, label: RegExp, said: string, wanted: boolean | undefined): Promise<void> {
-    const box = seen(scope.getByRole("checkbox", { name: label }));
+    const box = seen(
+      scope
+        .getByTestId(/^contact-list-(user-type|field)$/)
+        .filter({ hasText: label })
+        .getByRole("checkbox")
+        .or(scope.getByRole("checkbox", { name: label })),
+    );
     if (!(await box.count())) {
       const offered = (await seen(scope.getByRole("checkbox")).evaluateAll((boxes) =>
         boxes.map((each) => ((each as HTMLInputElement).labels?.[0]?.innerText ?? each.getAttribute("aria-label") ?? "").trim()),
@@ -7414,7 +8923,17 @@ export default function create(
     searchByName: async (input) => {
       const where = "user-list.search_by_name";
       await userListOrUnbound("search_by_name");
-      const box = seen(page.getByRole("searchbox", { name: /search by name/i }).or(page.getByRole("textbox", { name: /search by name/i }))).first();
+      // The box sits inside the element carrying "user-list-search" (or carries it itself).
+      const search = page.getByTestId("user-list-search");
+      const box = seen(
+        search
+          .getByRole("searchbox")
+          .or(search.getByRole("textbox"))
+          .or(page.getByRole("searchbox").and(search))
+          .or(page.getByRole("textbox").and(search))
+          .or(page.getByRole("searchbox", { name: /search by name/i }))
+          .or(page.getByRole("textbox", { name: /search by name/i })),
+      ).first();
       if (!(await box.count())) unbound(where, `no "Search by name" box on ${page.url()}`);
       const words = typeof input === "string" ? input : givenText(input, ["name", "query", "search", "term", "text", "value"]);
       await box.fill(words);
@@ -7463,7 +8982,7 @@ export default function create(
           if ((await box.count()) && (await box.first().isChecked())) await box.first().click();
         }
       }
-      const control = await findControl(scope, /^\s*export\s*$/i);
+      const control = await findControl(scope, /^\s*export\s*$/i, "contact-list-export-button");
       if (!control) unbound(where, `the export dialog on ${page.url()} has no "Export" button`);
       if (await isDisabled(control)) {
         const said = lined(await scope.innerText().catch(() => "")).filter((line) => /choose|required|at least/i.test(line));
@@ -7476,15 +8995,15 @@ export default function create(
     },
     cancelExport: async () => {
       await userListOrUnbound("cancel_export");
-      await inDialog("user-list.cancel_export", /^\s*cancel\s*$/i);
+      await inDialog("user-list.cancel_export", /^\s*cancel\s*$/i, "contact-list-cancel-button");
     },
     // The account the test named — by seed handle, persona, identifier, address or name —
-    // opened from its name in the list.
+    // opened from its name in the list ("user-list-profile-link").
     openUserProfile: async (input) => {
       const where = "user-list.open_user_profile";
       await userListOrUnbound("open_user_profile");
       const person = personOf(input);
-      const links = seen(page.getByRole("table").first().getByRole("link"));
+      const links = (await carried("user-list-profile-link")) ?? seen(page.getByRole("table").first().getByRole("link"));
       const hrefs = await links.evaluateAll((each) => each.map((link) => link.getAttribute("href") ?? ""));
       let at = person?.id ? hrefs.findIndex((href) => href.replace(/[?#].*$/, "").endsWith(`/users/${person.id}`)) : -1;
       if (at < 0) {
@@ -7503,6 +9022,8 @@ export default function create(
     },
     // Each row as "Status | Account type | Name", one per line.
     userRow: async () => {
+      const marked = await userListMarked();
+      if (marked) return marked.map((row) => [row.status, row.type, row.name].filter(Boolean).join(" | ")).join("\n");
       const rows = await userListRows();
       if (!rows.length) return "";
       const at = await userListColumns();
@@ -7512,21 +9033,26 @@ export default function create(
     accountType: () => userListColumn("type"),
     // The Administrator column beside the name it belongs to: "Robin Placeholder: Yes".
     adminCheck: async () => {
+      const marked = await userListMarked();
+      if (marked) return marked.map((row) => `${row.name}: ${row.admin}`).join("\n");
       const rows = await userListRows();
       if (!rows.length) return "";
       const at = await userListColumns();
       return rows.map((cells) => `${cells[at.name] ?? ""}: ${cells[at.admin] ?? ""}`).join("\n");
     },
-    // The dialog's words while it is open; closed (cancelled, exported, never opened), nothing.
+    // The dialog's words while it is open ("contact-list-modal"); closed (cancelled,
+    // exported, never opened), nothing.
     exportModal: async () => {
       if (await onUserList()) return "";
+      const marked = await carried("contact-list-modal");
+      if (marked) return (await marked.first().innerText()).trim();
       return (await dialog().count()) ? (await dialog().innerText()).trim() : "";
     },
     // "disabled" while Export cannot be pressed, nothing once it can. The dialog is opened
     // to look, as a person would.
     exportDisabledUntilSelection: async () => {
       const scope = await exportDialog("export_disabled_until_selection");
-      const control = await findControl(scope, /^\s*export\s*$/i);
+      const control = await findControl(scope, /^\s*export\s*$/i, "contact-list-export-button");
       if (!control) unbound("user-list.export_disabled_until_selection", `the export dialog on ${page.url()} has no "Export" button`);
       return (await isDisabled(control)) ? "disabled" : "";
     },
@@ -7538,7 +9064,11 @@ export default function create(
     open: (params) => go("/users/:userId", params as unknown as Record<string, string>),
     // An account the reader may not see, or none by that identifier: the "Page not found"
     // screen, read whole; a profile that opened reads as nothing.
-    notFoundPage: async () => ((await notFoundShown()) ? mainText() : ""),
+    notFoundPage: async () => {
+      if (!(await notFoundShown())) return "";
+      if (await carried("not-found-page")) return (await testIdLines("not-found-page")).join("\n");
+      return mainText();
+    },
   };
 
   const { reactivateAccount: _selfHasNoReactivate, toggleAdminPermission: _selfHasNoAdmin, permissionsLabel: _selfHasNoPermissions, adminCheckbox: _selfHasNoAdminBox, ...selfProfile } =
@@ -7551,9 +9081,16 @@ export default function create(
     ...selfProfile,
     open: () => go("/users/me"),
     // Signed out, /users/me answers with the "Page not found" screen (or, once, a redirect
-    // to /sign-in): that refusal is read back; the profile itself reads as nothing.
-    signInRequired: () => refusalShown(),
+    // to /sign-in): that refusal is read back; the profile itself reads as nothing. A page
+    // that says so itself carries "sign-in-required".
+    signInRequired: () => signInRequiredShown(),
   };
+
+  async function signInRequiredShown(): Promise<string> {
+    await ready();
+    if (await carried("sign-in-required")) return (await testIdLines("sign-in-required")).join("\n");
+    return refusalShown();
+  }
 
   // ---------------------------------------------------------------- the profile picture
 
@@ -7587,7 +9124,16 @@ export default function create(
   // The group as the form draws it, with its button: the closed organization screen's "Logo"
   // group holds only the image.
   const pickerForm = (): Locator =>
-    seen(page.getByRole("group", { name: PICKER_GROUP }).filter({ has: page.getByRole("button", { name: PICKER_BUTTON }) })).first();
+    seen(
+      page
+        .getByRole("group", { name: PICKER_GROUP })
+        .filter({
+          has: page
+            .getByTestId("change-avatar")
+            .or(page.getByTestId("organization-logo-button"))
+            .or(page.getByRole("button", { name: PICKER_BUTTON })),
+        }),
+    ).first();
   const onOrganizationScreen = (): boolean =>
     originOf(page.url()) === originOf(baseURL) && /^\/organizations\/(create|[^/]+\/edit)$/.test(new URL(page.url()).pathname);
 
@@ -7614,7 +9160,12 @@ export default function create(
     await ready();
     const why = await whyNotHere();
     if (why) unbound(where, `/users/me did not open as a screen at ${page.url()}: ${why.replace(/\n+/g, " ")}; the picture picker is offered on one's own profile once signed in`);
-    await seen(page.getByText(/^\s*status:/i).or(page.getByRole("group", { name: PICKER_GROUP })))
+    await seen(
+      page
+        .getByTestId("profile-status-badge")
+        .or(page.getByText(/^\s*status:/i))
+        .or(page.getByRole("group", { name: PICKER_GROUP })),
+    )
       .first()
       .waitFor({ state: "visible", timeout: 10000 })
       .catch(() => undefined);
@@ -7627,7 +9178,7 @@ export default function create(
     const logo = onOrganizationScreen();
     const opener = logo ? /^\s*edit organization\s*$/i : /^\s*edit profile\s*$/i;
     if (!(await pickerForm().count())) {
-      const edit = await findControl(page, opener);
+      const edit = await findControl(page, opener, logo ? "organization-edit-button" : "profile-edit-button");
       if (edit && !(await isDisabled(edit))) {
         await edit.click();
         await settle();
@@ -7650,6 +9201,14 @@ export default function create(
   // logo") is not what is stored, and is never read as it.
   async function storedPictureAddress(member: string): Promise<string> {
     await onPicker(member);
+    // The stored picture carries "profile-image" (the logo "organization-current-logo"), on the
+    // image or the element holding it.
+    const marked = await carried(onOrganizationScreen() ? "organization-current-logo" : "profile-image");
+    if (marked) {
+      return marked.first().evaluate((element) =>
+        element.tagName === "IMG" ? element.getAttribute("src") ?? "" : element.querySelector("img")?.getAttribute("src") ?? "",
+      );
+    }
     const images = seen(page.getByRole("main").getByRole("img", { name: CURRENT_PICTURE }));
     for (let i = 0; i < (await images.count()); i++) {
       const alt = ((await images.nth(i).getAttribute("alt")) ?? "").trim();
@@ -7675,20 +9234,34 @@ export default function create(
     open: () => go("/users/me"),
     chooseImage: async (input) => {
       await pickerShown("choose_image");
-      await offerFile("file-image-picker.choose_image", PICKER_BUTTON, input);
+      await offerFile(
+        "file-image-picker.choose_image",
+        PICKER_BUTTON,
+        input,
+        onOrganizationScreen() ? "organization-logo-button" : "change-avatar",
+      );
     },
     imageAddress: () => storedPictureAddress("image_address"),
     currentImage: () => storedPictureAddress("current_image"),
-    // The preview of a picture chosen and not yet saved, by what it says it shows.
+    // The preview of a picture chosen and not yet saved ("profile-image-preview"), by what it
+    // says it shows.
     chosenImagePreview: async () => {
       await onPicker("chosen_image_preview");
+      const marked = await carried("profile-image-preview");
+      if (marked) {
+        return marked.first().evaluate((element) =>
+          ((element.tagName === "IMG" ? element : element.querySelector("img"))?.getAttribute("alt") ?? "").trim(),
+        );
+      }
       const preview = seen(page.getByRole("img", { name: /^\s*preview of\b/i }));
       if (!(await preview.count())) return "";
       return (await preview.first().getAttribute("alt"))?.trim() ?? "";
     },
-    // The rule the picker states against its button, on the edit form.
+    // The rule the picker states against its button, on the edit form ("image-file-rule").
     onlyJpegAndPngOffered: async () => {
       const group = await pickerShown("only_jpeg_and_png_offered");
+      const rule = await testIdText("image-file-rule", group);
+      if (rule) return rule;
       const button = seen(group.getByRole("button", { name: PICKER_BUTTON })).first();
       if (await button.count()) {
         const described = await button.evaluate((element) =>
@@ -7705,6 +9278,7 @@ export default function create(
     // The refusal the picker draws in its group, as it stands; none reads as nothing.
     rejectedImageError: async () => {
       await onPicker("rejected_image_error");
+      if (await carried("image-rejected-error")) return (await testIdTexts("image-rejected-error")).filter(Boolean).join("\n");
       if (!(await pickerGroup().count())) return "";
       const alerts = seen(pickerGroup().getByRole("alert"));
       return (await alerts.allInnerTexts()).map((words) => words.trim()).filter(Boolean).join("\n");
@@ -7757,7 +9331,15 @@ export default function create(
     }
     async function noticesBox(member: string): Promise<Locator> {
       await noticesTab(member);
-      const box = seen(page.getByRole("checkbox", { name: NOTICES_BOX }).or(page.getByRole("switch", { name: NOTICES_BOX })));
+      // The box sits inside the label carrying "notifications-new-opportunities-checkbox".
+      const box = seen(
+        page
+          .getByTestId("notifications-new-opportunities-checkbox")
+          .getByRole("checkbox")
+          .or(page.getByRole("checkbox").and(page.getByTestId("notifications-new-opportunities-checkbox")))
+          .or(page.getByRole("checkbox", { name: NOTICES_BOX }))
+          .or(page.getByRole("switch", { name: NOTICES_BOX })),
+      );
       if (!(await box.count())) unbound(notices.where(member), `no new-opportunities box on ${page.url()}; it offers ${await offered()}`);
       return box.first();
     }
@@ -7777,22 +9359,33 @@ export default function create(
           throw new Error(`${where} — pressing "Email me when new opportunities are posted" on ${page.url()} left it ${was ? "ticked" : "unticked"}, and no dialog opened`);
         }
       },
+      // Pressing the box while ticked opens the dialog "Stop emails about new opportunities?"
+      // ("unsubscribe-modal"), with "Unsubscribe" ("unsubscribe-confirm-button") and "Keep
+      // receiving them" ("unsubscribe-cancel-button").
       confirmUnsubscribe: async () => {
         await noticesTab("confirm_unsubscribe");
-        await inDialog(notices.where("confirm_unsubscribe"), /unsubscribe|confirm|^\s*yes\s*$/i);
+        await inDialog(notices.where("confirm_unsubscribe"), /unsubscribe|confirm|^\s*yes\s*$/i, "unsubscribe-confirm-button");
       },
       cancelUnsubscribe: async () => {
         await noticesTab("cancel_unsubscribe");
-        await inDialog(notices.where("cancel_unsubscribe"), /^\s*(cancel|no)\s*$/i);
+        await inDialog(
+          notices.where("cancel_unsubscribe"),
+          /^\s*(cancel|no|keep receiving( them)?)\s*$/i,
+          "unsubscribe-cancel-button",
+        );
       },
       newOpportunitiesCheckbox: async () => ((await (await noticesBox("new_opportunities_checkbox")).isChecked()) ? "checked" : "unchecked"),
+      // The address the section names ("notifications-email-address" holds the sentence).
       notificationEmailAddress: async () => {
         await noticesTab("notification_email_address");
-        const found = /[^\s@]+@[^\s@]+\.[^\s@]+/.exec(await mainText());
+        const said = (await testIdText("notifications-email-address")) ?? (await mainText());
+        const found = /[^\s@]+@[^\s@]+\.[^\s@]+/.exec(said);
         return found ? found[0].replace(/[.,;]+$/, "") : "";
       },
       unsubscribeModal: async () => {
         await noticesTab("unsubscribe_modal");
+        const marked = await carried("unsubscribe-modal");
+        if (marked) return (await marked.first().innerText()).trim();
         return (await dialog().count()) ? (await dialog().innerText()).trim() : "";
       },
     };
@@ -7820,7 +9413,7 @@ export default function create(
       await dialog().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
       return true;
     };
-    const inConfirmation = async (member: string, name: RegExp, what: string): Promise<void> => {
+    const inConfirmation = async (member: string, name: RegExp, what: string, testId: string): Promise<void> => {
       const where = `${pageId}.${member}`;
       if (!(await reached())) unbound(where, `${route} did not open (${await whyNotHere()})`);
       if (!(await dialog().count())) {
@@ -7828,19 +9421,32 @@ export default function create(
           `${where} — signed in and opened ${page.url()}: no "Stop emails about new opportunities?" dialog opened, so there is no "${what}" to press (the dialog is shown only to an account whose "Email me when new opportunities are posted" box is ticked)`,
         );
       }
-      await press(where, name, dialog());
+      await press(where, name, dialog(), testId);
       await settle();
     };
     return {
       open: () => go(route),
-      confirmUnsubscribe: () => inConfirmation("confirm_unsubscribe", /^\s*unsubscribe\s*$/i, "Unsubscribe"),
-      cancelUnsubscribe: () => inConfirmation("cancel_unsubscribe", /^\s*(keep receiving( them)?|cancel)\s*$/i, "Keep receiving them"),
+      confirmUnsubscribe: () =>
+        inConfirmation("confirm_unsubscribe", /^\s*unsubscribe\s*$/i, "Unsubscribe", "unsubscribe-confirm-button"),
+      cancelUnsubscribe: () =>
+        inConfirmation(
+          "cancel_unsubscribe",
+          /^\s*(keep receiving( them)?|cancel)\s*$/i,
+          "Keep receiving them",
+          "unsubscribe-cancel-button",
+        ),
+      // The dialog carries "unsubscribe-modal", and the address it names
+      // "unsubscribe-confirmation-address".
       unsubscribeConfirmation: async () => {
         if (!(await reached())) return "";
+        const marked = await carried("unsubscribe-modal");
+        if (marked) return (await marked.first().innerText()).trim();
         return (await dialog().count()) ? (await dialog().innerText()).trim() : "";
       },
       confirmationNamesSignedInAddress: async () => {
         if (!(await reached())) return "";
+        const named = await testIdText("unsubscribe-confirmation-address");
+        if (named !== null) return named.replace(/[.,;]+$/, "");
         if (!(await dialog().count())) return "";
         const found = /[^\s@]+@[^\s@]+\.[^\s@]+/.exec(await dialog().innerText());
         return found ? found[0].replace(/[.,;]+$/, "") : "";
@@ -7849,7 +9455,7 @@ export default function create(
         if (!(await reached())) return "";
         return notices.notificationEmailAddress();
       },
-      signInRequired: () => refusalShown(),
+      signInRequired: () => signInRequiredShown(),
     } as S.NotificationUnsubscribeLandingPage;
   }
 
@@ -7868,7 +9474,14 @@ export default function create(
   const escapeText = (words: string): string => words.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   function capabilitiesScreen(pageId: string, route: string) {
     const screen = accountSection(pageId, route);
-    const list = (): Locator => seen(page.getByRole("list", { name: /^\s*capabilities\s*$/i })).first();
+    // The list holding the rows ("capability-row"), or the list so named.
+    const list = (): Locator =>
+      seen(
+        page
+          .getByRole("list")
+          .filter({ has: page.getByTestId("capability-row") })
+          .or(page.getByRole("list", { name: /^\s*capabilities\s*$/i })),
+      ).last();
     // True when the list is drawn. An action needs it and reports unbound without it; a
     // reading of a section that opened without it is the empty answer.
     async function onList(member: string, needed: boolean): Promise<boolean> {
@@ -7887,7 +9500,15 @@ export default function create(
     async function boxFor(member: string, input: unknown): Promise<Locator> {
       const name = capabilityOf(input);
       if (!name) unbound(screen.where(member), `the input names no capability (looked for ${CAPABILITY_KEYS.join(", ")}; given ${JSON.stringify(input)})`);
-      const box = seen(list().getByRole("checkbox", { name: new RegExp(`^\\s*${escapeText(name)}\\s*$`, "i") }));
+      const exactly = new RegExp(`^\\s*${escapeText(name)}\\s*$`, "i");
+      // Each box sits inside its label carrying "capability-checkbox", named for the capability.
+      const box = seen(
+        list()
+          .getByTestId("capability-checkbox")
+          .filter({ hasText: exactly })
+          .getByRole("checkbox")
+          .or(list().getByRole("checkbox", { name: exactly })),
+      );
       if (!(await box.count())) {
         const names = await seen(list().getByRole("checkbox")).evaluateAll((boxes) =>
           boxes.map((element) => element.getAttribute("aria-label") ?? (element as HTMLInputElement).labels?.[0]?.innerText ?? ""),
@@ -7896,7 +9517,21 @@ export default function create(
       }
       return box.first();
     }
+    // Each row ("capability-row") read by its first line, the capability's name.
     async function boxNames(onlyTicked: boolean): Promise<string[]> {
+      const rows = byTestId("capability-row", list());
+      if (await rows.count()) {
+        const out: string[] = [];
+        for (let i = 0; i < (await rows.count()); i++) {
+          const row = rows.nth(i);
+          if (onlyTicked) {
+            const box = seen(row.getByRole("checkbox")).first();
+            if (!(await box.count()) || !(await box.isChecked())) continue;
+          }
+          out.push(lined(await row.innerText().catch(() => ""))[0] ?? "");
+        }
+        return out.filter(Boolean);
+      }
       const boxes = seen(list().getByRole("checkbox"));
       const out: string[] = [];
       for (let i = 0; i < (await boxes.count()); i++) {
@@ -7935,6 +9570,22 @@ export default function create(
         await onList("expand_capability_description", true);
         const name = capabilityOf(input);
         const of = name ? escapeText(name) : ".+";
+        // Each row's toggle carries "capability-description-toggle"; the row is picked by its
+        // name, and whether the description is open by the toggle's expanded state where it
+        // states one.
+        const rows = byTestId("capability-row", list());
+        if (await rows.count()) {
+          const row = name ? rows.filter({ has: page.getByRole("checkbox", { name: new RegExp(`^\\s*${of}\\s*$`, "i") }) }) : rows;
+          const toggle = byTestId("capability-description-toggle", row.first());
+          if (await toggle.count()) {
+            const expanded = await toggle.first().getAttribute("aria-expanded");
+            const hides = /^\s*hide\b/i.test(await toggle.first().innerText().catch(() => ""));
+            if (name && (expanded === "true" || (expanded === null && hides))) return;
+            await toggle.first().click();
+            await settle();
+            return;
+          }
+        }
         const shown = seen(list().getByRole("button", { name: new RegExp(`^\\s*hide description of ${of}\\s*$`, "i") }));
         if (name && (await shown.count())) return;
         const toggle = seen(list().getByRole("button", { name: new RegExp(`^\\s*show description of ${of}\\s*$`, "i") }));
@@ -7949,6 +9600,10 @@ export default function create(
       // The descriptions drawn open, one per line; none open reads as nothing.
       capabilityDescription: async () => {
         if (!(await onList("capability_description", false))) return "";
+        // Each open description carries "capability-description".
+        if (await carried("capability-description", list())) {
+          return (await testIdTexts("capability-description", list())).filter(Boolean).join("\n");
+        }
         return (await paragraphs(list())).join("\n");
       },
     };
@@ -7963,8 +9618,10 @@ export default function create(
   // "Terms and conditions" ("Read the Digital Marketplace terms and conditions", "You agreed
   // to the terms and conditions on <date>", or "You last agreed …" for the vendor whose
   // agreement was reset) and "Program terms" (a link for each of Code With Us, Sprint With Us
-  // and Team With Us). Nothing on it asks anyone to accept updated terms, the reset vendor
-  // included: no warning, no button and no dialog.
+  // and Team With Us). To the reset vendor the terms part now opens with the warning "The
+  // terms and conditions have changed" ("legal-terms-updated-warning") and the button "Review
+  // and agree to the updated terms", which opens "Agree to the updated terms and conditions?"
+  // ("Not now", "I agree").
   function legalScreen(pageId: string, route: string) {
     const legal = accountSection(pageId, route);
     const APP_TERMS = /^\s*read the .*terms and conditions\s*$/i;
@@ -7981,14 +9638,14 @@ export default function create(
       open: (params?: Record<string, string>) => legal.open(params),
       openAppTerms: async () => {
         await legal.on("open_app_terms");
-        const link = seen(page.getByRole("link", { name: APP_TERMS }));
+        const link = (await carried("legal-app-terms-link")) ?? seen(page.getByRole("link", { name: APP_TERMS }));
         if (!(await link.count())) unbound(legal.where("open_app_terms"), `no "Read the … terms and conditions" link on ${page.url()}; it offers ${await offered()}`);
         await link.first().click();
         await settle();
       },
       acceptUpdatedTerms: async () => {
         await legal.on("accept_updated_terms");
-        const button = seen(page.getByRole("button", { name: /accept|agree/i }));
+        const button = (await carried("legal-accept-updated-terms-button")) ?? seen(page.getByRole("button", { name: /accept|agree/i }));
         if (!(await button.count())) {
           unbound(legal.where("accept_updated_terms"), `${page.url()} offers no control to accept updated terms (walked signed in as the vendor whose agreement was reset, it says "You last agreed to terms and conditions on …" and offers only links); it offers ${await offered()}`);
         }
@@ -7998,34 +9655,59 @@ export default function create(
       },
       confirmAcceptUpdatedTerms: async () => {
         await legal.on("confirm_accept_updated_terms");
-        await inDialog(legal.where("confirm_accept_updated_terms"), /accept|agree|confirm|^\s*yes\s*$/i);
+        await inDialog(
+          legal.where("confirm_accept_updated_terms"),
+          /accept|agree|confirm|^\s*yes\s*$/i,
+          "legal-accept-terms-confirm-button",
+        );
       },
-      privacyPolicy: () => between("privacy_policy", /^privacy policy$/i, /^terms and conditions$/i),
+      // The "Privacy policy" section ("legal-privacy-policy"), its heading included, as the
+      // lines from that heading to the next section's.
+      privacyPolicy: async () => {
+        await legal.on("privacy_policy");
+        if (await carried("legal-privacy-policy")) return (await testIdLines("legal-privacy-policy")).join("\n");
+        return between("privacy_policy", /^privacy policy$/i, /^terms and conditions$/i);
+      },
       appTermsLink: async () => {
         await legal.on("app_terms_link");
+        const marked = await carried("legal-app-terms-link");
+        if (marked) return (await marked.first().getAttribute("href")) ?? "";
         return hrefOf(page, APP_TERMS);
       },
       // Only the affirmative "You agreed to the terms and conditions on <date>". Walked signed
       // in as the vendor who never agreed, the section says "You have not agreed to the terms
       // and conditions." and the vendor whose agreement was reset reads "You last agreed to
       // terms and conditions on …"; neither is a standing acceptance, so both read as nothing.
+      // The notice carries "legal-accepted-on".
       acceptedOnNotice: async () => {
         await legal.on("accepted_on_notice");
-        return linesMatching(/^\s*you agreed to (the )?terms/i);
+        const AGREED = /^\s*you agreed to (the )?terms/i;
+        if (await carried("legal-accepted-on")) {
+          return (await testIdTexts("legal-accepted-on")).flatMap(lined).filter((line) => AGREED.test(line)).join("\n");
+        }
+        return linesMatching(AGREED);
       },
       termsUpdatedWarning: async () => {
         await legal.on("terms_updated_warning");
+        // The warning holds the accept button; its label is a control, not the warning's words.
+        if (await carried("legal-terms-updated-warning")) {
+          const button = await carried("legal-accept-updated-terms-button");
+          const label = button ? (await button.first().innerText().catch(() => "")).trim() : "";
+          return (await testIdLines("legal-terms-updated-warning")).filter((line) => !label || line !== label).join("\n");
+        }
         return linesMatching(/(terms|conditions)[^.]*\b(updated|changed)\b|\b(updated|new) terms\b|must (accept|agree)/i);
       },
       programTermsLinks: async () => {
         await legal.on("program_terms_links");
-        const links = seen(page.getByRole("link", { name: PROGRAM_TERMS }));
+        const links = (await carried("legal-program-terms-link")) ?? seen(page.getByRole("link", { name: PROGRAM_TERMS }));
         const out: string[] = [];
         for (let i = 0; i < (await links.count()); i++) out.push((await links.nth(i).innerText()).trim());
         return out.join("\n");
       },
       acceptUpdatedTermsModal: async () => {
         await legal.on("accept_updated_terms_modal");
+        const marked = await carried("legal-accept-terms-modal");
+        if (marked) return (await marked.first().innerText()).trim();
         return (await dialog().count()) ? (await dialog().innerText()).trim() : "";
       },
     };
@@ -8051,14 +9733,34 @@ export default function create(
     await vendorDash.on(member);
     return new URL(page.url()).pathname !== "/sign-up/complete";
   }
-  const vendorDashRegion = (name: RegExp): Locator => seen(regionNamed(page.getByRole("main"), name)).first();
+  // Each section is the region holding its table ("dashboard-my-proposals-table",
+  // "dashboard-org-proposals-table") or its empty message ("dashboard-empty-my-proposals",
+  // "dashboard-empty-org-proposals"), or the region its heading names.
+  const VENDOR_SECTION_IDS = new Map<RegExp, { table: string; empty: string; link: string }>([
+    [MY_PROPOSALS, { table: "dashboard-my-proposals-table", empty: "dashboard-empty-my-proposals", link: "dashboard-show-my-proposals" }],
+    [ORG_PROPOSALS, { table: "dashboard-org-proposals-table", empty: "dashboard-empty-org-proposals", link: "dashboard-show-org-proposals" }],
+  ]);
+  const vendorDashRegion = (name: RegExp): Locator => {
+    const main = page.getByRole("main");
+    const ids = VENDOR_SECTION_IDS.get(name);
+    const named = regionNamed(main, name);
+    if (!ids) return seen(named).first();
+    return seen(
+      main
+        .getByRole("region")
+        .filter({ has: page.getByTestId(ids.table).or(page.getByTestId(ids.empty)) })
+        .or(named),
+    ).first();
+  };
   async function vendorDashPress(member: string, name: RegExp): Promise<void> {
     const where = vendorDash.where(member);
     if (!(await vendorDashShown(member))) {
       unbound(where, `/dashboard sent this person on to ${page.url()} ("Complete Your Profile") instead of showing a dashboard`);
     }
     const sections = seen(page.getByRole("navigation", { name: /dashboard sections/i }));
-    const control = seen(sections.getByRole("link", { name }).or(page.getByRole("tab", { name })));
+    const linkId = VENDOR_SECTION_IDS.get(name)?.link;
+    const marked = linkId ? await carried(linkId) : null;
+    const control = marked ?? seen(sections.getByRole("link", { name }).or(page.getByRole("tab", { name })));
     if (!(await control.count())) {
       unbound(
         where,
@@ -8077,7 +9779,9 @@ export default function create(
     if (!(await region.count())) {
       unbound(vendorDash.where(member), `/dashboard at ${page.url()} draws no section headed ${name} for ${actingId()}; it offers ${await offered()}`);
     }
-    return tableRows(region);
+    const tableId = VENDOR_SECTION_IDS.get(name)?.table;
+    const marked = tableId ? await carried(tableId) : null;
+    return tableRows(marked ? marked.first() : region);
   }
   // A section's own words while it holds no table: its empty message.
   async function vendorDashEmpty(member: string, name: RegExp): Promise<string> {
@@ -8087,6 +9791,10 @@ export default function create(
       unbound(vendorDash.where(member), `/dashboard at ${page.url()} draws no section headed ${name} for ${actingId()}; it offers ${await offered()}`);
     }
     if (await seen(region.getByRole("table")).count()) return "";
+    const emptyId = VENDOR_SECTION_IDS.get(name)?.empty;
+    if (emptyId && (await carried(emptyId))) {
+      return (await testIdTexts(emptyId)).map((one) => one.replace(/\s+/g, " ").trim()).join("\n");
+    }
     return (await paragraphs(region)).map((one) => one.replace(/\s+/g, " ").trim()).join("\n");
   }
   const proposalVendorDashboard: S.ProposalVendorDashboardPage = {
@@ -8099,6 +9807,11 @@ export default function create(
     // updated), one per row.
     proposalStatus: async () => {
       const rows = await vendorDashRows("proposal_status", MY_PROPOSALS);
+      // Each row's status carries "proposal-status".
+      const table = await carried("dashboard-my-proposals-table");
+      if (table && (await carried("proposal-status", table.first()))) {
+        return (await testIdTexts("proposal-status", table.first())).filter(Boolean).join("\n");
+      }
       const region = vendorDashRegion(MY_PROPOSALS);
       const headers = (await seen(region.getByRole("columnheader")).allInnerTexts()).map((one) => one.trim());
       const at = headers.findIndex((one) => /^status$/i.test(one));
@@ -8116,20 +9829,21 @@ export default function create(
   // <amount>" and a "Create a <program> opportunity" link to that program's form. A vendor
   // is shown "Page not found" there.
   const programSelect = signedInScreen("opportunity-program-select", "/opportunities/create");
+  // One card per program ("program-card"), its budget carrying "program-max-budget".
   async function programRegions(member: string): Promise<Locator> {
     await programSelect.on(member);
-    return seen(page.getByRole("main").getByRole("region"));
+    return (await carried("program-card")) ?? seen(page.getByRole("main").getByRole("region"));
   }
-  async function chooseProgram(member: string, program: string): Promise<void> {
+  async function chooseProgram(member: string, program: string, testId: string): Promise<void> {
     await programSelect.on(member);
-    await press(programSelect.where(member), new RegExp(`^\\s*create an? ${program} opportunity\\s*$`, "i"));
+    await press(programSelect.where(member), new RegExp(`^\\s*create an? ${program} opportunity\\s*$`, "i"), page, testId);
     await ready();
   }
   const opportunityProgramSelect: S.OpportunityProgramSelectPage = {
     open: () => programSelect.open(),
-    chooseCodeWithUs: () => chooseProgram("choose_code_with_us", "Code With Us"),
-    chooseSprintWithUs: () => chooseProgram("choose_sprint_with_us", "Sprint With Us"),
-    chooseTeamWithUs: () => chooseProgram("choose_team_with_us", "Team With Us"),
+    chooseCodeWithUs: () => chooseProgram("choose_code_with_us", "Code With Us", "program-choose-code-with-us"),
+    chooseSprintWithUs: () => chooseProgram("choose_sprint_with_us", "Sprint With Us", "program-choose-sprint-with-us"),
+    chooseTeamWithUs: () => chooseProgram("choose_team_with_us", "Team With Us", "program-choose-team-with-us"),
     // One block per program, its lines joined; blocks separated by a blank line.
     programCard: async () => {
       const regions = await programRegions("program_card");
@@ -8137,12 +9851,18 @@ export default function create(
       for (let i = 0; i < (await regions.count()); i++) out.push(lined(await regions.nth(i).innerText()).join("\n"));
       return out.join("\n\n");
     },
-    // "Code With Us: Up to $70,000", one line per program.
+    // "Code With Us: Up to $70,000", one line per program: the card's name (its first line)
+    // and the figure carrying "program-max-budget".
     maxBudget: async () => {
       const regions = await programRegions("max_budget");
       const out: string[] = [];
       for (let i = 0; i < (await regions.count()); i++) {
         const lines = lined(await regions.nth(i).innerText());
+        const marked = await testIdText("program-max-budget", regions.nth(i));
+        if (marked !== null) {
+          out.push(`${lines[0]}: ${marked}`);
+          continue;
+        }
         const budget = lines.find((line) => /^maximum budget\b/i.test(line));
         if (budget) out.push(`${lines[0]}: ${budget.replace(/^maximum budget:?\s*/i, "")}`);
       }
@@ -8233,12 +9953,22 @@ export default function create(
       unbound(cwuView.where(member), `${page.url()} answered ${actingId()} "Page not found", so there is nothing on it to press`);
     }
   }
-  async function cwuViewTerm(member: string, term: RegExp): Promise<string> {
+  // The value the element carrying `testId` shows, after the page is drawn; null where the
+  // page carries no such element.
+  async function cwuViewFact(testId: string): Promise<string | null> {
+    await opportunityLoaded();
+    return testIdText(testId);
+  }
+  async function cwuViewTerm(member: string, term: RegExp, testId: string): Promise<string> {
     if (!(await onCwuView(member))) return "";
+    const shown = await cwuViewFact(testId);
+    if (shown !== null) return shown;
     return definitionOf(term);
   }
-  async function cwuKeyDate(member: string, label: RegExp): Promise<string> {
+  async function cwuKeyDate(member: string, label: RegExp, testId: string): Promise<string> {
     if (!(await onCwuView(member))) return "";
+    const shown = await cwuViewFact(testId);
+    if (shown !== null) return afterLabel(shown);
     const region = seen(regionNamed(page, /^key dates$/i));
     if (!(await region.count())) return "";
     for (const line of lined(await region.first().innerText())) {
@@ -8246,6 +9976,80 @@ export default function create(
       if (found) return line.slice(found.index + found[0].length).replace(/^\s*:\s*/, "").trim();
     }
     return "";
+  }
+  // The page's head: its lines up to the first term, "Opportunity ID: <id>" or the
+  // Description section, whichever comes first, so no term label below it is ever read as
+  // part of the head. A later build restyles the head, drawing the program and status as one
+  // label ("Code With Us Draft"), the deadline as a fact of its own ("Closes <date> at 4:00
+  // p.m. Pacific time", or "Closed" once it has passed) and the reward as "Reward $5,000",
+  // instead of under terms of their own.
+  //
+  // Where the terms begin is read from the page's structure, not by matching a line against
+  // the terms' texts: a published opportunity's head shows its status "Published", which is
+  // also the text of the "Published" date's term, and matching text cut the head off at the
+  // status, dropping the "Closes ..." line after it.
+  async function cwuHeadLines(): Promise<string[]> {
+    await ready();
+    const lines = await page
+      .getByRole("main")
+      .evaluate((main) => {
+        const firstTerm = main.querySelector("dt");
+        const shown: string[] = [];
+        let lastBlock: Element | null = null;
+        const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (firstTerm && (firstTerm.contains(node) || firstTerm.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+          const parent = node.parentElement;
+          if (!parent) continue;
+          const parentStyle = getComputedStyle(parent);
+          if (parentStyle.display === "none" || parentStyle.visibility === "hidden") continue;
+          if (parent.closest("[hidden], [aria-hidden='true']")) continue;
+          const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+          if (!text) continue;
+          let block: Element = parent;
+          while (block !== main && block.parentElement && getComputedStyle(block).display.startsWith("inline")) block = block.parentElement;
+          if (block === lastBlock) shown[shown.length - 1] += ` ${text}`;
+          else {
+            shown.push(text);
+            lastBlock = block;
+          }
+        }
+        return shown.map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+      })
+      .catch(() => [] as string[]);
+    const ends = [
+      lines.findIndex((line) => /^opportunity id:/i.test(line)),
+      lines.findIndex((line) => /^description$/i.test(line)),
+    ].filter((index) => index >= 0);
+    return ends.length ? lines.slice(0, Math.min(...ends)) : lines;
+  }
+  const CWU_STATUS_WORDS =
+    "draft|under review|published|closed|evaluation|processing|awarded|not awarded|cancell?ed|suspended|code challenge|team scenario";
+  const CWU_STATUS_SHOWN = new RegExp(`^(${CWU_STATUS_WORDS})$`, "i");
+  // The status alone ("Draft"), or trailing the program's name ("Code With Us Draft").
+  const CWU_STATUS_AFTER_PROGRAM = new RegExp(`^code with us\\s+(${CWU_STATUS_WORDS})$`, "i");
+  async function cwuHeadStatus(): Promise<string> {
+    for (const line of await cwuHeadLines()) {
+      const status = CWU_STATUS_SHOWN.test(line) ? line : (CWU_STATUS_AFTER_PROGRAM.exec(line)?.[1] ?? "");
+      if (status && !/^closed$/i.test(status)) return status;
+    }
+    return "";
+  }
+  async function cwuHeadReward(): Promise<string> {
+    for (const line of await cwuHeadLines()) {
+      const found = /^reward\s+(.+)$/i.exec(line);
+      if (found) return found[1].trim();
+    }
+    return "";
+  }
+  async function cwuHeadDeadline(): Promise<string> {
+    return (
+      (await cwuHeadLines()).find((line) => /^close[sd]\b/i.test(line)) ??
+      // Drawn below the terms instead: the first line of the page that opens with it, as the
+      // old binding reads its own.
+      (await textLines()).find((line) => /^close[sd]\b/i.test(line)) ??
+      ""
+    );
   }
   const CWU_VIEW_WALKED =
     "walked as the administrator, a public sector employee and a vendor on the seeded published, draft and awarded Code With Us opportunities";
@@ -8263,22 +10067,54 @@ export default function create(
     },
     opportunityIdentifier: async () => {
       if (!(await onCwuView("opportunity_identifier"))) return "";
-      return shownIdentifier();
+      return (await cwuViewFact("opportunity-identifier")) || shownIdentifier();
     },
-    status: () => cwuViewTerm("status", /^status$/i),
+    // Under its "Status" term, or, on the restyled head that labels it no longer, the
+    // head's unlabelled status ("Draft", or "Code With Us Draft" read as "Draft"), never a
+    // term label. The status itself carries "opportunity-status".
+    status: async () => {
+      if (!(await onCwuView("status"))) return "";
+      const shown = await cwuViewFact("opportunity-status");
+      if (shown !== null) return shown;
+      return (await definitionOf(/^status$/i)) || cwuHeadStatus();
+    },
     publishedDate: async () => {
-      const shown = await cwuViewTerm("published_date", /^published$/i);
+      const shown = await cwuViewTerm("published_date", /^published$/i, "opportunity-published-date");
       return /^not yet published$/i.test(shown) ? "" : shown;
     },
-    createdByName: () => cwuViewTerm("created_by_name", /^created by$/i),
-    lastChangedByName: () => cwuViewTerm("last_changed_by_name", /^last changed by$/i),
-    proposalDeadline: () => cwuViewTerm("proposal_deadline", /^proposal deadline$/i),
-    assignmentDate: () => cwuKeyDate("assignment_date", /^assignment date\b/i),
-    startDate: () => cwuKeyDate("start_date", /^start date\b/i),
-    reward: () => cwuViewTerm("reward", /^reward$/i),
-    // The Addenda section's entries; "No addenda have been added." is none.
+    createdByName: () => cwuViewTerm("created_by_name", /^created by$/i, "opportunity-created-by"),
+    lastChangedByName: () => cwuViewTerm("last_changed_by_name", /^last changed by$/i, "opportunity-last-changed-by"),
+    // Under its "Proposal deadline" term, or, on the restyled head, the whole "Closes <date>
+    // at 4:00 p.m. Pacific time" (or "Closed") line, as the old binding reads its own head.
+    // The date itself carries "opportunity-proposal-deadline"; the line holding it is read.
+    proposalDeadline: async () => {
+      if (!(await onCwuView("proposal_deadline"))) return "";
+      const shown = await cwuViewFact("opportunity-proposal-deadline");
+      if (shown) {
+        const line = (await textLines()).find((one) => /^close[sd]\b/i.test(one) && one.includes(shown));
+        return line ?? shown;
+      }
+      return (await definitionOf(/^proposal deadline$/i)) || cwuHeadDeadline();
+    },
+    assignmentDate: () => cwuKeyDate("assignment_date", /^assignment date\b/i, "opportunity-assignment-date"),
+    startDate: () => cwuKeyDate("start_date", /^start date\b/i, "opportunity-start-date"),
+    // Under its "Reward" term, or a "Reward" label drawn some other way ("Reward: $5,000",
+    // the label over its figure, or the restyled head's "Reward $5,000"). The figure itself
+    // carries "opportunity-reward".
+    reward: async () => {
+      if (!(await onCwuView("reward"))) return "";
+      const shown = await cwuViewFact("opportunity-reward");
+      if (shown !== null) return shown;
+      return (await definitionOf(/^reward$/i)) || (await labelledValue(["Reward"])) || cwuHeadReward();
+    },
+    // The Addenda section's entries ("opportunity-addenda"); "No addenda have been added." is
+    // none.
     addenda: async () => {
       if (!(await onCwuView("addenda"))) return "";
+      const marked = await carried("opportunity-addenda");
+      if (marked) {
+        return (await sectionLines(marked.first())).filter((line) => !/^no addenda have been added\.?$/i.test(line)).join("\n");
+      }
       const region = seen(regionNamed(page, /^addenda$/i));
       if (!(await region.count())) return "";
       return lined(await region.first().innerText())
@@ -8297,11 +10133,15 @@ export default function create(
     },
     successfulProponentContactDetails: async () => {
       if (!(await onCwuView("successful_proponent_contact_details"))) return "";
-      return awardDetail(`${CWU_VIEW}.successful_proponent_contact_details`, CONTACT_DETAIL);
+      return awardDetail(
+        `${CWU_VIEW}.successful_proponent_contact_details`,
+        CONTACT_DETAIL,
+        "opportunity-successful-proponent-contact",
+      );
     },
     successfulProponentScore: async () => {
       if (!(await onCwuView("successful_proponent_score"))) return "";
-      return awardDetail(`${CWU_VIEW}.successful_proponent_score`, SCORE_DETAIL);
+      return awardDetail(`${CWU_VIEW}.successful_proponent_score`, SCORE_DETAIL, "opportunity-successful-proponent-score");
     },
   };
 
@@ -8325,8 +10165,52 @@ export default function create(
   const cwuManage = signedInScreen(CWU_EDIT, "/opportunities/code-with-us/:opportunityId/edit");
   const CWU_MANAGE_WALKED =
     "walked as the administrator and as a public sector employee on the seeded draft, published, awarded and with-three-proposals Code With Us opportunities and on ones just saved and published";
+  // The actions ("opportunity-actions"), or the group so named.
   function actionsGroup(): Locator {
-    return seen(page.getByRole("group", { name: /^opportunity actions$/i })).first();
+    return seen(page.getByTestId("opportunity-actions").or(page.getByRole("group", { name: /^opportunity actions$/i }))).first();
+  }
+  // Each action carries its test ID; the actions drawn without their container are found by
+  // it too.
+  async function actionControl(name: RegExp, testId?: string): Promise<Locator | null> {
+    const marked = testId ? await carried(testId) : null;
+    if (marked) return marked.first();
+    const group = actionsGroup();
+    if (!(await group.count())) return null;
+    const control = seen(group.getByRole("button", { name })).first();
+    return (await control.count()) ? control : null;
+  }
+  // The names of the actions the screen offers, for a reason to name.
+  async function actionNames(): Promise<string[]> {
+    const group = actionsGroup();
+    const named = (await group.count()) ? await group.getByRole("button").allInnerTexts() : [];
+    if (named.length) return named;
+    return seen(page.getByTestId(/^opportunity-(edit|publish|submit-for-review|delete|cancel)-?(button)?$/)).allInnerTexts();
+  }
+  // The state the screen shows, as "Status: <state>", for a reason to name.
+  async function statusShown(): Promise<string> {
+    const marked = await testIdText("opportunity-status");
+    if (marked) return `Status: ${marked}`;
+    return (await textLines()).find((line) => /^status:/i.test(line)) ?? "";
+  }
+  // Each section's link carries "opportunity-tab-<section>" ("opportunity-tab-evaluation-
+  // panel"); by its name under "Opportunity sections" otherwise.
+  const sectionTestId = (tab: string): string => `opportunity-tab-${tab.trim().toLowerCase().replace(/\s+/g, "-")}`;
+  async function opportunitySectionLink(tab: string): Promise<Locator | null> {
+    const marked = await carried(sectionTestId(tab));
+    if (marked) return marked.first();
+    const link = seen(
+      page.getByRole("navigation", { name: /opportunity sections/i }).getByRole("link", { name: new RegExp(`^\\s*${tab}\\s*$`, "i") }),
+    );
+    return (await link.count()) ? link.first() : null;
+  }
+  // A section's region: the History section carries "opportunity-history-section"; any other
+  // is the region named as its link reads.
+  async function opportunitySectionRegion(tab: string): Promise<Locator> {
+    if (/^history$/i.test(tab) && (await carried("opportunity-history-section"))) return byTestId("opportunity-history-section").first();
+    const link = await carried(sectionTestId(tab));
+    const label = link ? (await link.first().innerText().catch(() => "")).replace(/\s+/g, " ").trim() : "";
+    const name = new RegExp(`^\\s*${(label || tab).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i");
+    return seen(regionNamed(page.getByRole("main"), name)).first();
   }
   // The management screen's own address, without the section it is on.
   function manageAddress(): string {
@@ -8335,13 +10219,13 @@ export default function create(
   }
   async function toSection(member: string, tab: string): Promise<boolean> {
     await cwuManage.on(member);
-    const link = seen(page.getByRole("navigation", { name: /opportunity sections/i }).getByRole("link", { name: new RegExp(`^\\s*${tab}\\s*$`, "i") }));
-    if (!(await link.count())) return false;
-    const href = (await link.first().getAttribute("href")) ?? "";
+    const link = await opportunitySectionLink(tab);
+    if (!link) return false;
+    const href = (await link.getAttribute("href")) ?? "";
     const wanted = href ? new URL(href, baseURL).searchParams.get("tab") : tab.toLowerCase();
     if (new URL(page.url()).searchParams.get("tab") !== wanted) {
       if (href) await visit(href);
-      else await link.first().click();
+      else await link.click();
       await ready();
     }
     return true;
@@ -8361,7 +10245,7 @@ export default function create(
   async function sectionText(member: string, tab: string): Promise<string> {
     if (await refusedReader(member)) return "";
     if (!(await toSection(member, tab))) return "";
-    const region = seen(regionNamed(page.getByRole("main"), new RegExp(`^${tab}$`, "i")));
+    const region = await opportunitySectionRegion(tab);
     return (await region.count()) ? lined(await region.first().innerText()).join("\n") : "";
   }
   // Whether a management screen's History section offers anything for adding a note: a text
@@ -8398,7 +10282,7 @@ export default function create(
   async function formSectionText(member: string, tab: string): Promise<string> {
     const text = await sectionText(member, tab);
     if (!text) return text;
-    const region = seen(regionNamed(page.getByRole("main"), new RegExp(`^${tab}$`, "i"))).first();
+    const region = await opportunitySectionRegion(tab);
     const fields = await region.evaluate((root) => {
       const words = (node: Element | null | undefined) => ((node as HTMLElement | null)?.innerText ?? node?.textContent ?? "").replace(/\s+/g, " ").trim();
       const named = (element: Element): string => {
@@ -8468,15 +10352,14 @@ export default function create(
     });
     return [text, ...fields].join("\n");
   }
-  async function manageAction(member: string, name: RegExp, confirm: RegExp | null): Promise<void> {
+  async function manageAction(member: string, name: RegExp, confirm: RegExp | null, testId?: string): Promise<void> {
     const where = cwuManage.where(member);
     await cwuManage.on(member);
-    if (!(await actionsGroup().count())) await toSection(member, "Summary");
-    const group = actionsGroup();
-    const control = (await group.count()) ? seen(group.getByRole("button", { name })).first() : null;
-    if (!control || !(await control.count())) {
-      const status = (await textLines()).find((line) => /^status:/i.test(line)) ?? "no status shown";
-      const there = (await group.count()) ? (await group.getByRole("button").allInnerTexts()).map((one) => `"${one.trim()}"`).join(", ") : "nothing";
+    if (!(await actionControl(name, testId)) && !(await actionsGroup().count())) await toSection(member, "Summary");
+    const control = await actionControl(name, testId);
+    if (!control) {
+      const status = (await statusShown()) || "no status shown";
+      const there = (await actionNames()).map((one) => `"${one.trim()}"`).join(", ") || "nothing";
       unbound(where, `no control named ${name} among the opportunity's actions on ${page.url()} (${status}; the actions offered are ${there}); ${CWU_MANAGE_WALKED}`);
     }
     if (await isDisabled(control)) throw new Error(`${where} — the control named ${name} is disabled on ${page.url()}`);
@@ -8500,15 +10383,20 @@ export default function create(
       unbound(cwuManage.where(member), `the management screen at ${page.url()} offers no "Opportunity" section; it offers ${await offered()}`);
     }
   }
-  async function cwuFormDate(member: string, label: RegExp): Promise<string> {
+  // A date box on the form, inside the element carrying its test ID where the form carries it.
+  async function cwuFormDate(member: string, label: RegExp, testId: string): Promise<string> {
     await toCwuForm(member);
+    const shown = await markedValue(testId);
+    if (shown !== null) return shown;
     const box = await fieldLabelled(label, false);
     return box ? valueOf(box) : "";
   }
-  async function summaryTerm(member: string, term: RegExp): Promise<string> {
+  // A term of the Summary, by the test ID its value carries where the screen carries it.
+  async function summaryTerm(member: string, term: RegExp, testId?: string): Promise<string> {
     await cwuManage.on(member);
-    if (!(await definitionOf(term))) await toSection(member, "Summary");
-    return definitionOf(term);
+    const read = async (): Promise<string> => (testId ? await testIdText(testId) : null) ?? (await definitionOf(term));
+    if (!(await read())) await toSection(member, "Summary");
+    return read();
   }
   // Views, watchers and proposals: a published, lapsed or awarded opportunity's Summary
   // section carries a "Reporting" region of terms, "Views", "Watchers" and "Proposals
@@ -8517,9 +10405,9 @@ export default function create(
   // are counted once the opportunity is published.", which is read as nothing.
   const REPORTING_SEEN =
     "seen as the administrator on the seeded published, lapsed-with-three-proposals and awarded Code With Us opportunities, whose Summary carries a \"Reporting\" region listing Views, Watchers and Proposals submitted";
-  async function reportingCount(member: string, term: RegExp): Promise<string> {
+  async function reportingCount(member: string, term: RegExp, testId: string): Promise<string> {
     if (await refusedReader(member)) return "";
-    const shown = await summaryTerm(member, term);
+    const shown = await summaryTerm(member, term, testId);
     if (shown) return shown;
     if ((await textLines()).some((line) => /counted once the opportunity is published/i.test(line))) return "";
     return unbound(
@@ -8535,15 +10423,18 @@ export default function create(
     editDetails: async (input) => {
       const where = cwuManage.where("edit_details");
       await cwuManage.on("edit_details");
-      if (!(await actionsGroup().count())) await toSection("edit_details", "Summary");
-      const edit = (await actionsGroup().count()) ? seen(actionsGroup().getByRole("button", { name: /^\s*edit\s*$/i })).first() : null;
-      if (edit && (await edit.count())) {
-        await manageAction("edit_details", /^\s*edit\s*$/i, null);
+      const EDIT = /^\s*edit\s*$/i;
+      if (!(await actionControl(EDIT, "opportunity-edit-button")) && !(await actionsGroup().count())) {
+        await toSection("edit_details", "Summary");
+      }
+      const edit = await actionControl(EDIT, "opportunity-edit-button");
+      if (edit) {
+        await manageAction("edit_details", EDIT, null, "opportunity-edit-button");
       } else {
         await toCwuForm("edit_details");
         if (!(await findControl(page.getByRole("main"), /^\s*save changes\s*$/i))) {
-          const status = (await textLines()).find((line) => /^status:/i.test(line)) ?? "no status shown";
-          const there = (await actionsGroup().count()) ? (await actionsGroup().getByRole("button").allInnerTexts()).map((one) => `"${one.trim()}"`).join(", ") : "nothing";
+          const status = (await statusShown()) || "no status shown";
+          const there = (await actionNames()).map((one) => `"${one.trim()}"`).join(", ") || "nothing";
           unbound(where, `no "Edit" among the opportunity's actions on ${page.url()} (${status}; the actions offered are ${there}), and its Opportunity section offers no "Save changes" to edit the form in place; ${CWU_MANAGE_WALKED}`);
         }
       }
@@ -8562,7 +10453,12 @@ export default function create(
     submitForReview: async (input) => {
       await saveCwuDetails("submit_for_review", input);
       await toSection("submit_for_review", "Opportunity");
-      await manageAction("submit_for_review", /^\s*submit for review\s*$/i, /^\s*submit( for review| opportunity)?\s*$/i);
+      await manageAction(
+        "submit_for_review",
+        /^\s*submit for review\s*$/i,
+        /^\s*submit( for review| opportunity)?\s*$/i,
+        "opportunity-submit-for-review",
+      );
     },
     // "Publish" is offered to the administrator, on a draft or one under review. Anybody else
     // is offered no "Publish" (a public sector employee's own draft offers "Submit for
@@ -8577,17 +10473,19 @@ export default function create(
           noteRefusal(`${where} — the management screen answered ${actingId()} with ${why.replace(/\n+/g, " ")} at ${page.url()}`);
           return;
         }
-        if (!(await actionsGroup().count())) await toSection("publish", "Summary");
-        const control = (await actionsGroup().count()) ? seen(actionsGroup().getByRole("button", { name: /^\s*publish\s*$/i })).first() : null;
-        if (!control || !(await control.count())) {
-          const status = (await textLines()).find((line) => /^status:/i.test(line)) ?? "no status shown";
-          const there = (await actionsGroup().count()) ? (await actionsGroup().getByRole("button").allInnerTexts()).map((one) => `"${one.trim()}"`).join(", ") : "nothing";
+        if (!(await actionControl(/^\s*publish\s*$/i, "opportunity-publish")) && !(await actionsGroup().count())) {
+          await toSection("publish", "Summary");
+        }
+        const control = await actionControl(/^\s*publish\s*$/i, "opportunity-publish");
+        if (!control) {
+          const status = (await statusShown()) || "no status shown";
+          const there = (await actionNames()).map((one) => `"${one.trim()}"`).join(", ") || "nothing";
           noteRefusal(`${where} — no "Publish" among the opportunity's actions for ${actingId()} on ${page.url()} (${status}; the actions offered are ${there})`);
           return;
         }
       }
       await saveCwuDetails("publish", input);
-      await manageAction("publish", /^\s*publish\s*$/i, /^\s*publish( opportunity)?\s*$/i);
+      await manageAction("publish", /^\s*publish\s*$/i, /^\s*publish( opportunity)?\s*$/i, "opportunity-publish");
     },
     // "Cancel opportunity" is offered to the administrator on a published opportunity (seen on
     // the seeded published and lapsed-with-three-proposals ones), and asks first: a dialog
@@ -8600,13 +10498,18 @@ export default function create(
       const where = cwuManage.where(member);
       if (await refusedReader(member)) return;
       await cwuManage.on(member);
-      if (!(await actionsGroup().count())) await toSection(member, "Summary");
-      const group = actionsGroup();
-      await seen(group.getByRole("button")).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
-      const control = seen(group.getByRole("button", { name: /^\s*cancel opportunity\s*$/i })).first();
-      if (!(await control.count())) {
-        const status = (await textLines()).find((line) => /^status:/i.test(line)) ?? "no status shown";
-        const there = (await group.count()) ? (await group.getByRole("button").allInnerTexts()).map((one) => `"${one.trim()}"`).join(", ") : "nothing";
+      const CANCEL = /^\s*cancel opportunity\s*$/i;
+      if (!(await actionControl(CANCEL, "opportunity-cancel-button")) && !(await actionsGroup().count())) {
+        await toSection(member, "Summary");
+      }
+      await seen(actionsGroup().getByRole("button").or(page.getByTestId("opportunity-cancel-button")))
+        .first()
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => undefined);
+      const control = await actionControl(CANCEL, "opportunity-cancel-button");
+      if (!control) {
+        const status = (await statusShown()) || "no status shown";
+        const there = (await actionNames()).map((one) => `"${one.trim()}"`).join(", ");
         noteRefusal(`${where} — no "Cancel opportunity" among the opportunity's actions for ${actingId()} on ${page.url()} (${status}; the actions offered are ${there || "nothing"})`);
         return;
       }
@@ -8624,7 +10527,30 @@ export default function create(
       await press(where, /^\s*cancel opportunity\s*$/i, dialog());
       await ready();
     },
-    deleteOpportunity: () => manageAction("delete_opportunity", /^\s*delete( opportunity)?\s*$/i, /^\s*delete( opportunity)?\s*$/i),
+    // Confirmed, the delete runs with the screen's actions disabled and ends on the Dashboard;
+    // it is waited out until the management screen has been left, or, where the service
+    // refuses it, until the actions are offered again on the same screen.
+    deleteOpportunity: async () => {
+      const member = "delete_opportunity";
+      const DELETE = /^\s*delete( opportunity)?\s*$/i;
+      await manageAction(member, DELETE, DELETE, "opportunity-delete-button");
+      const managing = (): boolean => /\/opportunities\/code-with-us\/[^/?#]+\/edit(?:[?#]|$)/.test(new URL(page.url()).pathname + "?");
+      const deadline = Date.now() + 30000;
+      let offered = 0;
+      while (managing() && Date.now() < deadline) {
+        const control = await actionControl(DELETE, "opportunity-delete-button").catch(() => null);
+        const enabled = !!control && !(await isDisabled(control).catch(() => true));
+        // Offered again, and still offered 3s on, without the screen being left: the service
+        // did not delete it, and the test's own reading decides.
+        offered = enabled ? offered + 1 : 0;
+        if (offered >= 12) return;
+        await page.waitForTimeout(250);
+      }
+      if (managing()) {
+        throw new Error(`${cwuManage.where(member)} — the delete was confirmed but ${page.url()} was still the management screen, its actions disabled, after 30s`);
+      }
+      await ready();
+    },
     // The Addenda section (?tab=addenda) of a published, lapsed or awarded opportunity lists
     // the addenda ("No addenda have been added." when none) over a "New addendum (required)"
     // box and an "Add addendum" button that sends it. A draft has no Addenda section at all
@@ -8642,23 +10568,23 @@ export default function create(
         noteRefusal(`${where} — the management screen at ${page.url()} offers ${actingId()} no "Addenda" section (${status}; its sections are ${sections || "none"})`);
         return;
       }
-      const region = seen(regionNamed(page.getByRole("main"), /^addenda$/i)).first();
-      const box = seen(region.getByRole("textbox", { name: /addendum/i })).first();
+      const region = await opportunitySectionRegion("Addenda");
+      const box = addendumBox(region);
       const words = givenText(input, ["addendum", "text", "description", "body", "content"]) || textOf(input);
       if (!(await box.count())) {
         unbound(where, `the Addenda section on ${page.url()} offers ${actingId()} no "New addendum" box, only "${lined(await region.innerText()).join(" / ")}"; seen as the administrator on the seeded published and lapsed-with-three-proposals Code With Us opportunities, where it does`);
       }
       if (words) await box.fill(words);
-      await press(where, /^\s*add addendum\s*$/i, region);
+      await press(where, /^\s*add addendum\s*$/i, page, "addendum-add-button");
       await confirmIfAsked(where, /^\s*(add|publish|save|submit)( addendum)?\s*$/i);
       await ready();
     },
     opportunityIdentifier: async () => {
       await cwuManage.on("opportunity_identifier");
-      return shownIdentifier();
+      return (await testIdText("opportunity-identifier")) || shownIdentifier();
     },
-    createdByName: () => summaryTerm("created_by_name", /^created by$/i),
-    lastChangedByName: () => summaryTerm("last_changed_by_name", /^last changed by$/i),
+    createdByName: () => summaryTerm("created_by_name", /^created by$/i, "opportunity-created-by"),
+    lastChangedByName: () => summaryTerm("last_changed_by_name", /^last changed by$/i, "opportunity-last-changed-by"),
     summaryTab: () => sectionText("summary_tab", "Summary"),
     opportunityTab: () => formSectionText("opportunity_tab", "Opportunity"),
     addendaTab: () => sectionText("addenda_tab", "Addenda"),
@@ -8670,7 +10596,7 @@ export default function create(
     // binding reads its own "will be displayed here once this opportunity has closed".
     proposalsTab: async () => {
       if (await toSection("proposals_tab", "Proposals")) {
-        const region = seen(regionNamed(page.getByRole("main"), /^proposals$/i)).first();
+        const region = await opportunitySectionRegion("Proposals");
         const said = (await region.count()) ? lined(await region.innerText()).join("\n") : "";
         const listed = (await region.count()) ? await seen(region.getByRole("row")).count() : 0;
         if (!listed && /not shown until the opportunity closes|once it has closed to proposals/i.test(said)) return "";
@@ -8681,13 +10607,13 @@ export default function create(
         `the management screen at ${page.url()} offers only the sections ${(await seen(page.getByRole("navigation", { name: /opportunity sections/i }).getByRole("link")).allInnerTexts()).map((one) => `"${one.trim()}"`).join(", ")}, and ?tab=proposals shows the summary; ${CWU_MANAGE_WALKED}`,
       );
     },
-    reportingViews: () => reportingCount("reporting_views", /^views$/i),
-    reportingWatchers: () => reportingCount("reporting_watchers", /^watchers$/i),
-    reportingProposals: () => reportingCount("reporting_proposals", /^proposals( submitted)?$/i),
-    proposalDeadline: () => cwuFormDate("proposal_deadline", /proposal\s*deadline/i),
-    assignmentDate: () => cwuFormDate("assignment_date", /assignment\s*date/i),
-    startDate: () => cwuFormDate("start_date", /^\s*start\s*date/i),
-    completionDate: () => cwuFormDate("completion_date", /completion\s*date/i),
+    reportingViews: () => reportingCount("reporting_views", /^views$/i, "reporting-views"),
+    reportingWatchers: () => reportingCount("reporting_watchers", /^watchers$/i, "reporting-watchers"),
+    reportingProposals: () => reportingCount("reporting_proposals", /^proposals( submitted)?$/i, "reporting-proposals"),
+    proposalDeadline: () => cwuFormDate("proposal_deadline", /proposal\s*deadline/i, "opportunity-deadline-field"),
+    assignmentDate: () => cwuFormDate("assignment_date", /assignment\s*date/i, "opportunity-assignment-date-field"),
+    startDate: () => cwuFormDate("start_date", /^\s*start\s*date/i, "opportunity-start-date-field"),
+    completionDate: () => cwuFormDate("completion_date", /completion\s*date/i, "opportunity-completion-date-field"),
     // A reader the screen refuses is offered nothing, the refusal logged.
     noteControlOffered: async () => {
       const member = "note_control_offered";
@@ -8695,9 +10621,19 @@ export default function create(
       if (!(await toSection(member, "History"))) {
         return unbound(cwuManage.where(member), `the management screen at ${page.url()} offers ${actingId()} no "History" section; it offers ${await offered()}`);
       }
-      return noteControlsIn(cwuManage.where(member), seen(regionNamed(page.getByRole("main"), /^history$/i)).first());
+      return noteControlsIn(cwuManage.where(member), await opportunitySectionRegion("History"));
     },
   };
+
+  // The "New addendum" box, inside "addendum-text-field" where the section carries it.
+  function addendumBox(region: Locator): Locator {
+    return seen(
+      page
+        .getByTestId("addendum-text-field")
+        .getByRole("textbox")
+        .or(region.getByRole("textbox", { name: /addendum/i })),
+    ).first();
+  }
 
   // ---------------------------------------------------------------- managing a Sprint With Us or Team With Us opportunity
   //
@@ -8750,10 +10686,10 @@ export default function create(
       await ready();
       const why = await whyNotHere();
       if (why) return `${route} answered ${actingId()} with ${why.replace(/\n+/g, " ")} at ${page.url()}`;
-      const status = (await textLines()).find((line) => /^status:/i.test(line)) ?? "no status shown";
-      const group = actionsGroup();
-      const actions = (await group.count()) ? quoted(await group.getByRole("button").allInnerTexts()) : "";
-      return `on ${page.url()} as ${actingId()} (${status}) the actions offered are ${actions || "none"} and the sections ${quoted(await sectionLinks().allInnerTexts()) || "none"}`;
+      const status = (await statusShown()) || "no status shown";
+      const actions = quoted(await actionNames());
+      const links = seen(page.getByTestId(/^opportunity-tab-/)).or(sectionLinks());
+      return `on ${page.url()} as ${actingId()} (${status}) the actions offered are ${actions || "none"} and the sections ${quoted(await links.allInnerTexts()) || "none"}`;
     }
     // What the screen, walked on this build, does not offer: a reason naming it, with what
     // the screen in front of the reader offers instead.
@@ -8771,30 +10707,31 @@ export default function create(
     }
     async function toSection(member: string, tab: string): Promise<boolean> {
       await screen.on(member);
-      const link = sectionLinks().filter({ hasText: new RegExp(`^\\s*${tab}\\s*$`, "i") });
-      if (!(await link.count())) return false;
-      const href = (await link.first().getAttribute("href")) ?? "";
+      const link = await opportunitySectionLink(tab);
+      if (!link) return false;
+      const href = (await link.getAttribute("href")) ?? "";
       // "Evaluation" and "Evaluation panel" are both sections, so the section is told by the
       // whole ?tab= value its link carries rather than by how the address begins.
       const wanted = href ? new URL(href, baseURL).searchParams.get("tab") : tab.toLowerCase();
       if (new URL(page.url()).searchParams.get("tab") !== wanted) {
         if (href) await visit(href);
-        else await link.first().click();
+        else await link.click();
         await ready();
       }
       return true;
     }
-    function sectionRegion(tab: string): Locator {
-      return seen(regionNamed(page.getByRole("main"), new RegExp(`^${tab}$`, "i"))).first();
-    }
+    const sectionRegion = (tab: string): Promise<Locator> => opportunitySectionRegion(tab);
     const saveChanges = (): Locator => seen(page.getByRole("main").getByRole("button", { name: /^\s*save changes\s*$/i })).first();
     // The Opportunity section's form, made editable: "Edit" among the actions where it is
     // offered, else the section itself. False (and the refusal logged) when the form stays
     // read-only, as it does once the opportunity is published.
     async function openDetails(member: string): Promise<boolean> {
       if (await saveChanges().count()) return true;
-      if (!(await actionsGroup().count())) await toSection(member, "Summary");
-      const edit = seen(actionsGroup().getByRole("button", { name: /^\s*edit\s*$/i })).first();
+      const EDIT = /^\s*edit\s*$/i;
+      if (!(await actionControl(EDIT, "opportunity-edit-button")) && !(await actionsGroup().count())) {
+        await toSection(member, "Summary");
+      }
+      const edit = (await actionControl(EDIT, "opportunity-edit-button")) ?? seen(actionsGroup().getByRole("button", { name: EDIT })).first();
       if (await edit.count()) {
         if (await isDisabled(edit)) throw new Error(`${where(member)} — the control named "Edit" is disabled on ${page.url()}`);
         await edit.click();
@@ -8830,7 +10767,7 @@ export default function create(
     async function sectionText(member: string, tab: string): Promise<string> {
       if (await refused(member)) return "";
       if (!(await toSection(member, tab))) return "";
-      const region = sectionRegion(tab);
+      const region = await sectionRegion(tab);
       return (await region.count()) ? lined(await region.innerText()).join("\n") : "";
     }
     // The Opportunity section as saved. On this build it is always the program's form (a
@@ -8846,7 +10783,7 @@ export default function create(
       await page.reload({ waitUntil: "domcontentloaded" });
       await ready();
       if (await refused(member)) return "";
-      let region = sectionRegion("Opportunity");
+      let region = await sectionRegion("Opportunity");
       await region.waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
       if (!(await region.count())) return notOffered(member, '"Opportunity" section');
       if (part) {
@@ -8895,15 +10832,24 @@ export default function create(
       if (await toSection(member, tab)) return sectionText(member, tab);
       return notOffered(member, what);
     }
-    async function summaryTerm(member: string, term: RegExp): Promise<string> {
+    // A term of the Summary, by the test ID its value carries where the screen carries it.
+    async function summaryTerm(member: string, term: RegExp, testId?: string): Promise<string> {
       if (await refused(member)) return "";
       await screen.on(member);
-      if (!(await definitionOf(term))) await toSection(member, "Summary");
-      return definitionOf(term);
+      const read = async (): Promise<string> => (testId ? await testIdText(testId) : null) ?? (await definitionOf(term));
+      if (!(await read())) await toSection(member, "Summary");
+      return read();
     }
     // The Summary's dates, as the calendar day they fall on ("September 2, 2026 at 4:00 p.m.
     // Pacific time" is 2026-09-02); "Not entered" is none.
-    async function summaryDate(member: string, term: RegExp): Promise<string> {
+    async function summaryDate(member: string, term: RegExp, fieldTestId?: string): Promise<string> {
+      // Where the form's date box ("opportunity-deadline-field" and the rest) is on the screen
+      // as it stands, the calendar day it holds is the answer.
+      if (fieldTestId && !(await refused(member))) {
+        await screen.on(member);
+        const held = await markedValue(fieldTestId);
+        if (held !== null && /^\d{4}-\d{2}-\d{2}$/.test(held)) return held;
+      }
       const shown = await summaryTerm(member, term);
       const found = /([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})/.exec(shown);
       const month = found ? MONTHS.indexOf(found[1].toLowerCase()) : -1;
@@ -8911,9 +10857,10 @@ export default function create(
       return `${found[3]}-${String(month + 1).padStart(2, "0")}-${found[2].padStart(2, "0")}`;
     }
     const actionsShown = async (member: string): Promise<Locator> => {
-      if (!(await actionsGroup().count())) await toSection(member, "Summary");
+      const anyAction = page.getByTestId(/^opportunity-(edit|publish|submit-for-review|delete|cancel)-?(button)?$/);
+      if (!(await actionsGroup().count()) && !(await seen(anyAction).count())) await toSection(member, "Summary");
       const group = actionsGroup();
-      await seen(group.getByRole("button")).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
+      await seen(group.getByRole("button").or(anyAction)).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
       return group;
     };
     return {
@@ -8933,9 +10880,15 @@ export default function create(
       },
       // A date box on that form, as the calendar day it holds ("2026-09-22"); empty when the
       // form leaves it blank.
-      formDate: async (member: string, label: RegExp): Promise<string> => {
+      formDate: async (member: string, label: RegExp, testId?: string): Promise<string> => {
         if (await refused(member)) return "";
         if (!(await toSection(member, "Opportunity"))) return notOffered(member, '"Opportunity" section');
+        // The box sits inside the element carrying its test ID.
+        if (testId) {
+          await byTestId(testId).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
+          const held = await markedValue(testId);
+          if (held !== null) return held;
+        }
         const box = seen(page.getByRole("main").getByRole("textbox", { name: label })).first();
         await box.waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
         return (await box.count()) ? (await box.inputValue()).trim() : "";
@@ -8946,20 +10899,77 @@ export default function create(
       // absence is the refusal, logged so the test's own follow-up reading decides. A refusal
       // drawn as an alert ("This opportunity is incomplete") is left on the page for the
       // readers.
-      act: async (member: string, name: RegExp, confirm: RegExp | null, input?: unknown): Promise<void> => {
+      act: async (
+        member: string,
+        name: RegExp,
+        confirm: RegExp | null,
+        input?: unknown,
+        testId?: string,
+        confirmTestId?: string,
+      ): Promise<void> => {
         if (await refused(member)) return;
         await screen.on(member);
         if (Object.keys(record(input)).length) await saveDetails(member, input);
-        if (!(await actionsGroup().count())) await toSection(member, "Summary");
-        const control = seen(actionsGroup().getByRole("button", { name })).first();
-        if (!(await control.count())) {
+        if (!(await actionControl(name, testId)) && !(await actionsGroup().count())) await toSection(member, "Summary");
+        const control = await actionControl(name, testId);
+        if (!control) {
           noteRefusal(`${where(member)} — no control named ${name} among the actions offered; ${await context()}`);
           return;
         }
         if (await isDisabled(control)) throw new Error(`${where(member)} — the control named ${name} is disabled on ${page.url()}`);
         await control.click();
         await settle();
-        if (confirm) await confirmIfAsked(where(member), confirm);
+        if (confirm) await confirmIfAsked(where(member), confirm, confirmTestId);
+        await ready();
+      },
+      // "Finalize consensus scores" ("finalize-consensus-button"), offered among the actions at
+      // consensus (seen as the administrator on the seeded opportunities at "Team questions:
+      // consensus" and "Resource questions: consensus"), asks "Finalize the consensus scores?"
+      // ("evaluation-finalize-dialog"), confirmed by its own "Finalize consensus scores"
+      // ("evaluation-finalize-confirm"). Not offered in another state, which is the refusal,
+      // logged. A refusal once confirmed is an alert left on the page for the readers.
+      finalizeConsensuses: async (member: string): Promise<void> => {
+        const FINALIZE_SCORES = /^\s*finali[sz]e( consensus)?( scores)?\s*$/i;
+        if (await refused(member)) return;
+        await screen.on(member);
+        const control = await actionControl(FINALIZE_SCORES, "finalize-consensus-button");
+        if (!control) {
+          noteRefusal(`${where(member)} — no "Finalize consensus scores" among the actions offered; ${await context()}`);
+          return;
+        }
+        if (await isDisabled(control)) throw new Error(`${where(member)} — "Finalize consensus scores" is disabled on ${page.url()}`);
+        await control.click();
+        await settle();
+        await confirmIfAsked(where(member), FINALIZE_SCORES, "evaluation-finalize-confirm");
+        await seen(page.getByRole("alert").or(page.getByRole("status").filter({ hasText: /\S/ })))
+          .first()
+          .waitFor({ state: "visible", timeout: 10000 })
+          .catch(() => undefined);
+        await ready();
+      },
+      // "Start team scenario" ("start-team-scenario-button"), offered among the actions at the
+      // code challenge (seen as the administrator on the seeded Sprint With Us opportunities
+      // there). Pressed, it acts at once with no confirmation; a refusal is an alert ("The team
+      // scenario could not be started …") left on the page for the readers.
+      startTeamScenario: async (member: string): Promise<void> => {
+        const START = /^\s*start( the)? team scenario\s*$/i;
+        if (await refused(member)) return;
+        await screen.on(member);
+        const control = await actionControl(START, "start-team-scenario-button");
+        if (!control) {
+          noteRefusal(`${where(member)} — no "Start team scenario" among the actions offered; ${await context()}`);
+          return;
+        }
+        if (await isDisabled(control)) throw new Error(`${where(member)} — "Start team scenario" is disabled on ${page.url()}`);
+        const before = await statusShown();
+        await control.click();
+        await settle();
+        await confirmIfAsked(where(member), /^\s*(start|confirm)( team scenario)?\s*$/i);
+        for (let waited = 0; waited < 10000; waited += 250) {
+          if (await seen(page.getByRole("alert")).count()) break;
+          if ((await statusShown()) !== before) break;
+          await page.waitForTimeout(250);
+        }
         await ready();
       },
       // "Edit" (on a draft) opens the Opportunity section's form; whatever the input carries is
@@ -8980,13 +10990,13 @@ export default function create(
         const member = "edit_evaluation_panel";
         if (await refused(member)) return;
         if (!(await toSection(member, "Evaluation panel"))) return notOffered(member, '"Evaluation panel" section');
-        await seen(regionNamed(page.getByRole("main"), /^evaluation panel$/i)).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
+        await (await sectionRegion("Evaluation panel")).waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
       },
       noteControlOffered: async (): Promise<string> => {
         const member = "note_control_offered";
         if (await refused(member)) return "false";
         if (!(await toSection(member, "History"))) return notOffered(member, '"History" section');
-        return noteControlsIn(where(member), sectionRegion("History"));
+        return noteControlsIn(where(member), await sectionRegion("History"));
       },
       // "Cancel opportunity" asks first: "Cancel this opportunity?" with an optional "Note
       // (optional)" box, "Keep opportunity" and its own "Cancel opportunity". Where it is not
@@ -8996,9 +11006,9 @@ export default function create(
         const member = "cancel_opportunity";
         if (await refused(member)) return;
         await screen.on(member);
-        const group = await actionsShown(member);
-        const control = seen(group.getByRole("button", { name: /^\s*cancel opportunity\s*$/i })).first();
-        if (!(await control.count())) {
+        await actionsShown(member);
+        const control = await actionControl(/^\s*cancel opportunity\s*$/i, "opportunity-cancel-button");
+        if (!control) {
           noteRefusal(`${where(member)} — no "Cancel opportunity" ${await context()}`);
           return;
         }
@@ -9026,31 +11036,34 @@ export default function create(
           noteRefusal(`${where(member)} — no "Addenda" section ${await context()}`);
           return;
         }
-        const region = sectionRegion("Addenda");
-        const box = seen(region.getByRole("textbox", { name: /addendum/i })).first();
+        const region = await sectionRegion("Addenda");
+        const box = addendumBox(region);
         if (!(await box.count())) {
           unbound(where(member), `the Addenda section on ${page.url()} offers ${actingId()} no "New addendum" box, only "${lined(await region.innerText()).join(" / ")}"; seen as the administrator on the seeded published and closed opportunities, where it does`);
         }
         const words = givenText(input, ["addendum", "text", "description", "body", "content"]) || textOf(input);
         if (words) await box.fill(words);
-        await press(where(member), /^\s*add addendum\s*$/i, region);
+        await press(where(member), /^\s*add addendum\s*$/i, page, "addendum-add-button");
         await confirmIfAsked(where(member), /^\s*(add|publish|save|submit)( addendum)?\s*$/i);
         await ready();
       },
       opportunityIdentifier: async (): Promise<string> => {
         if (await refused("opportunity_identifier")) return "";
         await screen.on("opportunity_identifier");
-        return shownIdentifier();
+        return (await testIdText("opportunity-identifier")) || shownIdentifier();
       },
       // The changes of state offered from the state the opportunity is in, in the criteria's
       // words ("Cancel opportunity" is "cancel"); none on a draft, an awarded one or to staff.
+      // The actions are those under "opportunity-actions", or each action by its own test ID.
       offeredStateChanges: async (): Promise<string> => {
         const member = "offered_state_changes";
         if (await refused(member)) return "";
         await screen.on(member);
         const group = await actionsShown(member);
-        if (!(await group.count())) return "";
-        return (await seen(group.getByRole("button")).allInnerTexts())
+        const named = (await group.count())
+          ? await seen(group.getByRole("button")).allInnerTexts()
+          : await seen(page.getByTestId(/^opportunity-(edit|publish|submit-for-review|delete|cancel)-?(button)?$/)).allInnerTexts();
+        return named
           .map((one) => one.trim().toLowerCase().replace(/\s+opportunity$/, ""))
           .filter(Boolean)
           .join("\n");
@@ -9077,17 +11090,19 @@ export default function create(
   const opportunitySwuEdit: S.OpportunitySwuEditPage = {
     open: swuManage.open,
     editDetails: swuManage.editDetails,
-    submitForReview: (input) => swuManage.act("submit_for_review", /^\s*submit for review\s*$/i, PROGRAM_CONFIRM, input),
-    publish: (input) => swuManage.act("publish", /^\s*publish\s*$/i, PROGRAM_CONFIRM, input),
+    submitForReview: (input) =>
+      swuManage.act("submit_for_review", /^\s*submit for review\s*$/i, PROGRAM_CONFIRM, input, "opportunity-submit-for-review"),
+    publish: (input) => swuManage.act("publish", /^\s*publish\s*$/i, PROGRAM_CONFIRM, input, "opportunity-publish"),
     cancelOpportunity: swuManage.cancelOpportunity,
-    deleteOpportunity: () => swuManage.act("delete_opportunity", /^\s*delete\s*$/i, /^\s*delete opportunity\s*$/i),
+    deleteOpportunity: () =>
+      swuManage.act("delete_opportunity", /^\s*delete\s*$/i, /^\s*delete opportunity\s*$/i, undefined, "opportunity-delete-button"),
     addAddendum: swuManage.addAddendum,
     editEvaluationPanel: swuManage.editEvaluationPanel,
-    finalizeQuestionConsensuses: () => swuManage.notOffered("finalize_question_consensuses", '"Consensus" section and no control to finalize the question consensuses, not even at consensus'),
-    startTeamScenario: () => swuManage.notOffered("start_team_scenario", "section or control to start the team scenario, not even at the code challenge"),
+    finalizeQuestionConsensuses: () => swuManage.finalizeConsensuses("finalize_question_consensuses"),
+    startTeamScenario: () => swuManage.startTeamScenario("start_team_scenario"),
     opportunityIdentifier: swuManage.opportunityIdentifier,
-    createdByName: () => swuManage.summaryTerm("created_by_name", /^created by$/i),
-    lastChangedByName: () => swuManage.summaryTerm("last_changed_by_name", /^last changed by$/i),
+    createdByName: () => swuManage.summaryTerm("created_by_name", /^created by$/i, "opportunity-created-by"),
+    lastChangedByName: () => swuManage.summaryTerm("last_changed_by_name", /^last changed by$/i, "opportunity-last-changed-by"),
     summaryTab: () => swuManage.sectionText("summary_tab", "Summary"),
     // The Opportunity section's form as saved, each box's value under its label.
     opportunityTab: () => swuManage.savedForm("opportunity_tab"),
@@ -9105,8 +11120,8 @@ export default function create(
     // owner who is not on the panel) is shown neither, and reads nothing.
     instructionsTab: () => swuManage.sectionText("instructions_tab", "Instructions"),
     evaluationTab: () => swuManage.sectionText("evaluation_tab", "Evaluation"),
-    proposalDeadline: () => swuManage.summaryDate("proposal_deadline", /^proposal deadline$/i),
-    assignmentDate: () => swuManage.summaryDate("assignment_date", /^assignment date$/i),
+    proposalDeadline: () => swuManage.summaryDate("proposal_deadline", /^proposal deadline$/i, "opportunity-deadline-field"),
+    assignmentDate: () => swuManage.summaryDate("assignment_date", /^assignment date$/i, "opportunity-assignment-date-field"),
     // The "Team questions" of the Opportunity section's form.
     evaluationQuestionFields: async (place?: unknown) =>
       (await swuManage.toForm("evaluation_question_fields")) ? swuEditForm.evaluationQuestionFields(place) : "",
@@ -9129,16 +11144,18 @@ export default function create(
   const opportunityTwuEdit: S.OpportunityTwuEditPage = {
     open: twuManage.open,
     editDetails: twuManage.editDetails,
-    submitForReview: (input) => twuManage.act("submit_for_review", /^\s*submit for review\s*$/i, PROGRAM_CONFIRM, input),
-    publish: (input) => twuManage.act("publish", /^\s*publish\s*$/i, PROGRAM_CONFIRM, input),
+    submitForReview: (input) =>
+      twuManage.act("submit_for_review", /^\s*submit for review\s*$/i, PROGRAM_CONFIRM, input, "opportunity-submit-for-review"),
+    publish: (input) => twuManage.act("publish", /^\s*publish\s*$/i, PROGRAM_CONFIRM, input, "opportunity-publish"),
     cancelOpportunity: twuManage.cancelOpportunity,
-    deleteOpportunity: () => twuManage.act("delete_opportunity", /^\s*delete\s*$/i, /^\s*delete opportunity\s*$/i),
+    deleteOpportunity: () =>
+      twuManage.act("delete_opportunity", /^\s*delete\s*$/i, /^\s*delete opportunity\s*$/i, undefined, "opportunity-delete-button"),
     addAddendum: twuManage.addAddendum,
     editEvaluationPanel: twuManage.editEvaluationPanel,
-    finalizeQuestionConsensuses: () => twuManage.notOffered("finalize_question_consensuses", '"Consensus" section and no control to finalize the question consensuses, not even at consensus'),
+    finalizeQuestionConsensuses: () => twuManage.finalizeConsensuses("finalize_question_consensuses"),
     opportunityIdentifier: twuManage.opportunityIdentifier,
-    createdByName: () => twuManage.summaryTerm("created_by_name", /^created by$/i),
-    lastChangedByName: () => twuManage.summaryTerm("last_changed_by_name", /^last changed by$/i),
+    createdByName: () => twuManage.summaryTerm("created_by_name", /^created by$/i, "opportunity-created-by"),
+    lastChangedByName: () => twuManage.summaryTerm("last_changed_by_name", /^last changed by$/i, "opportunity-last-changed-by"),
     summaryTab: () => twuManage.sectionText("summary_tab", "Summary"),
     // The Opportunity section's form as saved, each box's value under its label.
     opportunityTab: () => twuManage.savedForm("opportunity_tab"),
@@ -9154,12 +11171,12 @@ export default function create(
     instructionsTab: () => twuManage.sectionText("instructions_tab", "Instructions"),
     evaluationTab: () => twuManage.sectionText("evaluation_tab", "Evaluation"),
     offeredStateChanges: twuManage.offeredStateChanges,
-    proposalDeadline: () => twuManage.summaryDate("proposal_deadline", /^proposal deadline$/i),
-    assignmentDate: () => twuManage.summaryDate("assignment_date", /^assignment date$/i),
+    proposalDeadline: () => twuManage.summaryDate("proposal_deadline", /^proposal deadline$/i, "opportunity-deadline-field"),
+    assignmentDate: () => twuManage.summaryDate("assignment_date", /^assignment date$/i, "opportunity-assignment-date-field"),
     // The Summary carries no start or completion date; the Opportunity section's form does,
     // as date boxes ("Start date", "Completion date (optional)").
-    startDate: () => twuManage.formDate("start_date", /^\s*start date\b/i),
-    completionDate: () => twuManage.formDate("completion_date", /^\s*completion date\b/i),
+    startDate: () => twuManage.formDate("start_date", /^\s*start date\b/i, "opportunity-start-date-field"),
+    completionDate: () => twuManage.formDate("completion_date", /^\s*completion date\b/i, "opportunity-completion-date-field"),
     // The "Resource questions" of the Opportunity section's form.
     evaluationQuestionFields: async (place?: unknown) =>
       (await twuManage.toForm("evaluation_question_fields")) ? twuEditForm.evaluationQuestionFields(place) : "",
@@ -9186,15 +11203,19 @@ export default function create(
     await ready();
     const refused = await refusalShown();
     if (refused) unbound(`${OPTIN}.${member}`, `/opportunities did not open at ${page.url()}: ${refused}`);
-    // The list has loaded once it says how many it shows; the region follows the session.
-    await seen(page.getByRole("main").getByText(/^showing \d+ opportunit/i))
+    // The list has loaded once its groups are drawn (or it says how many it shows); the
+    // region follows the session.
+    await seen(page.getByTestId(/^opportunity-group-/).or(page.getByRole("main").getByText(/^showing \d+ opportunit/i)))
       .first()
       .waitFor({ state: "visible", timeout: 10000 })
       .catch(() => undefined);
+    // The region carries "notification-optin-control".
+    const marked = page.getByTestId("notification-optin-control");
     const heading = page.getByRole("main").getByRole("heading", { name: /^\s*new opportunity emails\s*$/i });
     // A signed-in person's region comes with their account; a visitor's never comes.
     const signedIn = !!(actingAs as unknown as { signIn?: unknown } | null)?.signIn;
-    await heading.first().waitFor({ state: "attached", timeout: signedIn ? 5000 : 1500 }).catch(() => undefined);
+    await marked.or(heading).first().waitFor({ state: "attached", timeout: signedIn ? 5000 : 1500 }).catch(() => undefined);
+    if (await marked.count()) return marked.first();
     if (!(await heading.count())) return null;
     // The filter's inner locator is looked for inside each region, so it starts from the page.
     const region = page
@@ -9203,8 +11224,12 @@ export default function create(
       .filter({ has: page.getByRole("heading", { name: /^\s*new opportunity emails\s*$/i }) });
     return (await region.count()) ? region.first() : heading.first().locator("xpath=..");
   }
+  // The button carries "notification-optin-toggle"; which way it goes is read from its words.
   function optinButton(region: Locator): Locator {
-    return region.getByRole("button", { name: /email(ing)? me about new opportunities/i }).first();
+    return region
+      .getByTestId("notification-optin-toggle")
+      .or(region.getByRole("button", { name: /email(ing)? me about new opportunities/i }))
+      .first();
   }
   async function optinState(region: Locator): Promise<"checked" | "unchecked" | ""> {
     const button = optinButton(region);
@@ -9242,7 +11267,9 @@ export default function create(
         .waitForFunction(
           (before) => {
             const buttons = Array.from(document.querySelectorAll("main button")) as HTMLElement[];
-            const one = buttons.find((b) => /email(ing)? me about new opportunities/i.test(b.innerText));
+            const one =
+              (document.querySelector('[data-testid="notification-optin-toggle"]') as HTMLElement | null) ??
+              buttons.find((b) => /email(ing)? me about new opportunities/i.test(b.innerText));
             if (!one) return false;
             const on = /stop emailing/i.test(one.innerText);
             return on !== (before === "checked");
@@ -9301,7 +11328,14 @@ export default function create(
   // proposal forms' attachments are their own pages' add_attachment.
   const ATTACH = "file-attachment-control";
   function attachmentRegion(): Locator {
-    return seen(regionNamed(page, /^attachments$/i)).first();
+    // The innermost region holding the part's controls by their test IDs ("attachment-add-
+    // button", "attachment-size-limit", "attachment-list"), or the region so named; the
+    // proposal forms draw this part under a numbered title ("3. Attachments").
+    const held = page
+      .getByTestId("attachment-add-button")
+      .or(page.getByTestId("attachment-size-limit"))
+      .or(page.getByTestId("attachment-list"));
+    return seen(page.getByRole("region").filter({ has: held }).or(regionNamed(page, /^\s*(\d+\.\s*)?attachments\s*$/i))).last();
   }
   async function onAttachments(member: string): Promise<Locator> {
     const where = `${ATTACH}.${member}`;
@@ -9315,7 +11349,7 @@ export default function create(
     if (why) {
       unbound(where, `the form at ${page.url()} did not open for ${actingId()}: ${why.replace(/\n+/g, " ")}; the attachment control sits on an opportunity's form, offered only to the administrator and public sector staff; ${NOBODY_SIGNS_IN}`);
     }
-    if (!(await attachmentRegion().count()) || !(await findControl(attachmentRegion(), /^\s*add attachment\s*$/i))) {
+    if (!(await attachmentRegion().count()) || !(await findControl(attachmentRegion(), /^\s*add attachment\s*$/i, "attachment-add-button"))) {
       const manage = manageAddress();
       if (manage) await visit(`${manage}?tab=opportunity`);
     }
@@ -9329,12 +11363,15 @@ export default function create(
     }
     return region;
   }
-  function attachmentItems(region: Locator): Locator {
-    return seen(region.getByRole("listitem"));
+  // The rows: those carrying "attachment-new-row" or "attachment-existing-row" where the part
+  // carries them, its list items otherwise.
+  async function attachmentItems(region: Locator): Promise<Locator> {
+    const marked = seen(region.getByTestId("attachment-new-row").or(region.getByTestId("attachment-existing-row")));
+    return (await marked.count()) ? marked : seen(region.getByRole("listitem"));
   }
   // Each row is judged by its words and by whether it carries a link to the stored file.
   async function itemsMatching(region: Locator, matches: (words: string, stored: boolean) => boolean): Promise<Locator[]> {
-    const items = attachmentItems(region);
+    const items = await attachmentItems(region);
     const out: Locator[] = [];
     for (let i = 0; i < (await items.count()); i++) {
       const words = await items.nth(i).innerText().catch(() => "");
@@ -9389,8 +11426,10 @@ export default function create(
       .catch(() => undefined);
     await ready();
   }
+  // Each stored file's link carries "attachment-download-link".
   async function storedLinks(region: Locator): Promise<string[]> {
-    return seen(region.getByRole("link", { name: /^download\b/i }))
+    const marked = byTestId("attachment-download-link", region);
+    return ((await marked.count()) ? marked : seen(region.getByRole("link", { name: /^download\b/i })))
       .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""))
       .then((hrefs) => hrefs.filter((href) => href.includes("/api/files/")))
       .catch(() => [] as string[]);
@@ -9415,7 +11454,14 @@ export default function create(
       const region = await onAttachments("rename_new_attachment");
       const row = await rowNamed(region, record(input).file ?? record(input).from ?? undefined, isNew);
       if (!row) unbound(where, `no newly added attachment on ${page.url()} to rename; the list reads: ${(await rowLines(await itemsMatching(region, () => true))) || "nothing"}`);
-      const box = row.getByRole("textbox", { name: /^name for\b/i });
+      // The box sits inside "attachment-name-field" (or carries it itself).
+      const field = row.getByTestId("attachment-name-field");
+      const box = seen(
+        field
+          .getByRole("textbox")
+          .or(row.getByRole("textbox").and(field))
+          .or(row.getByRole("textbox", { name: /^name for\b/i })),
+      );
       if (!(await box.count())) unbound(where, `the new attachment on ${page.url()} carries no "Name for …" box`);
       const to = givenText(input, ["to", "newName", "name", "value"]) || (typeof input === "string" ? input : "");
       await box.first().fill(to);
@@ -9427,14 +11473,14 @@ export default function create(
       const region = await onAttachments("remove_new_attachment");
       const row = await rowNamed(region, input, isNew);
       if (!row) unbound(where, `no newly added attachment on ${page.url()} matches ${JSON.stringify(input)}`);
-      await press(where, /^\s*remove\b/i, row);
+      await press(where, /^\s*remove\b/i, row, "attachment-remove-button");
     },
     removeExistingAttachment: async (input) => {
       const where = `${ATTACH}.remove_existing_attachment`;
       const region = await onAttachments("remove_existing_attachment");
       const row = await rowNamed(region, input, isStored);
       if (!row) unbound(where, `no stored attachment on ${page.url()} matches ${JSON.stringify(input)}; the list reads: ${(await rowLines(await itemsMatching(region, () => true))) || "nothing"}`);
-      await press(where, /^\s*remove\b/i, row);
+      await press(where, /^\s*remove\b/i, row, "attachment-remove-button");
       await saveAttachments(where);
     },
     downloadAttachment: async (input) => {
@@ -9445,7 +11491,9 @@ export default function create(
         region = await onAttachments("download_attachment");
       }
       const row = await rowNamed(region, input, isStored);
-      const link = row ? seen(row.getByRole("link", { name: /^download\b/i })).first() : null;
+      const link = row
+        ? seen(row.getByTestId("attachment-download-link").or(row.getByRole("link", { name: /^download\b/i }))).first()
+        : null;
       if (!link || !(await link.count())) unbound(where, `no stored attachment with a "Download" link on ${page.url()} matches ${JSON.stringify(input)}`);
       const download = page.waitForEvent("download", { timeout: 10000 }).catch(() => null);
       await link.click();
@@ -9475,12 +11523,20 @@ export default function create(
       }
       return (await storedLinks(region)).join("\n");
     },
+    // The limit the part states ("attachment-size-limit": "Any type of file, up to 10 MB each.").
     sizeLimitStatedBeforeChoosing: async () => {
       const region = await onAttachments("size_limit_stated_before_choosing");
+      if (await carried("attachment-size-limit", region)) {
+        return (await testIdTexts("attachment-size-limit", region)).flatMap(lined).join("\n");
+      }
       return lined(await region.innerText()).filter((line) => /\b\d+\s?(MB|KB|GB)\b.*\b(each|smaller|limit|up to)\b|\bup to \d+\s?(MB|KB|GB)\b/i.test(line) && !/^new:/i.test(line)).join("\n");
     },
+    // Each refusal of a file too large carries "attachment-size-error".
     uploadRefusedForSize: async () => {
       const region = await onAttachments("upload_refused_for_size");
+      if (await carried("attachment-size-error", region)) {
+        return (await testIdTexts("attachment-size-error", region)).flatMap(lined).join("\n");
+      }
       const alerts = seen(region.getByRole("alert"));
       const out: string[] = [];
       for (let i = 0; i < (await alerts.count()); i++) out.push(...lined(await alerts.nth(i).innerText()));
@@ -9508,7 +11564,9 @@ export default function create(
       const rows = await itemsMatching(await onAttachments("original_extension_restored"), isNew);
       const out: string[] = [];
       for (const row of rows) {
-        const line = lined(await row.innerText()).find((one) => /^will be saved as:/i.test(one));
+        // The resulting name carries "attachment-resulting-name".
+        const marked = await testIdText("attachment-resulting-name", row);
+        const line = marked ?? lined(await row.innerText()).find((one) => /^will be saved as:/i.test(one));
         if (line) out.push(line.replace(/^will be saved as:\s*/i, ""));
       }
       return out.join("\n");
@@ -9539,7 +11597,9 @@ export default function create(
     // The "Remove <name>" controls the attachments carry; none reads as nothing.
     removeControlHiddenWhenNotRemovable: async () => {
       const region = await onAttachments("remove_control_hidden_when_not_removable");
-      return (await seen(region.getByRole("button", { name: /^remove\b/i })).allInnerTexts().catch(() => [] as string[]))
+      const marked = byTestId("attachment-remove-button", region);
+      const controls = (await marked.count()) ? marked : seen(region.getByRole("button", { name: /^remove\b/i }));
+      return (await controls.allInnerTexts().catch(() => [] as string[]))
         .map((one) => one.trim())
         .join("\n");
     },
@@ -9557,7 +11617,8 @@ export default function create(
       await go(`/opportunities/${attachmentsOf.program}/:opportunityId`, { opportunityId: attachmentsOf.opportunityId });
       const refused = await refusalShown();
       if (refused) unbound(where, `the opportunity's page did not open at ${page.url()}: ${refused}`);
-      const list = seen(page.getByRole("list", { name: /^attachments$/i }));
+      await opportunityLoaded();
+      const list = (await carried("attachment-list")) ?? seen(page.getByRole("list", { name: /^attachments$/i }));
       if (!(await list.count())) return "";
       return lined(await list.first().innerText()).join("\n");
     },
@@ -9941,21 +12002,29 @@ export default function create(
   const PCWU_CREATE = "proposal-cwu-create";
   const PCWU_EDIT = "proposal-cwu-edit";
 
+  // The create form now labels both address lines "Street Address" (the first "(required)"),
+  // where it once said "Street address" and "Street address line 2 (optional)"; the two lines
+  // are therefore told apart by position among the boxes labelled for a street, never by label.
+  const STREET_LINE_ONE = /^\s*street address(?! line 2)/i;
+  const STREET_LINE_TWO = /^\s*street address line 2/i;
+  const STREET_ANY = /^\s*(street address|address line 2)/i;
+  const streetLine = (label: RegExp): number => (label === STREET_LINE_ONE ? 0 : label === STREET_LINE_TWO ? 1 : -1);
+
   // Each field by the start of its label, with the spellings a test may give its value under.
   const PROPOSAL_FIELDS: [RegExp, string[]][] = [
     [/^\s*legal name/i, ["legalName", "name", "proponentName", "individualName", "fullName"]],
     [/^\s*email address/i, ["email", "emailAddress", "contactEmail"]],
     [/^\s*phone number/i, ["phone", "phoneNumber", "contactPhone"]],
-    [/^\s*street address(?! line 2)/i, [
+    [STREET_LINE_ONE, [
       "street", "street1", "streetAddress", "streetAddress1", "streetAddressOne",
       "address", "addressLine", "addressLine1", "addressLineOne",
     ]],
-    [/^\s*street address line 2/i, [
+    [STREET_LINE_TWO, [
       "street2", "streetAddress2", "streetAddressTwo", "addressLine2", "addressLineTwo", "address2", "addressTwo",
     ]],
     [/^\s*city/i, ["city"]],
-    [/^\s*province or state/i, ["region", "province", "state", "provinceState", "provinceOrState"]],
-    [/^\s*postal code/i, ["postalCode", "mailCode", "postal", "zip", "zipCode"]],
+    [PROVINCE_LABEL, ["region", "province", "state", "provinceState", "provinceOrState"]],
+    [POSTAL_LABEL, ["postalCode", "mailCode", "postal", "zip", "zipCode"]],
     [/^\s*country/i, ["country"]],
     [/^\s*proposal\s*\(/i, ["proposalText", "proposal", "text", "body"]],
     [/^\s*additional comments/i, ["additionalComments", "comments", "additionalComment"]],
@@ -9977,20 +12046,61 @@ export default function create(
   const proposalTermsAgreed = new Set<"program" | "app">();
   // What the form said when it last refused a submit, as the alert's lines.
   let proposalRefusal: string[] = [];
-  const PROGRAM_TERMS = /^\s*i accept the code with us terms/i;
-  const APP_TERMS = /^\s*i accept the digital marketplace terms/i;
+  // The dialog (now "Review Terms and Conditions") draws its boxes as "I acknowledge that I have
+  // read, fully understand and agree to the Code With Us Terms & Conditions. (required)" and
+  // the same for the "Digital Marketplace Terms & Conditions for E-Bidding"; the older "I
+  // accept the … terms and conditions" is taken too.
+  const PROGRAM_TERMS = /^\s*i (accept|acknowledge\b.*\bagree to) the code with us terms/i;
+  const APP_TERMS = /^\s*i (accept|acknowledge\b.*\bagree to) the digital marketplace terms/i;
 
   const proposalMain = (): Locator => page.getByRole("main");
   const proposalBox = (label: RegExp): Locator => seen(proposalMain().getByRole("textbox", { name: label })).first();
-  const proposalActions = (): Locator => seen(proposalMain().getByRole("group", { name: /^\s*proposal actions\s*$/i })).first();
-  const saveChoices = (): Locator => seen(proposalMain().getByRole("group", { name: /^\s*save choices\s*$/i })).first();
+  // The actions carry "proposal-actions"; the group so named otherwise.
+  const proposalActions = (): Locator =>
+    seen(proposalMain().getByTestId("proposal-actions").or(proposalMain().getByRole("group", { name: /^\s*proposal actions\s*$/i }))).first();
+  // One of them by its own test ID, or by its name among them.
+  async function proposalControl(name: RegExp, testId?: string): Promise<Locator> {
+    const marked = testId ? await carried(testId) : null;
+    return marked ? marked.first() : seen(proposalActions().getByRole("button", { name })).first();
+  }
+  // The edit screen's save buttons: once the "Save choices" group, now "Save changes and
+  // submit", "Save changes" and "Cancel" under "The opportunity" in the unnamed-group side
+  // panel "Opportunity and actions" (walked 2026-10-18 as a vendor on a draft and a submitted
+  // Code With Us proposal). The panel counts only while it offers "Save changes", so the
+  // closed screen, which has no such panel, still reads as no save choices.
+  const saveChoices = (): Locator =>
+    seen(
+      proposalMain()
+        .getByRole("group", { name: /^\s*save choices\s*$/i })
+        .or(
+          proposalMain()
+            .getByRole("complementary", { name: /opportunity and actions/i })
+            .filter({ has: page.getByRole("button", { name: /^\s*save changes\s*$/i }) }),
+        ),
+    ).first();
 
   // The form's fields are on screen and can be typed in: the create form, or the proposal's
   // screen once "Edit" is pressed.
   async function proposalFieldsOpen(): Promise<boolean> {
-    const box = proposalBox(/^\s*proposal\s*\(/i);
+    // The proposal's text box sits in "proposal-text-field".
+    const marked = seen(proposalMain().getByTestId("proposal-text-field").getByRole("textbox")).first();
+    const box = (await marked.count()) ? marked : proposalBox(/^\s*proposal\s*\(/i);
     return (await box.count()) > 0 && (await box.isEditable().catch(() => false));
   }
+  // The terms dialog ("proposal-terms-dialog"), or the open dialog.
+  const termsDialog = (): Locator => seen(page.getByTestId("proposal-terms-dialog")).or(openDialog()).first();
+  // A terms box: inside the label carrying "proposal-accept-program-terms" /
+  // "proposal-accept-app-terms", or by its words.
+  const termsBox = (scope: Locator, which: "program" | "app", words: RegExp): Locator =>
+    seen(
+      scope
+        .getByTestId(which === "program" ? "proposal-accept-program-terms" : "proposal-accept-app-terms")
+        .getByRole("checkbox")
+        .or(scope.getByRole("checkbox", { name: words })),
+    ).first();
+  // The dialog's own submit ("proposal-submit-confirm").
+  const termsConfirm = (scope: Locator): Locator =>
+    seen(scope.getByTestId("proposal-submit-confirm").or(scope.getByRole("button", { name: /^\s*submit( proposal)?\s*$/i }))).first();
 
   // Where the browser stands, for an action: on the form or the proposal's screen (true), or
   // refused — "Page not found" for somebody who may not have it, which is recorded and left
@@ -10017,7 +12127,7 @@ export default function create(
   async function openProposalFields(where: string): Promise<boolean> {
     if (!(await onProposal(where))) return false;
     if (await proposalFieldsOpen()) return true;
-    const edit = seen(proposalActions().getByRole("button", { name: /^\s*edit\s*$/i })).first();
+    const edit = await proposalControl(/^\s*edit\s*$/i, "proposal-edit-button");
     if (!(await edit.count())) {
       noteRefusal(`${where} — ${page.url()} offers no "Edit" (its actions: ${(await proposalActionNames()) || "none"})`);
       return false;
@@ -10053,16 +12163,25 @@ export default function create(
     return text ? byKey(text) || text : "";
   }
 
-  // "An individual" or "An organization", by the label the radio is drawn under.
+  // "An individual" or "An organization", by the label the radio is drawn under. The create
+  // page now draws them as "Individual" and "Organization" under "Will you be submitting a
+  // proposal for this opportunity as an Individual or Organization? (required)", with neither
+  // ticked to start with; the manage page's "Edit" keeps "An individual" / "An organization"
+  // under "Who is submitting this proposal?". Either wording is taken.
   async function chooseProponent(where: string, kind: "individual" | "organization"): Promise<void> {
     const words = kind === "organization" ? "An organization" : "An individual";
-    const radio = seen(proposalMain().getByRole("radio", { name: new RegExp(`^\\s*${words}\\s*$`, "i") })).first();
+    const named = new RegExp(`^\\s*(an\\s+)?${kind}\\s*$`, "i");
+    // Each choice is a label carrying "proposal-proponent-individual" /
+    // "proposal-proponent-organization" around its radio.
+    const label = byTestId(kind === "organization" ? "proposal-proponent-organization" : "proposal-proponent-individual", proposalMain());
+    const marked = await label.count();
+    const radio = seen(marked ? label.getByRole("radio") : proposalMain().getByRole("radio", { name: named })).first();
     if (!(await radio.count())) {
-      unbound(where, `no "${words}" choice under "Who is submitting this proposal?" on ${page.url()}; it offers ${await offered()}`);
+      unbound(where, `no "${words}" (or "${kind === "organization" ? "Organization" : "Individual"}") choice in the proponent question on ${page.url()}; it offers ${await offered()}`);
     }
     if (await radio.isChecked()) return;
     if (await isDisabled(radio)) throw new Error(`${where} — the "${words}" choice is disabled on ${page.url()}`);
-    await seen(proposalMain().getByRole("radiogroup").getByText(words, { exact: true })).first().click();
+    await (marked ? label.first() : seen(proposalMain().getByRole("radiogroup").getByText(named)).first()).click();
     await settle();
     if (!(await radio.isChecked())) await radio.check({ force: true }).catch(() => undefined);
   }
@@ -10136,7 +12255,8 @@ export default function create(
     for (const [key, value] of rest) {
       const slot = PROPOSAL_FIELDS.find(([, keys]) => keys.map(squash).includes(squash(key)));
       const label = slot ? slot[0] : labelFor(key);
-      const box = proposalBox(label);
+      const line = streetLine(label);
+      const box = line >= 0 ? seen(proposalMain().getByRole("textbox", { name: STREET_ANY })).nth(line) : proposalBox(label);
       if (!(await box.count())) {
         unbound(where, `no field on ${page.url()} takes "${key}" (looked for one labelled ${label}); it offers ${await offered()}`);
       }
@@ -10152,6 +12272,10 @@ export default function create(
   // A test hands an action only the values its criterion is about; every other required
   // field is given something valid, so the form will submit on what the test did give. A
   // field the test named, even as empty, is never touched; nor is one already filled.
+  // The organization chooser with nothing picked: it read "Select an item" once, and on the
+  // create form now reads just "Organization" until one is picked, when it shows the
+  // organization's legal name instead.
+  const CHOOSER_EMPTY = /^\s*(select an item|organization)?\s*$/i;
   async function completeProposal(): Promise<void> {
     const boxes = seen(proposalMain().getByRole("textbox", { name: /\(required\)/i }));
     for (let i = 0; i < (await boxes.count()); i++) {
@@ -10170,7 +12294,7 @@ export default function create(
       (await chooser.count()) &&
       !proposalNamed.has("organization") &&
       !proposalOrganizationWithheld &&
-      /select an item/i.test(await chooser.innerText().catch(() => ""))
+      CHOOSER_EMPTY.test(await chooser.innerText().catch(() => "x"))
     ) {
       await chooser.click();
       const first = seen(page.getByRole("option")).first();
@@ -10210,7 +12334,16 @@ export default function create(
     if (await dialogShown(300)) return tickAgreedTerms();
     if (!(await onProposal(where))) return false;
     const ask = async (): Promise<boolean> => {
-      const submit = seen(proposalMain().getByRole("button", { name: /^\s*(submit proposal|save changes and submit)\s*$/i })).first();
+      // "Submit" on the create form (beside "Save Draft" and "Cancel"), "Submit proposal" on the
+      // proposal's screen ("proposal-submit"), "Save changes and submit" with its fields open
+      // ("proposal-save-and-submit"). The bare word is taken only as a button's whole name, so
+      // no other button on the form answers to it.
+      const submit = seen(
+        proposalMain()
+          .getByTestId("proposal-save-and-submit")
+          .or(proposalMain().getByTestId("proposal-submit"))
+          .or(proposalMain().getByRole("button", { name: /^\s*(submit( proposal)?|save changes and submit)\s*$/i })),
+      ).first();
       if (!(await submit.count())) {
         unbound(where, `no "Submit proposal" on ${page.url()}; it offers ${await offered()}`);
       }
@@ -10235,9 +12368,9 @@ export default function create(
   }
 
   async function tickAgreedTerms(): Promise<boolean> {
-    const box = openDialog().first();
+    const box = termsDialog();
     for (const which of proposalTermsAgreed) {
-      const tick = seen(box.getByRole("checkbox", { name: which === "program" ? PROGRAM_TERMS : APP_TERMS })).first();
+      const tick = termsBox(box, which, which === "program" ? PROGRAM_TERMS : APP_TERMS);
       if ((await tick.count()) && !(await tick.isChecked())) await tick.check();
     }
     return true;
@@ -10246,9 +12379,9 @@ export default function create(
   async function agreeToTerms(where: string, which: "program" | "app"): Promise<void> {
     proposalTermsAgreed.add(which);
     if (!(await openProposalTerms(where))) return;
-    const tick = seen(openDialog().first().getByRole("checkbox", { name: which === "program" ? PROGRAM_TERMS : APP_TERMS })).first();
+    const tick = termsBox(termsDialog(), which, which === "program" ? PROGRAM_TERMS : APP_TERMS);
     if (!(await tick.count())) {
-      unbound(where, `the "Submit your proposal" dialog on ${page.url()} has no box accepting the ${which === "program" ? "Code With Us" : "Digital Marketplace"} terms; it reads: ${(await openDialog().first().innerText()).replace(/\s+/g, " ")}`);
+      unbound(where, `the "Submit your proposal" dialog on ${page.url()} has no box accepting the ${which === "program" ? "Code With Us" : "Digital Marketplace"} terms; it reads: ${(await termsDialog().innerText()).replace(/\s+/g, " ")}`);
     }
     if (!(await tick.isChecked())) await tick.check();
     // Put away so the form behind it can be reached again; the submit reopens and reticks it.
@@ -10258,8 +12391,8 @@ export default function create(
   // The dialog's own "Submit proposal", pressed once the boxes agreed to are ticked. Disabled,
   // it names the boxes left unticked, so a submit without the terms fails on that.
   async function confirmProposalSubmit(where: string): Promise<void> {
-    const box = openDialog().first();
-    const confirm = seen(box.getByRole("button", { name: /^\s*submit( proposal)?\s*$/i })).first();
+    const box = termsDialog();
+    const confirm = termsConfirm(box);
     if (!(await confirm.count())) unbound(where, `the "Submit your proposal" dialog on ${page.url()} offers no "Submit proposal"`);
     if (await isDisabled(confirm)) {
       const unticked: string[] = [];
@@ -10315,12 +12448,17 @@ export default function create(
   // "Proposal ID", "Opportunity ID" under the heading) as the client draws it, so the terms
   // are read until the one asked for is there, or until the screen's terms have held still
   // for a moment without it — that screen does not carry the term, and reads as nothing.
-  async function proposalTerm(label: RegExp): Promise<string> {
+  async function proposalTerm(label: RegExp, testId?: string): Promise<string> {
     if (!(await proposalShown())) return "";
     const deadline = Date.now() + 10000;
     const started = Date.now();
     let last = "";
     for (;;) {
+      // The value carries its test ID ("proposal-status", "proposal-identifier" and the rest).
+      if (testId) {
+        const marked = await testIdText(testId);
+        if (marked) return marked;
+      }
       const names = (await seen(proposalMain().getByRole("term")).allInnerTexts().catch(() => [] as string[])).map((one) => one.trim());
       const values = (await seen(proposalMain().getByRole("definition")).allInnerTexts().catch(() => [] as string[])).map((one) => one.trim());
       const at = names.findIndex((name) => label.test(name));
@@ -10337,6 +12475,24 @@ export default function create(
       last = now;
       await page.waitForTimeout(250);
     }
+  }
+
+  // The proposal's status as the restyled manage page's head draws it: "Manage a Code With Us
+  // proposal", then the program and the status side by side ("Code With Us" / "Draft"), then
+  // the opportunity's title as the heading. Seen as a vendor on a draft saved from the create
+  // page. The status is the line above the heading that names one, alone or after the
+  // program's name; "" when the head carries none.
+  const PROPOSAL_STATUS_WORDS = "draft|submitted|withdrawn|under review|evaluated|awarded|not awarded|disqualified";
+  const PROPOSAL_HEAD_STATUS = new RegExp(`^(?:code with us\\s+)?(${PROPOSAL_STATUS_WORDS})$`, "i");
+  async function proposalHeadStatus(): Promise<string> {
+    if (!(await proposalShown())) return "";
+    const title = (await seen(proposalMain().getByRole("heading", { level: 1 })).first().innerText().catch(() => "")).trim();
+    for (const line of await textLines()) {
+      if (title && line === title) break;
+      const found = PROPOSAL_HEAD_STATUS.exec(line);
+      if (found) return found[1];
+    }
+    return "";
   }
 
   // The definition that directly follows the term named by label, in the order main draws
@@ -10384,10 +12540,10 @@ export default function create(
 
   // A control of the screen's "Proposal actions", confirmed in the dialog it raises. Not
   // offered in the proposal's state, it is the page withholding it: recorded and left.
-  async function proposalAction(where: string, name: RegExp, confirm: RegExp | null): Promise<boolean> {
+  async function proposalAction(where: string, name: RegExp, confirm: RegExp | null, testId?: string): Promise<boolean> {
     if (!(await onProposal(where))) return false;
     await closeDialog();
-    const control = seen(proposalActions().getByRole("button", { name })).first();
+    const control = await proposalControl(name, testId);
     if (!(await control.count())) {
       noteRefusal(`${where} — ${page.url()} (Status: ${(await proposalTerm(/^status$/i)) || "not shown"}) does not offer ${name}; its actions: ${(await proposalActionNames()) || "none"}`);
       return false;
@@ -10411,7 +12567,7 @@ export default function create(
   // it said when it last refused a submit.
   async function proposalFieldMessages(): Promise<string> {
     if (!(await proposalShown())) return "";
-    if (await openDialog().count()) return lined(await openDialog().first().innerText()).filter((line) => /tick|accept/i.test(line) && !/^\s*i accept/i.test(line)).join("\n");
+    if (await openDialog().count()) return lined(await openDialog().first().innerText()).filter((line) => /tick|accept/i.test(line) && !/^\s*i (accept|acknowledge)/i.test(line)).join("\n");
     const found = lined(await formMessages());
     for (const line of proposalRefusal) if (!found.includes(line)) found.push(line);
     return found.join("\n");
@@ -10451,7 +12607,12 @@ export default function create(
       const where = `${PCWU_CREATE}.save_draft`;
       if (!(await enterProposal(where, input))) return;
       await closeDialog();
-      const save = seen(proposalMain().getByRole("button", { name: /^\s*(save draft|save changes)\s*$/i })).first();
+      const save = seen(
+        proposalMain()
+          .getByTestId("proposal-save-draft")
+          .or(proposalMain().getByTestId("proposal-save-changes"))
+          .or(proposalMain().getByRole("button", { name: /^\s*(save draft|save changes)\s*$/i })),
+      ).first();
       if (!(await save.count())) {
         noteRefusal(`${where} — ${page.url()} offers no "Save draft" (its actions: ${(await proposalActionNames()) || "none"})`);
         return;
@@ -10475,21 +12636,36 @@ export default function create(
       const where = `${PCWU_CREATE}.cancel`;
       await closeDialog();
       if (!(await onProposal(where))) return;
-      const group = (await proposalActions().count()) ? proposalActions() : saveChoices();
-      await press(where, /^\s*cancel\s*$/i, group);
+      // The create form's "Submit", "Save Draft" and "Cancel" sit in no named group now, below
+      // "The opportunity" in the "Opportunity and actions" side panel.
+      const panel = seen(proposalMain().getByRole("complementary", { name: /opportunity and actions/i })).first();
+      const group = (await carried("proposal-cancel"))
+        ? page
+        : (await proposalActions().count())
+          ? proposalActions()
+          : (await saveChoices().count())
+            ? saveChoices()
+            : (await panel.count())
+              ? panel
+              : proposalMain();
+      await press(where, /^\s*cancel\s*$/i, group, "proposal-cancel");
     },
     fieldError: () => proposalFieldMessages(),
-    // Each refusal as "<Field>: <message>", the way the form's alert lists them.
+    // Each refusal as "<Field>: <message>", the way the form's alert lists them
+    // ("proposal-field-errors", one "field-error" per fault).
     fieldErrorsByField: async () => {
       if (!(await proposalShown())) return "";
-      const found = (await proposalAlertLines()).filter((line) => /^[^:]{1,60}:\s+\S/.test(line));
+      const listed = (await testIdTexts("proposal-field-errors")).flatMap(lined);
+      const found = (listed.length ? listed : await proposalAlertLines()).filter((line) => /^[^:]{1,60}:\s+\S/.test(line));
       for (const line of proposalRefusal) if (/^[^:]{1,60}:\s+\S/.test(line) && !found.includes(line)) found.push(line);
       return found.join("\n");
     },
-    // The form's "The opportunity" region: the opportunity, its reward and its deadline.
+    // The form's summary of the opportunity ("proposal-opportunity-summary"; once the region
+    // "The opportunity"): the opportunity, its reward and its deadline.
     opportunitySummary: async () => {
       if (!(await proposalShown())) return "";
-      const region = seen(proposalMain().getByRole("region", { name: /^\s*the opportunity\s*$/i })).first();
+      const marked = await carried("proposal-opportunity-summary");
+      const region = marked ? marked.first() : seen(proposalMain().getByRole("region", { name: /^\s*the opportunity\s*$/i })).first();
       if (!(await region.count())) {
         unbound(`${PCWU_CREATE}.opportunity_summary`, `no "The opportunity" part on ${page.url()}; it offers ${await offered()}`);
       }
@@ -10500,14 +12676,14 @@ export default function create(
       if (!(await openProposalTerms(where))) {
         unbound(where, `the form on ${page.url()} refused to submit, so no terms dialog could be opened: ${proposalRefusal.join(" | ") || "it raised none"}`);
       }
-      return (await openDialog().first().innerText()).trim();
+      return (await termsDialog().innerText()).trim();
     },
     submitDisabledUntilTermsAccepted: async () => {
       const where = `${PCWU_CREATE}.submit_disabled_until_terms_accepted`;
       if (!(await openProposalTerms(where))) {
         unbound(where, `the form on ${page.url()} refused to submit, so no terms dialog could be opened: ${proposalRefusal.join(" | ") || "it raised none"}`);
       }
-      const confirm = seen(openDialog().first().getByRole("button", { name: /^\s*submit( proposal)?\s*$/i })).first();
+      const confirm = termsConfirm(termsDialog());
       if (!(await confirm.count())) return "absent";
       return (await isDisabled(confirm)) ? "disabled" : "enabled";
     },
@@ -10526,7 +12702,8 @@ export default function create(
       const where = `${PCWU_EDIT}.save_changes`;
       if (!(await openProposalFields(where))) return;
       await fillProposal(where, input);
-      await press(where, /^\s*save changes\s*$/i, saveChoices());
+      const marked = await carried("proposal-save-changes");
+      await press(where, /^\s*save changes\s*$/i, marked ? page : saveChoices(), "proposal-save-changes");
       await landOnProposal();
     },
     saveChangesAndSubmit: async (input) => {
@@ -10542,7 +12719,7 @@ export default function create(
     submitProposal: async () => {
       const where = `${PCWU_EDIT}.submit_proposal`;
       if (!(await onProposal(where))) return;
-      if (!(await proposalFieldsOpen()) && !(await seen(proposalActions().getByRole("button", { name: /^\s*submit proposal\s*$/i })).count())) {
+      if (!(await proposalFieldsOpen()) && !(await (await proposalControl(/^\s*submit( proposal)?\s*$/i, "proposal-submit")).count())) {
         noteRefusal(`${where} — ${page.url()} (Status: ${(await proposalTerm(/^status$/i)) || "not shown"}) does not offer "Submit proposal"; its actions: ${(await proposalActionNames()) || "none"}`);
         return;
       }
@@ -10552,10 +12729,15 @@ export default function create(
       await confirmProposalSubmit(where);
     },
     withdrawProposal: async () => {
-      await proposalAction(`${PCWU_EDIT}.withdraw_proposal`, /^\s*withdraw\s*$/i, /^\s*withdraw( proposal)?\s*$/i);
+      await proposalAction(
+        `${PCWU_EDIT}.withdraw_proposal`,
+        /^\s*withdraw\s*$/i,
+        /^\s*withdraw( proposal)?\s*$/i,
+        "proposal-withdraw-button",
+      );
     },
     deleteProposal: async () => {
-      await proposalAction(`${PCWU_EDIT}.delete_proposal`, /^\s*delete\s*$/i, /^\s*delete( proposal)?\s*$/i);
+      await proposalAction(`${PCWU_EDIT}.delete_proposal`, /^\s*delete\s*$/i, /^\s*delete( proposal)?\s*$/i, "proposal-delete-button");
     },
     addAttachment: async (input) => {
       const where = `${PCWU_EDIT}.add_attachment`;
@@ -10571,21 +12753,28 @@ export default function create(
       if (!row) {
         unbound(where, `no attachment on ${page.url()} matches ${JSON.stringify(input)}; the list reads: ${(await rowLines(await itemsMatching(region, () => true))) || "nothing"}`);
       }
-      await press(where, /^\s*remove\b/i, row);
+      await press(where, /^\s*remove\b/i, row, "attachment-remove-button");
     },
-    proposalIdentifier: async () => ((await proposalShown()) ? (await proposalTerm(/^proposal id$/i)) || proposalPathId() : ""),
+    proposalIdentifier: async () =>
+      ((await proposalShown()) ? (await proposalTerm(/^proposal id$/i, "proposal-identifier")) || proposalPathId() : ""),
     opportunityIdentifier: async () =>
-      ((await proposalShown()) ? (await proposalTerm(/^opportunity id$/i)) || opportunityPathId() : ""),
+      ((await proposalShown()) ? (await proposalTerm(/^opportunity id$/i, "opportunity-identifier")) || opportunityPathId() : ""),
     // The "Proposal" section: the proponent, the proposal's text, comments and attachments,
-    // with what each box holds while the fields are open.
+    // with what each box holds while the fields are open. Its link carries
+    // "proposal-tab-proposal".
     proposalTab: async () => {
       if (!(await proposalShown())) return "";
-      const link = seen(proposalMain().getByRole("navigation", { name: /proposal sections/i }).getByRole("link", { name: /^\s*proposal\s*$/i })).first();
+      const marked = await carried("proposal-tab-proposal");
+      const link =
+        marked?.first() ??
+        seen(proposalMain().getByRole("navigation", { name: /proposal sections/i }).getByRole("link", { name: /^\s*proposal\s*$/i })).first();
       if ((await link.count()) && /tab=(?!proposal)/.test(new URL(page.url()).search)) {
         await link.click();
         await ready();
       }
-      const region = seen(proposalMain().getByRole("region", { name: /^\s*proposal\s*$/i })).first();
+      const label = marked ? (await link.innerText().catch(() => "")).replace(/\s+/g, " ").trim() : "";
+      const regionName = label ? new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : /^\s*proposal\s*$/i;
+      const region = seen(proposalMain().getByRole("region", { name: regionName })).first();
       if (!(await region.count())) {
         unbound(`${PCWU_EDIT}.proposal_tab`, `no "Proposal" section on ${page.url()}; it offers ${await offered()}`);
       }
@@ -10597,12 +12786,14 @@ export default function create(
       }
       return lines.join("\n");
     },
-    status: () => proposalTerm(/^status$/i),
-    submittedAt: () => proposalTerm(/^submitted( on| at)?$/i),
+    // Under its "Status" term, or, on the restyled head that labels it no longer, the label
+    // beside the program over the title ("Code With Us" / "Draft", read as "Draft").
+    status: async () => (await proposalTerm(/^status$/i, "proposal-status")) || proposalHeadStatus(),
+    submittedAt: () => proposalTerm(/^submitted( on| at)?$/i, "proposal-submitted-at"),
     // The vendor's screen shows no score or rank in any state walked (draft, submitted,
     // withdrawn); none shown reads as nothing.
-    score: () => proposalTerm(/^(total )?score$/i),
-    rank: () => proposalTerm(/^rank(ing)?$/i),
+    score: () => proposalTerm(/^(total )?score$/i, "proposal-score"),
+    rank: () => proposalTerm(/^rank(ing)?$/i, "proposal-rank"),
     availableActions: async () => ((await proposalShown()) ? proposalActionNames() : ""),
   };
 
@@ -10644,11 +12835,16 @@ export default function create(
   // A screen not offering the control to this reader in this state is the page withholding
   // it, recorded and left, as on the vendor's own proposal screen; a dialog that stays open
   // after its confirmation has refused, and is put away with what it said recorded.
-  async function staffProposalAction(where: string, name: RegExp, inDialog: (dialog: Locator) => Promise<void>): Promise<void> {
+  async function staffProposalAction(
+    where: string,
+    name: RegExp,
+    inDialog: (dialog: Locator) => Promise<void>,
+    testId?: string,
+  ): Promise<void> {
     if (!(await onProposal(where))) return;
     await closeDialog();
     await proposalActions().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
-    const control = seen(proposalActions().getByRole("button", { name })).first();
+    const control = await proposalControl(name, testId);
     if (!(await control.count())) {
       noteRefusal(`${where} — ${page.url()} (Status: ${(await proposalTerm(/^status$/i)) || "not shown"}) does not offer ${actingId()} a control named ${name}; its actions: ${(await proposalActionNames()) || "none"}`);
       return;
@@ -10711,26 +12907,43 @@ export default function create(
     }
   }
   async function enterProposalScore(where: string, input: unknown): Promise<void> {
-    await staffProposalAction(where, /^\s*(enter|edit) score\s*$/i, async (dialog) => {
-      await fillDialog(where, dialog, input, { label: /score/i, keys: ["score", "value", "total", "totalScore", "percent"] });
-      await confirmStaffDialog(where, dialog, /^\s*(enter|edit|save|submit) score\s*$/i);
-    });
-  }
-  async function disqualifyProposalBy(where: string, input: unknown): Promise<void> {
-    await staffProposalAction(where, /^\s*disqualify( proposal)?\s*$/i, async (dialog) => {
-      await fillDialog(where, dialog, input, { label: /reason/i, keys: ["reason", "disqualificationReason", "note", "text"] });
-      await confirmStaffDialog(where, dialog, /^\s*disqualify( proposal)?\s*$/i);
-    });
-  }
-  async function awardProposalBy(where: string): Promise<void> {
-    await staffProposalAction(where, /^\s*award( proposal)?\s*$/i, (dialog) =>
-      confirmStaffDialog(where, dialog, /^\s*award( proposal| opportunity)?\s*$/i),
+    await staffProposalAction(
+      where,
+      /^\s*(enter|edit) score\s*$/i,
+      async (dialog) => {
+        await fillDialog(where, dialog, input, { label: /score/i, keys: ["score", "value", "total", "totalScore", "percent"] });
+        await confirmStaffDialog(where, dialog, /^\s*(enter|edit|save|submit) score\s*$/i);
+      },
+      "proposal-enter-score",
     );
   }
-  // One of the screen's sections, opened from "Proposal sections", read whole.
-  async function cwuViewSection(name: RegExp): Promise<string> {
+  async function disqualifyProposalBy(where: string, input: unknown): Promise<void> {
+    await staffProposalAction(
+      where,
+      /^\s*disqualify( proposal)?\s*$/i,
+      async (dialog) => {
+        await fillDialog(where, dialog, input, { label: /reason/i, keys: ["reason", "disqualificationReason", "note", "text"] });
+        await confirmStaffDialog(where, dialog, /^\s*disqualify( proposal)?\s*$/i);
+      },
+      "proposal-disqualify-button",
+    );
+  }
+  async function awardProposalBy(where: string): Promise<void> {
+    await staffProposalAction(
+      where,
+      /^\s*award( proposal)?\s*$/i,
+      (dialog) => confirmStaffDialog(where, dialog, /^\s*award( proposal| opportunity)?\s*$/i),
+      "proposal-award-button",
+    );
+  }
+  // One of the screen's sections, opened from its link ("proposal-tab-<section>", or under
+  // "Proposal sections"), read whole: the region named as the link reads.
+  async function cwuViewSection(name: RegExp, testId?: string): Promise<string> {
     if (!(await proposalShown())) return "";
-    const link = seen(proposalMain().getByRole("navigation", { name: /proposal sections/i }).getByRole("link", { name })).first();
+    const marked = testId ? await carried(testId) : null;
+    const link = marked
+      ? marked.first()
+      : seen(proposalMain().getByRole("navigation", { name: /proposal sections/i }).getByRole("link", { name })).first();
     if (!(await link.count())) return "";
     const href = (await link.getAttribute("href")) ?? "";
     const wanted = /[?&]tab=([^&#]+)/.exec(href)?.[1] ?? "";
@@ -10738,7 +12951,9 @@ export default function create(
       await link.click();
       await ready();
     }
-    const region = seen(regionNamed(proposalMain(), name)).first();
+    const label = marked ? (await link.innerText().catch(() => "")).replace(/\s+/g, " ").trim() : "";
+    const regionName = label ? new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : name;
+    const region = seen(regionNamed(proposalMain(), regionName)).first();
     await region.waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
     return (await region.count()) ? lined(await region.innerText()).join("\n") : "";
   }
@@ -10750,31 +12965,43 @@ export default function create(
     enterScore: (input) => enterProposalScore(`${PCWU_VIEW}.enter_score`, input),
     awardProposal: () => awardProposalBy(`${PCWU_VIEW}.award_proposal`),
     disqualifyProposal: (input) => disqualifyProposalBy(`${PCWU_VIEW}.disqualify_proposal`, input),
-    proposalIdentifier: async () => ((await proposalShown()) ? (await proposalTerm(/^proposal id$/i)) || proposalPathId() : ""),
+    proposalIdentifier: async () =>
+      ((await proposalShown()) ? (await proposalTerm(/^proposal id$/i, "proposal-identifier")) || proposalPathId() : ""),
     // The "Proposal" section: Proponent (type and organization or name), Proposal text,
     // Additional comments, Attachments.
-    proposalTab: () => cwuViewSection(/^\s*proposal\s*$/i),
+    proposalTab: () => cwuViewSection(/^\s*proposal\s*$/i, "proposal-tab-proposal"),
     // The "History" section: its caption and table, one line per row, cells tab-separated as
     // the screen draws them.
-    historyTab: () => cwuViewSection(/^\s*history\s*$/i),
-    // The name the screen gives the proponent: its level-1 heading.
+    historyTab: () => cwuViewSection(/^\s*history\s*$/i, "proposal-tab-history"),
+    // The name the screen gives the proponent: its level-1 heading ("proposal-proponent-name").
     proponent: async () => {
       if (!(await proposalShown())) return "";
+      const marked = await testIdText("proposal-proponent-name");
+      if (marked !== null) return marked;
       const heading = seen(proposalMain().getByRole("heading", { level: 1 })).first();
       return (await heading.count()) ? (await heading.innerText()).trim() : "";
     },
     // The Score term as shown: "82%", or "Not yet scored".
-    score: () => proposalTerm(/^score$/i),
+    score: () => proposalTerm(/^score$/i, "proposal-score"),
+    // The Rank term ("1 of 2"), drawn beside the Score once the proposal is evaluated (seen as
+    // the administrator on the seeded awarded Code With Us proposals); one not yet evaluated
+    // shows none, which reads as nothing.
     rank: async () => {
       if (!(await proposalShown())) return "";
-      const shown = await proposalTerm(/^rank(ing)?$/i);
+      const shown = await proposalTerm(/^rank(ing)?$/i, "proposal-rank");
       if (shown) return shown;
+      if (await carried("proposal-score")) return "";
       return unbound(`${PCWU_VIEW}.rank`, `the Code With Us proposal's screen shows no rank or ranking: ${PCWU_VIEW_WALKED}`);
     },
-    // "Printable copy", a link: "enabled" while the screen offers it, "absent" when it does not.
+    // "Printable copy" ("proposal-export-link"), a link: "enabled" while the screen offers
+    // it, "absent" when it does not.
     exportLink: async () => {
       if (!(await proposalShown())) return "absent";
-      const link = seen(proposalMain().getByRole("link", { name: /^\s*(printable copy|export( proposal)?)\s*$/i })).first();
+      const link = seen(
+        proposalMain()
+          .getByTestId("proposal-export-link")
+          .or(proposalMain().getByRole("link", { name: /^\s*(printable copy|export( proposal)?)\s*$/i })),
+      ).first();
       if (!(await link.count())) return "absent";
       return (await isDisabled(link)) ? "disabled" : "enabled";
     },
@@ -10819,8 +13046,10 @@ export default function create(
   }
   // The History section's table, one cell list per row (header row left out).
   async function teamViewHistoryRows(): Promise<string[][]> {
-    if (!(await cwuViewSection(/^\s*history\s*$/i))) return [];
-    const region = seen(regionNamed(proposalMain(), /^\s*history\s*$/i)).first();
+    if (!(await cwuViewSection(/^\s*history\s*$/i, "proposal-tab-history"))) return [];
+    // The table carries "proposal-history-table".
+    const marked = await carried("proposal-history-table");
+    const region = marked ? marked.first() : seen(regionNamed(proposalMain(), /^\s*history\s*$/i)).first();
     const rows = region.getByRole("row");
     const out: string[][] = [];
     for (let r = 0; r < (await rows.count()); r++) {
@@ -10844,10 +13073,11 @@ export default function create(
         await go(route, params as unknown as Record<string, string>);
         await ready();
       },
-      proposalIdentifier: async () => ((await proposalShown()) ? (await proposalTerm(/^proposal id$/i)) || proposalPathId() : ""),
+      proposalIdentifier: async () =>
+        ((await proposalShown()) ? (await proposalTerm(/^proposal id$/i, "proposal-identifier")) || proposalPathId() : ""),
       // The "Proposal" section: Organization, Team, the questions and their responses,
       // References and Attachments.
-      proposalTab: () => cwuViewSection(/^\s*proposal\s*$/i),
+      proposalTab: () => cwuViewSection(/^\s*proposal\s*$/i, "proposal-tab-proposal"),
       // The History table's rows, newest first, one per line, cells joined by " | " as the
       // screen orders them (Date | Entry | By | Note).
       historyTab: async () => (await teamViewHistoryRows()).map((cells) => cells.filter(Boolean).join(" | ")).join("\n"),
@@ -10870,8 +13100,13 @@ export default function create(
   // questions 100%, Challenge 80%, Price 100%, Total score 92%, Rank 1 of 1", and
   // ...a032...102, still at the challenge, "Challenge Not scored, Price Not scored, Total
   // score Not yet calculated" with no Rank term. A figure not yet held reads as nothing.
-  async function scoreTermIn(region: RegExp, label: RegExp): Promise<string> {
+  async function scoreTermIn(region: RegExp, label: RegExp, testId?: string): Promise<string> {
     if (!(await proposalShown())) return "";
+    // Each figure carries its own test ID ("proposal-total-score" and the rest).
+    if (testId) {
+      const marked = await testIdText(testId);
+      if (marked !== null) return /^(not (yet )?(scored|calculated|ranked)|[—–-])$/i.test(marked) ? "" : marked;
+    }
     const scope = seen(regionNamed(proposalMain(), region)).first();
     if (!(await scope.count())) return "";
     const names = (await seen(scope.getByRole("term")).allInnerTexts()).map((one) => one.trim());
@@ -10910,32 +13145,45 @@ export default function create(
   // than two decimal places".
   const SCORE_BUTTON = /^\s*(enter|edit)\b.*\bscore\s*$/i;
   const STAGE_NOT_REACHED = /can be scored once/i;
-  const SWU_STAGES = [
-    { action: "score_code_challenge", tab: /^\s*code challenge\s*$/i },
-    { action: "score_team_scenario", tab: /^\s*team scenario\s*$/i },
+  // Each stage's section link carries "proposal-tab-<stage>", and its score control
+  // "proposal-score-<stage>".
+  type Stage = { action: string; tab: RegExp; link: string; score: string };
+  const SWU_STAGES: Stage[] = [
+    { action: "score_code_challenge", tab: /^\s*code challenge\s*$/i, link: "proposal-tab-code-challenge", score: "proposal-score-code-challenge" },
+    { action: "score_team_scenario", tab: /^\s*team scenario\s*$/i, link: "proposal-tab-team-scenario", score: "proposal-score-team-scenario" },
   ];
-  const TWU_STAGES = [
-    { action: "score_resource_questions", tab: /^\s*resource questions\s*$/i },
-    { action: "score_challenge", tab: /^\s*(interview\/)?challenge\s*$/i },
+  const TWU_STAGES: Stage[] = [
+    {
+      action: "score_resource_questions",
+      tab: /^\s*resource questions\s*$/i,
+      link: "proposal-tab-resource-questions",
+      score: "proposal-score-resource-questions",
+    },
+    { action: "score_challenge", tab: /^\s*(interview\/)?challenge\s*$/i, link: "proposal-tab-challenge", score: "proposal-score-challenge" },
   ];
   const sectionsNav = (): Locator => seen(proposalMain().getByRole("navigation", { name: /^\s*proposal sections\s*$/i })).first();
   const stageActions = (region: Locator): Locator => seen(region.getByRole("group", { name: /\bactions\s*$/i })).first();
   async function sectionNames(): Promise<string> {
-    return (await seen(sectionsNav().getByRole("link")).allInnerTexts()).map((one) => one.trim()).filter(Boolean).join(", ");
+    const links = seen(page.getByTestId(/^proposal-tab-/)).or(seen(sectionsNav().getByRole("link")));
+    return (await links.allInnerTexts()).map((one) => one.trim()).filter(Boolean).join(", ");
   }
   // The stage's section, loaded from its own address so nothing of the section shown before
-  // lingers; null when the screen offers this reader no such section.
-  async function stageSection(tab: RegExp): Promise<Locator | null> {
-    const link = seen(sectionsNav().getByRole("link", { name: tab })).first();
+  // lingers; null when the screen offers this reader no such section. Found by its link's
+  // test ID where the screen carries it, its region named as that link reads.
+  async function stageSection(tab: RegExp, linkTestId?: string): Promise<Locator | null> {
+    const marked = linkTestId ? await carried(linkTestId) : null;
+    const link = marked ? marked.first() : seen(sectionsNav().getByRole("link", { name: tab })).first();
     if (!(await link.count())) return null;
     const href = (await link.getAttribute("href")) ?? "";
+    const label = marked ? (await link.innerText().catch(() => "")).replace(/\s+/g, " ").trim() : "";
     const wanted = /[?&]tab=([^&#]+)/.exec(href)?.[1] ?? "";
     if (!wanted || new URL(page.url()).searchParams.get("tab") !== wanted) {
       if (href) await visit(href);
       else await link.click();
       await ready();
     }
-    const region = seen(regionNamed(proposalMain(), tab)).first();
+    const name = label ? new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : tab;
+    const region = seen(regionNamed(proposalMain(), name)).first();
     await region.waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
     return (await region.count()) ? region : null;
   }
@@ -10948,10 +13196,10 @@ export default function create(
   // The notice the last score refused for the stage met, with the proposal it was on, so
   // wrong_stage_error still reads it once the reader has left the section.
   let stageRefusal: { proposal: string; notice: string } | null = null;
-  async function onStage(where: string, program: string, tab: RegExp): Promise<Locator | null> {
+  async function onStage(where: string, program: string, tab: RegExp, linkTestId?: string): Promise<Locator | null> {
     if (!(await onProposal(where))) return null;
     await closeDialog();
-    const region = await stageSection(tab);
+    const region = await stageSection(tab, linkTestId);
     if (!region) {
       unbound(where, `${page.url()} offers ${actingId()} no section named ${tab} under "Proposal sections" (its sections: ${(await sectionNames()) || "none"}); ${teamViewWalked(program)}`);
     }
@@ -10961,10 +13209,13 @@ export default function create(
   // section saying the proposal "can be scored once" the opportunity reaches the stage is
   // the page refusing: nothing is scored, and the notice is kept for wrong_stage_error. Any
   // other section without the control is the page withholding it, recorded and left.
-  async function scoreStage(where: string, program: string, tab: RegExp, input: unknown): Promise<void> {
-    const region = await onStage(where, program, tab);
+  async function scoreStage(where: string, program: string, stage: Stage, input: unknown): Promise<void> {
+    const tab = stage.tab;
+    const region = await onStage(where, program, tab, stage.link);
     if (!region) return;
-    const control = seen(stageActions(region).getByRole("button", { name: SCORE_BUTTON })).first();
+    const control = seen(
+      page.getByTestId(stage.score).or(stageActions(region).getByRole("button", { name: SCORE_BUTTON })),
+    ).first();
     if (!(await control.count())) {
       const notice = await stageNotice(region);
       if (notice) stageRefusal = { proposal: new URL(page.url()).pathname, notice };
@@ -10981,10 +13232,12 @@ export default function create(
   }
   // Screening in or out on the code challenge's section, applied at once; a confirmation,
   // should one ever be asked, is answered with the same words.
-  async function screenStage(where: string, program: string, tab: RegExp, name: RegExp): Promise<void> {
-    const region = await onStage(where, program, tab);
+  // The controls carry "proposal-screen-in" and "proposal-screen-out".
+  async function screenStage(where: string, program: string, stage: Stage, name: RegExp, testId: string): Promise<void> {
+    const tab = stage.tab;
+    const region = await onStage(where, program, tab, stage.link);
     if (!region) return;
-    const control = seen(stageActions(region).getByRole("button", { name })).first();
+    const control = seen(page.getByTestId(testId).or(stageActions(region).getByRole("button", { name }))).first();
     if (!(await control.count())) {
       noteRefusal(`${where} — ${page.url()} offers ${actingId()} no control named ${name} in its ${tab} section, which says: ${lined(await region.innerText()).join(" ")}`);
       return;
@@ -10998,6 +13251,8 @@ export default function create(
   // score just refused on this same proposal met; empty when there is none.
   async function wrongStageError(): Promise<string> {
     if (!(await proposalShown())) return "";
+    // A refusal the page marks "proposal-wrong-stage-error" is read whole.
+    if (await carried("proposal-wrong-stage-error")) return (await testIdTexts("proposal-wrong-stage-error")).flatMap(lined).join("\n");
     const shown = await stageNotice(proposalMain());
     if (shown) return shown;
     return stageRefusal && stageRefusal.proposal === new URL(page.url()).pathname ? stageRefusal.notice : "";
@@ -11005,14 +13260,15 @@ export default function create(
   // offered_score_actions: the page's own action names, one per line, for each stage whose
   // section offers "Enter … score" to this reader now; empty when none does. The reader is
   // put back on the section it was on.
-  async function offeredScoreActions(stages: { action: string; tab: RegExp }[]): Promise<string> {
+  async function offeredScoreActions(stages: Stage[]): Promise<string> {
     if (!(await proposalShown())) return "";
     const back = page.url();
     const offered: string[] = [];
     for (const stage of stages) {
-      const region = await stageSection(stage.tab);
+      const region = await stageSection(stage.tab, stage.link);
       if (!region) continue;
-      if (await seen(stageActions(region).getByRole("button", { name: SCORE_BUTTON })).count()) offered.push(stage.action);
+      const control = seen(page.getByTestId(stage.score).or(stageActions(region).getByRole("button", { name: SCORE_BUTTON })));
+      if (await control.count()) offered.push(stage.action);
     }
     if (page.url() !== back) {
       await visit(back);
@@ -11025,24 +13281,36 @@ export default function create(
   const PSWU_VIEW = "proposal-swu-view";
   const proposalSwuViewBound: S.ProposalSwuViewPage = {
     ...teamProposalView<S.ProposalSwuViewPage>(PSWU_VIEW, "/opportunities/sprint-with-us/:opportunityId/proposals/:proposalId", "sprint-with-us", []),
-    scoreCodeChallenge: (input) => scoreStage(`${PSWU_VIEW}.score_code_challenge`, "sprint-with-us", SWU_STAGES[0].tab, input),
+    scoreCodeChallenge: (input) => scoreStage(`${PSWU_VIEW}.score_code_challenge`, "sprint-with-us", SWU_STAGES[0], input),
     screenInToTeamScenario: () =>
-      screenStage(`${PSWU_VIEW}.screen_in_to_team_scenario`, "sprint-with-us", SWU_STAGES[0].tab, /^\s*screen in( to (the )?team scenario)?\s*$/i),
+      screenStage(
+        `${PSWU_VIEW}.screen_in_to_team_scenario`,
+        "sprint-with-us",
+        SWU_STAGES[0],
+        /^\s*screen in( to (the )?team scenario)?\s*$/i,
+        "proposal-screen-in",
+      ),
     screenOutFromTeamScenario: () =>
-      screenStage(`${PSWU_VIEW}.screen_out_from_team_scenario`, "sprint-with-us", SWU_STAGES[0].tab, /^\s*screen out( (of|from) (the )?team scenario)?\s*$/i),
-    scoreTeamScenario: (input) => scoreStage(`${PSWU_VIEW}.score_team_scenario`, "sprint-with-us", SWU_STAGES[1].tab, input),
+      screenStage(
+        `${PSWU_VIEW}.screen_out_from_team_scenario`,
+        "sprint-with-us",
+        SWU_STAGES[0],
+        /^\s*screen out( (of|from) (the )?team scenario)?\s*$/i,
+        "proposal-screen-out",
+      ),
+    scoreTeamScenario: (input) => scoreStage(`${PSWU_VIEW}.score_team_scenario`, "sprint-with-us", SWU_STAGES[1], input),
     // Each stage's section read whole, one line per line the screen draws.
-    teamQuestionsTab: () => cwuViewSection(/^\s*team questions\s*$/i),
-    codeChallengeTab: () => cwuViewSection(SWU_STAGES[0].tab),
-    teamScenarioTab: () => cwuViewSection(SWU_STAGES[1].tab),
+    teamQuestionsTab: () => cwuViewSection(/^\s*team questions\s*$/i, "proposal-tab-team-questions"),
+    codeChallengeTab: () => cwuViewSection(SWU_STAGES[0].tab, SWU_STAGES[0].link),
+    teamScenarioTab: () => cwuViewSection(SWU_STAGES[1].tab, SWU_STAGES[1].link),
     wrongStageError: () => wrongStageError(),
     offeredScoreActions: () => offeredScoreActions(SWU_STAGES),
-    questionsScore: () => scoreTermIn(SCORES, /^team questions( score)?$/i),
-    challengeScore: () => scoreTermIn(SCORES, /^code challenge( score)?$/i),
-    scenarioScore: () => scoreTermIn(SCORES, /^team scenario( score)?$/i),
-    priceScore: () => scoreTermIn(SCORES, /^price( score)?$/i),
-    totalScore: () => scoreTermIn(SCORES, /^total( score)?$/i),
-    rank: async () => asPlace(await scoreTermIn(SCORES, /^rank(ing)?$/i)),
+    questionsScore: () => scoreTermIn(SCORES, /^team questions( score)?$/i, "proposal-questions-score"),
+    challengeScore: () => scoreTermIn(SCORES, /^code challenge( score)?$/i, "proposal-challenge-score"),
+    scenarioScore: () => scoreTermIn(SCORES, /^team scenario( score)?$/i, "proposal-scenario-score"),
+    priceScore: () => scoreTermIn(SCORES, /^price( score)?$/i, "proposal-price-score"),
+    totalScore: () => scoreTermIn(SCORES, /^total( score)?$/i, "proposal-total-score"),
+    rank: async () => asPlace(await scoreTermIn(SCORES, /^rank(ing)?$/i, "proposal-rank")),
     awardProposal: () => awardProposalBy(`${PSWU_VIEW}.award_proposal`),
     disqualifyProposal: (input) => disqualifyProposalBy(`${PSWU_VIEW}.disqualify_proposal`, input),
   };
@@ -11050,8 +13318,13 @@ export default function create(
   // challenge follows from it: neither has a control on this screen. Each is looked for on the
   // Resource questions section when asked, and reported unbound with what is there.
   const PTWU_VIEW = "proposal-twu-view";
-  const twuLacks = (member: string, name: RegExp, what: string) => async (): Promise<never> => {
-    if (await proposalShown()) await stageSection(TWU_STAGES[0].tab);
+  const twuLacks = (member: string, name: RegExp, what: string, testId: string) => async (): Promise<never> => {
+    if (await proposalShown()) await stageSection(TWU_STAGES[0].tab, TWU_STAGES[0].link);
+    // Should the screen carry the control's test ID now, it has been built since this
+    // binding looked, and the next binding run binds it.
+    if (await carried(testId)) {
+      unbound(`${PTWU_VIEW}.${member}`, `${page.url()} now carries "${testId}", which this binding has not seen in use; the next binding run binds it (${teamViewWalked("team-with-us")})`);
+    }
     return teamViewLacks(PTWU_VIEW, "team-with-us", member, name, what);
   };
   const proposalTwuViewBound: S.ProposalTwuViewPage = {
@@ -11060,20 +13333,31 @@ export default function create(
       "score_resource_questions",
       /^\s*(enter|edit) (resource questions? )?scores?\s*$/i,
       "control to enter resource question scores (its Resource questions section sends the reader to the opportunity's Consensus tab, where the panel agrees them)",
+      "proposal-score-resource-questions",
     ),
-    screenInToChallenge: twuLacks("screen_in_to_challenge", /^\s*screen in\b/i, '"Screen in" control on the Resource questions or Challenge section'),
-    screenOutFromChallenge: twuLacks("screen_out_from_challenge", /^\s*screen out\b/i, '"Screen out" control on the Resource questions or Challenge section'),
-    scoreChallenge: (input) => scoreStage(`${PTWU_VIEW}.score_challenge`, "team-with-us", TWU_STAGES[1].tab, input),
-    resourceQuestionsTab: () => cwuViewSection(TWU_STAGES[0].tab),
-    challengeTab: () => cwuViewSection(TWU_STAGES[1].tab),
+    screenInToChallenge: twuLacks(
+      "screen_in_to_challenge",
+      /^\s*screen in\b/i,
+      '"Screen in" control on the Resource questions or Challenge section',
+      "proposal-screen-in",
+    ),
+    screenOutFromChallenge: twuLacks(
+      "screen_out_from_challenge",
+      /^\s*screen out\b/i,
+      '"Screen out" control on the Resource questions or Challenge section',
+      "proposal-screen-out",
+    ),
+    scoreChallenge: (input) => scoreStage(`${PTWU_VIEW}.score_challenge`, "team-with-us", TWU_STAGES[1], input),
+    resourceQuestionsTab: () => cwuViewSection(TWU_STAGES[0].tab, TWU_STAGES[0].link),
+    challengeTab: () => cwuViewSection(TWU_STAGES[1].tab, TWU_STAGES[1].link),
     wrongStageError: () => wrongStageError(),
     // Resource questions never offers a score here, so only score_challenge can be listed.
     offeredScoreActions: () => offeredScoreActions(TWU_STAGES),
-    questionsScore: () => scoreTermIn(SCORES, /^resource questions( score)?$/i),
-    challengeScore: () => scoreTermIn(SCORES, /^(interview\/)?challenge( score)?$/i),
-    priceScore: () => scoreTermIn(SCORES, /^price( score)?$/i),
-    totalScore: () => scoreTermIn(SCORES, /^total( score)?$/i),
-    rank: async () => asPlace(await scoreTermIn(SCORES, /^rank(ing)?$/i)),
+    questionsScore: () => scoreTermIn(SCORES, /^resource questions( score)?$/i, "proposal-questions-score"),
+    challengeScore: () => scoreTermIn(SCORES, /^(interview\/)?challenge( score)?$/i, "proposal-challenge-score"),
+    priceScore: () => scoreTermIn(SCORES, /^price( score)?$/i, "proposal-price-score"),
+    totalScore: () => scoreTermIn(SCORES, /^total( score)?$/i, "proposal-total-score"),
+    rank: async () => asPlace(await scoreTermIn(SCORES, /^rank(ing)?$/i, "proposal-rank")),
     awardProposal: () => awardProposalBy(`${PTWU_VIEW}.award_proposal`),
     disqualifyProposal: (input) => disqualifyProposalBy(`${PTWU_VIEW}.disqualify_proposal`, input),
   };
@@ -11098,8 +13382,8 @@ export default function create(
   // "Incomplete: …" while its team falls short, the list "Capabilities the <phase> phase
   // requires" ("Backend Development: held" / "not held"), the radio group "Scrum master for the
   // <phase> phase" listing each member (a pending one marked "Membership pending") with its
-  // "Scrum master: <name>, <phase> phase" radio and "Remove", the chooser "Team member to add to
-  // the <phase> phase" (pending people offered as "<name> (pending)") with "Add team member to
+  // radio named for the member alone and "Remove", the chooser "Team member to add to
+  // the <phase> phase" (pending people offered as "<name> (membership pending)") with "Add team member to
   // the <phase> phase", and "Proposed cost for the <phase> phase(required)", whose message
   // ("Please enter a Proposed Cost less than or equal to 500,000.") follows its hint once the
   // cost is over the phase's budget. "Submit proposal" stays disabled while any phase is
@@ -11151,7 +13435,14 @@ export default function create(
     await settle();
   }
 
-  const teamOrgChooser = (): Locator => seen(proposalMain().getByRole("button", { name: /organization\s*\(required\)/i })).first();
+  // The chooser sits inside "proposal-organization-field".
+  const teamOrgChooser = (): Locator =>
+    seen(
+      proposalMain()
+        .getByTestId("proposal-organization-field")
+        .getByRole("button")
+        .or(proposalMain().getByRole("button", { name: /organization\s*\(required\)/i })),
+    ).first();
 
   // The form's controls are on screen to be used: the create form, or the proposal's screen
   // once "Edit" is pressed.
@@ -11162,9 +13453,9 @@ export default function create(
   async function openTeamFields(where: string): Promise<boolean> {
     if (!(await onProposal(where))) return false;
     if (await teamFieldsOpen()) return true;
-    const edit = seen(proposalActions().getByRole("button", { name: /^\s*edit\s*$/i })).first();
+    const edit = await proposalControl(/^\s*edit\s*$/i, "proposal-edit-button");
     if (!(await edit.count())) {
-      noteRefusal(`${where} — ${page.url()} (Status: ${(await proposalTerm(/^status$/i)) || "not shown"}) offers no "Edit" (its actions: ${(await proposalActionNames()) || "none"})`);
+      noteRefusal(`${where} — ${page.url()} (Status: ${(await proposalTerm(/^status$/i, "proposal-status")) || "not shown"}) offers no "Edit" (its actions: ${(await proposalActionNames()) || "none"})`);
       return false;
     }
     await edit.click();
@@ -11174,13 +13465,14 @@ export default function create(
   }
 
   // A chooser drawn as a button that opens a list: the option named, or its pending form
-  // ("Quinn Placeholder (pending)"). False, with the list put away, when it is not offered.
+  // ("Quinn Placeholder (membership pending)", or the older "Quinn Placeholder (pending)"). False, with the list put away, when it is not offered.
   async function pickListed(opener: Locator, name: string): Promise<{ picked: boolean; offered: string[] }> {
     await opener.click();
     const options = seen(page.getByRole("option"));
     await options.first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
     const offered = (await options.allInnerTexts().catch(() => [] as string[])).map((one) => one.trim()).filter(Boolean);
-    const wanted = offered.find((one) => squash(one) === squash(name)) ?? offered.find((one) => squash(one) === squash(`${name} (pending)`));
+    const wanted = offered.find((one) => squash(one) === squash(name)) ?? offered.find((one) => squash(one) === squash(`${name} (pending)`)) ??
+      offered.find((one) => squash(one) === squash(`${name} (membership pending)`));
     if (!wanted) {
       await page.keyboard.press("Escape").catch(() => undefined);
       await settle();
@@ -11238,10 +13530,18 @@ export default function create(
   const phaseTitle = (word: string): string => word.charAt(0).toUpperCase() + word.slice(1);
   // The phases the form draws a group for, in the form's order (inception, prototype,
   // implementation, as it lays them out).
+  // Each phase's group carries "proposal-phase-team"; which phase it is, its name says.
   async function phasesShown(): Promise<string[]> {
     const shown: string[] = [];
     for (const word of TEAM_PHASES) {
-      if (await seen(proposalMain().getByRole("group", { name: new RegExp(`^\\s*${word} phase\\s*$`, "i") })).count()) shown.push(word);
+      const named = new RegExp(`^\\s*${word} phase\\s*$`, "i");
+      const groups = seen(
+        proposalMain()
+          .getByTestId("proposal-phase-team")
+          .and(proposalMain().getByRole("group", { name: named }))
+          .or(proposalMain().getByRole("group", { name: named })),
+      );
+      if (await groups.count()) shown.push(word);
     }
     return shown;
   }
@@ -11277,14 +13577,33 @@ export default function create(
     return names;
   }
 
-  async function onPhase(group: Locator, name: string): Promise<boolean> {
-    return (await seen(group.getByRole("radio", { name: new RegExp(`^\\s*scrum master: ${escapeRx(name)},`, "i") })).count()) > 0;
+  // A member's radio inside the phase's "Scrum master for the <phase> phase (required)" group,
+  // named for the member alone ("Charlie Placeholder"); the radio group carries
+  // "proposal-scrum-master". The older "Scrum master: <name>, <phase> phase" naming is still read.
+  function scrumMasterRadio(group: Locator, word: string, name: string): Locator {
+    const member = new RegExp(`^\\s*${escapeRx(name)}(?:\\s*\\(?(?:membership )?pending\\)?)?\\s*$`, "i");
+    const older = new RegExp(`^\\s*scrum master: ${escapeRx(name)},`, "i");
+    const chooser = group
+      .getByTestId("proposal-scrum-master")
+      .or(group.getByRole("radiogroup", { name: new RegExp(`^\\s*scrum master for the ${word} phase`, "i") }));
+    return seen(chooser.getByRole("radio", { name: member }).or(group.getByRole("radio", { name: older }))).first();
+  }
+
+  async function onPhase(group: Locator, word: string, name: string): Promise<boolean> {
+    return (await scrumMasterRadio(group, word, name).count()) > 0;
   }
 
   async function tickScrumMaster(where: string, word: string, group: Locator, name: string): Promise<void> {
-    const radio = seen(group.getByRole("radio", { name: new RegExp(`^\\s*scrum master: ${escapeRx(name)},`, "i") })).first();
+    const radio = scrumMasterRadio(group, word, name);
     if (!(await radio.count())) {
-      throw new Error(`${where} — "${name}" is not on the ${word} phase's team on ${page.url()}, so there is no "Scrum master: ${name}, ${word} phase" to choose`);
+      const listed = (
+        await seen(group.getByTestId("proposal-scrum-master").or(group.getByRole("radiogroup", { name: new RegExp(`^\\s*scrum master for the ${word} phase`, "i") }).getByRole("radio")))
+          .allInnerTexts()
+          .catch(() => [] as string[])
+      )
+        .map((one) => lined(one)[0] ?? "")
+        .filter(Boolean);
+      throw new Error(`${where} — "${name}" is not on the ${word} phase's team on ${page.url()}, so "Scrum master for the ${word} phase" has no radio named for them (it lists: ${listed.join(", ") || "nobody"})`);
     }
     if (!(await radio.isChecked())) await radio.check({ force: true });
     await settle();
@@ -11299,7 +13618,7 @@ export default function create(
     const names = await teamNames(typeof input === "string" && phaseWord(input) ? undefined : input);
     if (!names.length) unbound(where, `the input ${JSON.stringify(input)} names nobody for the ${word} phase`);
     for (const name of names) {
-      if (await onPhase(group, name)) continue;
+      if (await onPhase(group, word, name)) continue;
       const opener = seen(group.getByRole("button", { name: new RegExp(`team member to add to the ${word} phase`, "i") })).first();
       if (!(await opener.count())) unbound(where, `the ${word} phase on ${page.url()} offers no "Team member to add to the ${word} phase" chooser`);
       const { picked, offered: listed } = await pickListed(opener, name);
@@ -11307,7 +13626,12 @@ export default function create(
         noteRefusal(`${where} — the ${word} phase's chooser on ${page.url()} does not offer "${name}" (it offers: ${listed.join(", ") || "nobody"})`);
         continue;
       }
-      const add = seen(group.getByRole("button", { name: new RegExp(`^\\s*add team member to the ${word} phase\\s*$`, "i") })).first();
+      // The phase's own "Add team member" carries "proposal-add-team-member".
+      const add = seen(
+        group
+          .getByTestId("proposal-add-team-member")
+          .or(group.getByRole("button", { name: new RegExp(`^\\s*add team member to the ${word} phase\\s*$`, "i") })),
+      ).first();
       if (await isDisabled(add)) throw new Error(`${where} — "Add team member to the ${word} phase" is disabled on ${page.url()} with "${name}" chosen`);
       await add.click();
       await settle();
@@ -11332,7 +13656,13 @@ export default function create(
       typeof input === "number" || (typeof input === "string" && !phaseWord(input))
         ? String(input)
         : field(input, "cost", "proposedCost", "proposed_cost", "amount", "price", "value");
-    const box = seen(group.getByRole("textbox", { name: new RegExp(`^\\s*proposed cost for the ${word} phase`, "i") })).first();
+    // The box sits inside the phase's "proposal-phase-cost-field".
+    const box = seen(
+      group
+        .getByTestId("proposal-phase-cost-field")
+        .getByRole("textbox")
+        .or(group.getByRole("textbox", { name: new RegExp(`^\\s*proposed cost for the ${word} phase`, "i") })),
+    ).first();
     if (!(await box.count())) unbound(where, `the ${word} phase on ${page.url()} has no "Proposed cost for the ${word} phase" box`);
     await box.fill(value);
     await box.blur().catch(() => undefined);
@@ -11363,7 +13693,11 @@ export default function create(
   }
 
   async function fillHourlyRate(where: string, group: Locator, name: string, rate: string): Promise<void> {
-    const boxes = seen(group.getByRole("textbox", { name: name ? new RegExp(`^\\s*hourly rate for ${escapeRx(name)}`, "i") : /^\s*hourly rate for/i }));
+    // Each member's box sits inside a "proposal-hourly-rate-field" labelled for them.
+    const label = name ? new RegExp(`^\\s*hourly rate for ${escapeRx(name)}`, "i") : /^\s*hourly rate for/i;
+    const fields = group.getByTestId("proposal-hourly-rate-field");
+    const marked = seen((name ? fields.filter({ hasText: new RegExp(escapeRx(name), "i") }) : fields).getByRole("textbox"));
+    const boxes = (await marked.count()) ? marked : seen(group.getByRole("textbox", { name: label }));
     if (!(await boxes.count())) unbound(where, `no "Hourly rate for ${name || "<member>"}" box in the resource on ${page.url()}${name ? "" : " (nobody is named on it yet)"}`);
     const box = name ? boxes.first() : boxes.last();
     await box.fill(rate);
@@ -11390,7 +13724,12 @@ export default function create(
           noteRefusal(`${where} — the chooser for resource ${at} on ${page.url()} does not offer "${name}" (it offers: ${listed.join(", ") || "nobody"})`);
           continue;
         }
-        const add = seen(group.getByRole("button", { name: new RegExp(`^\\s*add team member to resource ${at}\\s*$`, "i") })).first();
+        // The resource's own "Add team member" carries "proposal-add-team-member".
+        const add = seen(
+          group
+            .getByTestId("proposal-add-team-member")
+            .or(group.getByRole("button", { name: new RegExp(`^\\s*add team member to resource ${at}\\s*$`, "i") })),
+        ).first();
         if (await isDisabled(add)) throw new Error(`${where} — "Add team member to resource ${at}" is disabled on ${page.url()} with "${name}" chosen`);
         await add.click();
         await settle();
@@ -11415,7 +13754,12 @@ export default function create(
     const ordered = Number.parseInt(field(input, "order", "index", "position"), 10);
     const at = place ?? (Number.isFinite(numbered) && numbered > 0 ? numbered : Number.isFinite(ordered) && ordered >= 0 ? ordered + 1 : 1);
     const text = typeof input === "string" || typeof input === "number" ? String(input) : field(input, "response", "answer", "text", "body", "value", "content");
-    const box = seen(proposalMain().getByRole("textbox", { name: new RegExp(`^\\s*response to question ${at}\\b`, "i") })).first();
+    // The n-th "proposal-question-response-field" holds question n's box.
+    const wrapper = byTestId("proposal-question-response-field", proposalMain()).nth(at - 1);
+    const marked = seen(wrapper.getByRole("textbox")).first();
+    const box = (await marked.count())
+      ? marked
+      : seen(proposalMain().getByRole("textbox", { name: new RegExp(`^\\s*response to question ${at}\\b`, "i") })).first();
     if (!(await box.count())) unbound(where, `no "Response to question ${at}" box on ${page.url()}; it offers ${await offered()}`);
     await box.fill(text);
     await box.blur().catch(() => undefined);
@@ -11425,7 +13769,13 @@ export default function create(
   // the list), "Add a reference" making room for it; Name, Company, Email address and Phone
   // number are the boxes each one has. A key with no box is reported, never dropped.
   async function addTeamReferences(where: string, input: unknown): Promise<void> {
-    const region = seen(proposalMain().getByRole("region", { name: /^\s*references\s*$/i })).first();
+    // The section holding "Add a reference" ("proposal-add-reference"), or the one so named.
+    const region = seen(
+      proposalMain()
+        .getByRole("region")
+        .filter({ has: page.getByTestId("proposal-add-reference") })
+        .or(proposalMain().getByRole("region", { name: /^\s*references\s*$/i })),
+    ).last();
     if (!(await region.count())) unbound(where, `no "References" section on ${page.url()}; it offers ${await offered()}`);
     const boxes: [RegExp, string[]][] = [
       [/^\s*name\b/i, ["name", "fullName", "full_name", "referenceName"]],
@@ -11444,7 +13794,7 @@ export default function create(
       const at = Number.isFinite(numbered) && numbered > 0 ? numbered : Number.isFinite(ordered) && ordered >= 0 ? ordered + 1 : place + 1;
       const group = (): Locator => seen(region.getByRole("group", { name: new RegExp(`^\\s*reference ${at}\\s*$`, "i") })).first();
       for (let tries = 0; tries < at && !(await group().count()); tries++) {
-        await press(where, /^\s*add a reference\s*$/i, region);
+        await press(where, /^\s*add a reference\s*$/i, region, "proposal-add-reference");
       }
       if (!(await group().count())) unbound(where, `"Add a reference" made no "Reference ${at}" on ${page.url()}`);
       for (const [label, keys] of boxes) {
@@ -11505,7 +13855,8 @@ export default function create(
   // A test hands a submit only the values its criterion is about; a question response left
   // empty is given something, so the form is refused only for what the test is about.
   async function completeTeamAnswers(): Promise<void> {
-    const boxes = seen(proposalMain().getByRole("textbox", { name: /^\s*response to question \d+/i }));
+    const marked = seen(proposalMain().getByTestId("proposal-question-response-field").getByRole("textbox"));
+    const boxes = (await marked.count()) ? marked : seen(proposalMain().getByRole("textbox", { name: /^\s*response to question \d+/i }));
     for (let i = 0; i < (await boxes.count()); i++) {
       const box = boxes.nth(i);
       if (!(await box.isEditable().catch(() => false))) continue;
@@ -11541,17 +13892,24 @@ export default function create(
         }),
       )
       .catch(() => [] as string[]);
+    // The messages carry "field-error"; read by it only when no box names its own, as
+    // formMessages does, since the two are not always worded alike.
+    if (!found.some(Boolean) && (await carried("field-error", proposalMain()))) {
+      return [...new Set((await testIdTexts("field-error", proposalMain())).flatMap(lined))].join("\n");
+    }
     return [...new Set(found.filter(Boolean))].join("\n");
   }
 
   // The terms dialog open, with the terms agreed to ticked; false when the form held its
   // submit back or refused it (the reasons kept for the readers).
-  async function openTeamTerms(where: string, submitName: RegExp, group: () => Locator): Promise<boolean> {
+  async function openTeamTerms(where: string, submitName: RegExp, group: () => Locator, testId?: string): Promise<boolean> {
     if (await dialogShown(300)) return tickTeamTerms();
     if (!(await onProposal(where))) return false;
-    const submit = seen(group().getByRole("button", { name: submitName })).first();
+    // The submit carries its test ID ("proposal-submit", "proposal-save-and-submit").
+    const marked = testId ? await carried(testId) : null;
+    const submit = marked ? marked.first() : seen(group().getByRole("button", { name: submitName })).first();
     if (!(await submit.count())) {
-      noteRefusal(`${where} — ${page.url()} (Status: ${(await proposalTerm(/^status$/i)) || "not shown"}) offers no ${submitName}; its actions: ${(await proposalActionNames()) || "none"}`);
+      noteRefusal(`${where} — ${page.url()} (Status: ${(await proposalTerm(/^status$/i, "proposal-status")) || "not shown"}) offers no ${submitName}; its actions: ${(await proposalActionNames()) || "none"}`);
       return false;
     }
     // The contract has submit held back while a phase is incomplete or a cost over budget:
@@ -11576,9 +13934,9 @@ export default function create(
   }
 
   async function tickTeamTerms(): Promise<boolean> {
-    const box = openDialog().first();
+    const box = termsDialog();
     for (const which of teamTermsAgreed) {
-      const tick = seen(box.getByRole("checkbox", { name: which === "program" ? TEAM_PROGRAM_TERMS : APP_TERMS })).first();
+      const tick = termsBox(box, which, which === "program" ? TEAM_PROGRAM_TERMS : APP_TERMS);
       if ((await tick.count()) && !(await tick.isChecked())) await tick.check();
     }
     return true;
@@ -11586,10 +13944,10 @@ export default function create(
 
   async function agreeToTeamTerms(where: string, which: "program" | "app", group: () => Locator): Promise<void> {
     teamTermsAgreed.add(which);
-    if (!(await openTeamTerms(where, /^\s*submit proposal\s*$/i, group))) return;
-    const tick = seen(openDialog().first().getByRole("checkbox", { name: which === "program" ? TEAM_PROGRAM_TERMS : APP_TERMS })).first();
+    if (!(await openTeamTerms(where, /^\s*submit proposal\s*$/i, group, "proposal-submit"))) return;
+    const tick = termsBox(termsDialog(), which, which === "program" ? TEAM_PROGRAM_TERMS : APP_TERMS);
     if (!(await tick.count())) {
-      unbound(where, `the "Submit your proposal" dialog on ${page.url()} has no box accepting the ${which === "program" ? "program's" : "Digital Marketplace"} terms; it reads: ${(await openDialog().first().innerText()).replace(/\s+/g, " ")}`);
+      unbound(where, `the "Submit your proposal" dialog on ${page.url()} has no box accepting the ${which === "program" ? "program's" : "Digital Marketplace"} terms; it reads: ${(await termsDialog().innerText()).replace(/\s+/g, " ")}`);
     }
     if (!(await tick.isChecked())) await tick.check();
     // Put away so the form behind it can be reached again; the submit reopens and reticks it.
@@ -11612,8 +13970,8 @@ export default function create(
   }
 
   async function confirmTeamSubmit(where: string): Promise<void> {
-    const box = openDialog().first();
-    const confirm = seen(box.getByRole("button", { name: /^\s*submit( proposal)?\s*$/i })).first();
+    const box = termsDialog();
+    const confirm = termsConfirm(box);
     if (!(await confirm.count())) unbound(where, `the "Submit your proposal" dialog on ${page.url()} offers no "Submit proposal"`);
     if (await isDisabled(confirm)) {
       throw new Error(`${where} — "Submit proposal" in the terms dialog is disabled on ${page.url()}; the terms were not all accepted (${(await seen(box.getByRole("checkbox")).count())} boxes, ${[...teamTermsAgreed].join(", ") || "none"} agreed)`);
@@ -11628,7 +13986,7 @@ export default function create(
     await closeDialog();
     if (!(await openTeamFields(where))) return;
     await fillTeamProposal(where, program, input);
-    const save = seen(proposalMain().getByRole("button", { name: /^\s*save draft\s*$/i })).first();
+    const save = seen(proposalMain().getByTestId("proposal-save-draft").or(proposalMain().getByRole("button", { name: /^\s*save draft\s*$/i }))).first();
     if (!(await save.count())) {
       noteRefusal(`${where} — ${page.url()} offers no "Save draft" (its actions: ${(await proposalActionNames()) || "none"})`);
       return;
@@ -11644,7 +14002,7 @@ export default function create(
     if (!(await openTeamFields(where))) return;
     await fillTeamProposal(where, program, input);
     await completeTeamAnswers();
-    if (!(await openTeamTerms(where, /^\s*submit proposal\s*$/i, proposalActions))) return;
+    if (!(await openTeamTerms(where, /^\s*submit proposal\s*$/i, proposalActions, "proposal-submit"))) return;
     await confirmTeamSubmit(where);
   }
 
@@ -11661,7 +14019,9 @@ export default function create(
   // as its lines; nothing when it is qualified or none is chosen.
   async function unqualifiedNotice(): Promise<string> {
     if (!(await proposalShown())) return "";
-    const notes = seen(proposalMain().getByRole("note")).filter({ hasText: /not qualified/i });
+    // The note carries "proposal-unqualified-organization-notice".
+    const marked = await carried("proposal-unqualified-organization-notice");
+    const notes = marked ?? seen(proposalMain().getByRole("note")).filter({ hasText: /not qualified/i });
     const lines: string[] = [];
     for (let i = 0; i < (await notes.count()); i++) lines.push(...lined(await notes.nth(i).innerText()));
     return lines.join("\n");
@@ -11669,15 +14029,23 @@ export default function create(
 
   async function capabilityGap(): Promise<string> {
     if (!(await proposalShown())) return "";
+    // The gap carries "proposal-capability-gap-error"; otherwise it is read from the
+    // "Capabilities" section by its words.
+    const marked = (await testIdTexts("proposal-capability-gap-error")).flatMap(lined);
     const region = seen(proposalMain().getByRole("region", { name: /^\s*capabilities\s*$/i })).first();
-    const lines = (await region.count()) ? lined(await region.innerText()).filter((line) => /\bdoes not (yet )?hold\b/i.test(line)) : [];
+    const lines = marked.length
+      ? marked
+      : (await region.count())
+        ? lined(await region.innerText()).filter((line) => /\bdoes not (yet )?hold\b/i.test(line))
+        : [];
     for (const line of (await teamFormMessages()).split("\n")) if (line && /capabilit/i.test(line) && !lines.includes(line)) lines.push(line);
     return lines.join("\n");
   }
 
   async function budgetExceeded(): Promise<string> {
     if (!(await proposalShown())) return "";
-    const lines: string[] = [];
+    // The refusal the page marks "proposal-budget-exceeded-error" is read first.
+    const lines: string[] = [...new Set((await testIdTexts("proposal-budget-exceeded-error")).flatMap(lined))];
     for (const line of [...(await costErrorLines()).map((one) => one.replace(/^[^:]+:\s*/, "")), ...(await teamFormMessages()).split("\n")]) {
       if (line && /budget|exceed/i.test(line) && !lines.includes(line)) lines.push(line);
     }
@@ -11689,7 +14057,13 @@ export default function create(
   async function costErrorLines(): Promise<string[]> {
     const found: string[] = [];
     for (const word of await phasesShown()) {
-      const box = seen(proposalMain().getByRole("textbox", { name: new RegExp(`^\\s*proposed cost for the ${word} phase`, "i") })).first();
+      const group = seen(proposalMain().getByRole("group", { name: new RegExp(`^\\s*${word} phase\\s*$`, "i") })).first();
+      const box = seen(
+        group
+          .getByTestId("proposal-phase-cost-field")
+          .getByRole("textbox")
+          .or(proposalMain().getByRole("textbox", { name: new RegExp(`^\\s*proposed cost for the ${word} phase`, "i") })),
+      ).first();
       if (!(await box.count())) continue;
       const said = await box
         .evaluate((element) => {
@@ -11700,10 +14074,11 @@ export default function create(
         .catch(() => "");
       if (said) found.push(`${phaseTitle(word)}: ${said}`);
     }
-    const region = seen(proposalMain().getByRole("region", { name: /^\s*cost\s*$/i })).first();
+    // The section is named "Cost" or, numbered among the form's parts, "4. Cost".
+    const region = seen(proposalMain().getByRole("region", { name: /^\s*(?:\d+\.\s*)?cost\s*$/i })).first();
     if (await region.count()) {
       for (const line of lined(await region.innerText())) {
-        if (/^cost$|^total proposed cost:|^each hourly rate|^estimated cost/i.test(line)) continue;
+        if (/^(?:\d+\.\s*)?cost$|^total proposed cost:|^each hourly rate|^estimated cost/i.test(line)) continue;
         found.push(`total: ${line}`);
       }
     }
@@ -11717,7 +14092,7 @@ export default function create(
     await opener.click();
     const options = seen(page.getByRole("option"));
     await options.first().waitFor({ state: "visible", timeout: 5000 }).catch(() => undefined);
-    const names = (await options.allInnerTexts().catch(() => [] as string[])).map((one) => one.replace(/\s*\(pending\)\s*$/i, "").trim()).filter(Boolean);
+    const names = (await options.allInnerTexts().catch(() => [] as string[])).map((one) => one.replace(/\s*\((?:membership )?pending\)\s*$/i, "").trim()).filter(Boolean);
     await page.keyboard.press("Escape").catch(() => undefined);
     await settle();
     return names.join("\n");
@@ -11744,11 +14119,16 @@ export default function create(
   // "<name> — Pending" for each member named on a phase whose membership is still pending.
   async function pendingMembers(): Promise<string> {
     if (!(await proposalShown())) return "";
-    const items = seen(proposalMain().getByRole("radiogroup", { name: /^\s*scrum master for the/i }).getByRole("listitem"));
+    // A member still pending is marked by "proposal-pending-team-member" in their item.
+    const marked = seen(proposalMain().getByRole("listitem").filter({ has: page.getByTestId("proposal-pending-team-member") }));
+    const items = (await marked.count())
+      ? marked
+      : seen(proposalMain().getByRole("radiogroup", { name: /^\s*scrum master for the/i }).getByRole("listitem"));
+    const byMark = (await marked.count()) > 0;
     const found: string[] = [];
     for (const words of await items.allInnerTexts()) {
       const lines = lined(words);
-      if (!lines.some((line) => /^membership pending$/i.test(line))) continue;
+      if (!byMark && !lines.some((line) => /^membership pending$/i.test(line))) continue;
       const entry = `${lines[0]} — Pending`;
       if (!found.includes(entry)) found.push(entry);
     }
@@ -11761,14 +14141,41 @@ export default function create(
   }
 
   // "<Phase> | complete|incomplete | <required capabilities the team does not hold>".
+  // A phase is incomplete when its requirements say it "is incomplete" (or "Incomplete: …") and
+  // complete when they say it "meets its requirements"; what it lacks is the comma-separated
+  // list after "Not yet held:", or each capability marked ": not held".
+  function phaseRequirementState(said: string[]): { incomplete: boolean; missing: string[] } {
+    const text = said.join("\n");
+    const incomplete =
+      !/\bmeets its requirements\b/i.test(text) && (/\bis incomplete\b/i.test(text) || said.some((one) => /^\s*incomplete:/i.test(one)));
+    const missing: string[] = [];
+    for (const match of text.matchAll(/not yet held:\s*([^\n]*?)\s*(?:\.(?=\s|$)|\n|$)/gi)) {
+      for (const name of match[1].split(",").map((one) => one.trim()).filter(Boolean)) if (!missing.includes(name)) missing.push(name);
+    }
+    for (const one of said) {
+      if (!/:\s*not held$/i.test(one)) continue;
+      const name = one.replace(/:\s*not held$/i, "").trim();
+      if (name && !missing.includes(name)) missing.push(name);
+    }
+    return { incomplete, missing };
+  }
+
   async function phaseRequirementLines(): Promise<string> {
     if (!(await proposalShown())) return "";
     const lines: string[] = [];
     for (const word of await phasesShown()) {
       const group = seen(proposalMain().getByRole("group", { name: new RegExp(`^\\s*${word} phase\\s*$`, "i") })).first();
-      const incomplete = (await paragraphs(group)).some((one) => /^\s*incomplete:/i.test(one));
+      // The phase's requirements carry "proposal-phase-requirements": whether its team is
+      // incomplete and the capabilities it does not yet hold.
+      const marked = byTestId("proposal-phase-requirements", group);
+      if (await marked.count()) {
+        // The phase group's own sentences are read beside it, wherever "Not yet held:" sits.
+        const { incomplete, missing } = phaseRequirementState([...lined(await marked.first().innerText()), ...(await paragraphs(group))]);
+        lines.push(`${phaseTitle(word)} | ${incomplete ? "incomplete" : "complete"} | ${missing.join(", ")}`);
+        continue;
+      }
       const items = await seen(group.getByRole("list", { name: /^\s*capabilities the .* phase requires/i }).getByRole("listitem")).allInnerTexts();
-      const missing = items.map((one) => one.trim()).filter((one) => /:\s*not held$/i.test(one)).map((one) => one.replace(/:\s*not held$/i, "").trim());
+      const { incomplete, missing } = phaseRequirementState([...(await paragraphs(group)), ...items.map((one) => one.trim())]);
       lines.push(`${phaseTitle(word)} | ${incomplete ? "incomplete" : "complete"} | ${missing.join(", ")}`);
     }
     return lines.join("\n");
@@ -11778,7 +14185,8 @@ export default function create(
   async function teamEditSave(where: string, program: "sprint" | "team", input: unknown): Promise<void> {
     if (!(await openTeamFields(where))) return;
     await fillTeamProposal(where, program, input);
-    const save = seen(saveChoices().getByRole("button", { name: /^\s*save changes\s*$/i })).first();
+    const marked = await carried("proposal-save-changes");
+    const save = marked ? marked.first() : seen(saveChoices().getByRole("button", { name: /^\s*save changes\s*$/i })).first();
     if (!(await save.count())) unbound(where, `no "Save changes" among the save choices on ${page.url()}; it offers ${await offered()}`);
     if (await isDisabled(save)) throw new Error(`${where} — "Save changes" is disabled on ${page.url()}: ${(await heldBackReasons()).join(" | ") || "the page gives no reason"}`);
     await save.click();
@@ -11791,7 +14199,7 @@ export default function create(
     await fillTeamProposal(where, program, input);
     teamTermsAgreed.add("program");
     teamTermsAgreed.add("app");
-    if (!(await openTeamTerms(where, /^\s*save changes and submit\s*$/i, saveChoices))) return;
+    if (!(await openTeamTerms(where, /^\s*save changes and submit\s*$/i, saveChoices, "proposal-save-and-submit"))) return;
     await confirmTeamSubmit(where);
   }
 
@@ -11801,9 +14209,10 @@ export default function create(
     await closeDialog();
     teamTermsAgreed.add("program");
     teamTermsAgreed.add("app");
-    const group = (await teamFieldsOpen()) ? saveChoices : proposalActions;
-    const name = (await teamFieldsOpen()) ? /^\s*save changes and submit\s*$/i : /^\s*submit proposal\s*$/i;
-    if (!(await openTeamTerms(where, name, group))) return;
+    const open = await teamFieldsOpen();
+    const group = open ? saveChoices : proposalActions;
+    const name = open ? /^\s*save changes and submit\s*$/i : /^\s*submit proposal\s*$/i;
+    if (!(await openTeamTerms(where, name, group, open ? "proposal-save-and-submit" : "proposal-submit"))) return;
     await confirmTeamSubmit(where);
   }
 
@@ -11813,7 +14222,9 @@ export default function create(
   async function teamSubmissionRefusal(): Promise<string> {
     if (!(await proposalShown())) return "";
     const lines: string[] = [];
-    const alerts = seen(proposalMain().getByRole("alert")).filter({ hasText: /not submitted|problem|could not|cannot|unable/i });
+    // The refusal carries "proposal-submit-refused-message"; otherwise it is the alert saying so.
+    const marked = await carried("proposal-submit-refused-message");
+    const alerts = marked ?? seen(proposalMain().getByRole("alert")).filter({ hasText: /not submitted|problem|could not|cannot|unable/i });
     for (let i = 0; i < (await alerts.count()); i++) lines.push(...lined(await alerts.nth(i).innerText()));
     if (teamRefusal && teamRefusal.path === new URL(page.url()).pathname) for (const line of teamRefusal.lines) if (!lines.includes(line)) lines.push(line);
     return lines.join("\n");
@@ -11839,6 +14250,9 @@ export default function create(
       const shown = (await teamOrgChooser().innerText()).trim();
       return /^select an item$/i.test(shown) ? "" : shown;
     }
+    // The organization's name carries "proposal-organization".
+    const marked = await testIdText("proposal-organization");
+    if (marked !== null) return marked;
     const region = seen(proposalMain().getByRole("region", { name: /^\s*organization\s*$/i })).first();
     if (!(await region.count())) return "";
     return (await paragraphs(region))[0]?.trim() ?? "";
@@ -11847,12 +14261,17 @@ export default function create(
   // The "Proposal" section's text, with what each box holds while the form is open.
   async function teamProposalTab(where: string): Promise<string> {
     if (!(await proposalShown())) return "";
-    const link = seen(proposalMain().getByRole("navigation", { name: /proposal sections/i }).getByRole("link", { name: /^\s*proposal\s*$/i })).first();
+    const marked = await carried("proposal-tab-proposal");
+    const link =
+      marked?.first() ??
+      seen(proposalMain().getByRole("navigation", { name: /proposal sections/i }).getByRole("link", { name: /^\s*proposal\s*$/i })).first();
     if ((await link.count()) && /tab=(?!proposal)/.test(new URL(page.url()).search)) {
       await link.click();
       await ready();
     }
-    const region = seen(proposalMain().getByRole("region", { name: /^\s*proposal\s*$/i })).first();
+    const label = marked ? (await link.innerText().catch(() => "")).replace(/\s+/g, " ").trim() : "";
+    const regionName = label ? new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : /^\s*proposal\s*$/i;
+    const region = seen(proposalMain().getByRole("region", { name: regionName })).first();
     if (!(await region.count())) unbound(where, `no "Proposal" section on ${page.url()}; it offers ${await offered()}`);
     const lines = lined(await region.innerText());
     const boxes = seen(region.getByRole("textbox"));
@@ -11873,28 +14292,39 @@ export default function create(
   // With Us ...a035...101 under review at the challenge) offers only Proposal and History
   // and no score in its header: the screen was reached and withholds the scoresheet, which
   // reads as nothing.
+  // The Scoresheet's link carries "proposal-tab-scoresheet"; its region is named as that link
+  // reads.
+  let scoresheetName: RegExp = /^\s*scoresheet\s*$/i;
   async function openTeamScoresheet(): Promise<boolean> {
     if (!(await proposalShown())) return false;
-    const link = seen(proposalMain().getByRole("navigation", { name: /proposal sections/i }).getByRole("link", { name: /^\s*scoresheet\s*$/i })).first();
+    const marked = await carried("proposal-tab-scoresheet");
+    const link =
+      marked?.first() ??
+      seen(proposalMain().getByRole("navigation", { name: /proposal sections/i }).getByRole("link", { name: /^\s*scoresheet\s*$/i })).first();
     if (!(await link.count())) return false;
-    if (new URL(page.url()).searchParams.get("tab") !== "scoresheet") {
+    const label = marked ? (await link.innerText().catch(() => "")).replace(/\s+/g, " ").trim() : "";
+    scoresheetName = label ? new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") : /^\s*scoresheet\s*$/i;
+    const href = (await link.getAttribute("href")) ?? "";
+    const wanted = /[?&]tab=([^&#]+)/.exec(href)?.[1] ?? "scoresheet";
+    if (new URL(page.url()).searchParams.get("tab") !== wanted) {
       await link.click();
       await ready();
     }
-    await seen(regionNamed(proposalMain(), /^\s*scoresheet\s*$/i)).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
+    await seen(regionNamed(proposalMain(), scoresheetName)).first().waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
     return true;
   }
   async function teamScoresheet(): Promise<string> {
     if (!(await openTeamScoresheet())) return "";
-    const region = seen(regionNamed(proposalMain(), /^\s*scoresheet\s*$/i)).first();
+    const region = seen(regionNamed(proposalMain(), scoresheetName)).first();
     return (await region.count()) ? lined(await region.innerText()).join("\n") : "";
   }
-  // One figure of the Scoresheet, read and the section the screen was on opened again, so
-  // a reader of the Proposal section after it finds it where it was.
-  async function teamScoresheetTerm(label: RegExp): Promise<string> {
+  // One figure of the Scoresheet ("proposal-total-score", "proposal-rank"), read and the
+  // section the screen was on opened again, so a reader of the Proposal section after it
+  // finds it where it was.
+  async function teamScoresheetTerm(label: RegExp, testId: string): Promise<string> {
     const back = page.url();
     if (!(await openTeamScoresheet())) return "";
-    const shown = await scoreTermIn(/^\s*scoresheet\s*$/i, label);
+    const shown = await scoreTermIn(scoresheetName, label, testId);
     if (page.url() !== back) {
       await page.goto(back);
       await ready();
@@ -11917,26 +14347,29 @@ export default function create(
       saveChangesAndSubmit: (input?: unknown) => teamEditSaveAndSubmit(`${id}.save_changes_and_submit`, program, input),
       submitProposal: () => teamEditSubmit(`${id}.submit_proposal`),
       withdrawProposal: async () => {
-        await proposalAction(`${id}.withdraw_proposal`, /^\s*withdraw\s*$/i, /^\s*withdraw( proposal)?\s*$/i);
+        await proposalAction(`${id}.withdraw_proposal`, /^\s*withdraw\s*$/i, /^\s*withdraw( proposal)?\s*$/i, "proposal-withdraw-button");
       },
       deleteProposal: async () => {
-        await proposalAction(`${id}.delete_proposal`, /^\s*delete\s*$/i, /^\s*delete( proposal)?\s*$/i);
+        await proposalAction(`${id}.delete_proposal`, /^\s*delete\s*$/i, /^\s*delete( proposal)?\s*$/i, "proposal-delete-button");
       },
       submissionRefusal: () => teamSubmissionRefusal(),
       fieldError: () => teamEditFieldErrors(),
       organization: () => teamOrganization(),
-      proposalIdentifier: async () => ((await proposalShown()) ? (await proposalTerm(/^proposal id$/i)) || proposalPathId() : ""),
-      opportunityIdentifier: async () => ((await proposalShown()) ? (await proposalTerm(/^opportunity id$/i)) || opportunityPathId() : ""),
+      proposalIdentifier: async () =>
+        ((await proposalShown()) ? (await proposalTerm(/^proposal id$/i, "proposal-identifier")) || proposalPathId() : ""),
+      opportunityIdentifier: async () =>
+        ((await proposalShown()) ? (await proposalTerm(/^opportunity id$/i, "opportunity-identifier")) || opportunityPathId() : ""),
       proposalTab: () => teamProposalTab(`${id}.proposal_tab`),
       scoresheetTab: () => teamScoresheet(),
-      status: () => proposalTerm(/^status$/i),
+      status: () => proposalTerm(/^status$/i, "proposal-status"),
       // The vendor's screen shows no anonymous name in its header in any state walked (draft,
-      // submitted, under review, awarded); none shown reads as nothing.
-      anonymousProponentName: () => proposalTerm(/^(anonymous name|anonymi[sz]ed name|proponent)$/i),
+      // submitted, under review, awarded); none shown reads as nothing. A name the screen
+      // draws carries "proposal-anonymous-name".
+      anonymousProponentName: () => proposalTerm(/^(anonymous name|anonymi[sz]ed name|proponent)$/i, "proposal-anonymous-name"),
       // The Scoresheet's "Total" and "Rank" (the rank as a place, "1st"); nothing before the
       // proposal is decided, when the screen offers no Scoresheet.
-      totalScore: () => teamScoresheetTerm(/^total( score)?$/i),
-      rank: async () => asPlace(await teamScoresheetTerm(/^rank(ing)?$/i)),
+      totalScore: () => teamScoresheetTerm(/^total( score)?$/i, "proposal-total-score"),
+      rank: async () => asPlace(await teamScoresheetTerm(/^rank(ing)?$/i, "proposal-rank")),
     };
   }
 
@@ -11995,7 +14428,11 @@ export default function create(
     // chosen organization, and any refusal naming a service area.
     serviceAreaError: async () => {
       if (!(await proposalShown())) return "";
-      const lines = (await paragraphs(proposalMain())).map((one) => one.replace(/\s+/g, " ").trim()).filter((one) => /\bdoes not provide\b/i.test(one));
+      // The refusal carries "proposal-service-area-error"; otherwise it is read by its words.
+      const marked = (await testIdTexts("proposal-service-area-error")).map((one) => one.replace(/\s+/g, " ").trim()).filter(Boolean);
+      const lines = marked.length
+        ? marked
+        : (await paragraphs(proposalMain())).map((one) => one.replace(/\s+/g, " ").trim()).filter((one) => /\bdoes not provide\b/i.test(one));
       for (const line of (await teamFormMessages()).split("\n")) if (line && /service area/i.test(line) && !lines.includes(line)) lines.push(line);
       return lines.join("\n");
     },
@@ -12042,16 +14479,30 @@ export default function create(
       "/opportunities/sprint-with-us/:opportunityId",
       "sprint-with-us",
       {
-        // "$500,000" over "Value"; the phases under "Phases of Work" on the Details tab, down
-        // to the note closing their required capabilities.
-        totalMaxBudget: () => figureAbove(`${SWU_VIEW}.total_max_budget`, /^value$/i),
-        phases: () => detailsSection(`${SWU_VIEW}.phases`, /^phases of work$/i, /^\* capabilities are claimed/i),
-        assignmentDate: () => figureAbove(`${SWU_VIEW}.assignment_date`, /^assignment date$/i),
-        scopeSection: () => sectionBehind(`${SWU_VIEW}.scope_section`, "Scope & Contract", ["Scope"]),
+        // "$500,000" under "Total maximum budget" ("opportunity-total-max-budget"), or over
+        // "Value" on an older layout; the phases in the "Phases" section ("opportunity-phases",
+        // one line each) or under "Phases of Work" on the Details tab, down to the note closing
+        // their required capabilities.
+        totalMaxBudget: async () =>
+          (await opportunityFact(`${SWU_VIEW}.total_max_budget`, "opportunity-total-max-budget")) ??
+          figureAbove(`${SWU_VIEW}.total_max_budget`, /^value$/i),
+        phases: () =>
+          detailsSection(`${SWU_VIEW}.phases`, /^phases of work$/i, /^\* capabilities are claimed/i, "opportunity-phases"),
+        // "Assignment date: September 27, 2026" under "Key dates": the date.
+        assignmentDate: async () => {
+          const shown = await opportunityFact(`${SWU_VIEW}.assignment_date`, "opportunity-assignment-date");
+          return shown !== null ? afterLabel(shown) : figureAbove(`${SWU_VIEW}.assignment_date`, /^assignment date$/i);
+        },
+        scopeSection: () => sectionBehind(`${SWU_VIEW}.scope_section`, "Scope & Contract", ["Scope"], "opportunity-scope"),
         pageMessages: () => pageNotices(`${SWU_VIEW}.page_messages`),
         successfulProponentContactDetails: () =>
-          awardDetail(`${SWU_VIEW}.successful_proponent_contact_details`, CONTACT_DETAIL),
-        successfulProponentScore: () => awardDetail(`${SWU_VIEW}.successful_proponent_score`, SCORE_DETAIL),
+          awardDetail(
+            `${SWU_VIEW}.successful_proponent_contact_details`,
+            CONTACT_DETAIL,
+            "opportunity-successful-proponent-contact",
+          ),
+        successfulProponentScore: () =>
+          awardDetail(`${SWU_VIEW}.successful_proponent_score`, SCORE_DETAIL, "opportunity-successful-proponent-score"),
       },
     ),
 
@@ -12073,18 +14524,39 @@ export default function create(
         // "Maximum Contract Value". The resources sought under "Service Areas" with their
         // allocation, down to "Required Skills".
         maxBudget: async () => {
-          await opportunityLines(`${TWU_VIEW}.max_budget`);
+          const shown = await opportunityFact(`${TWU_VIEW}.max_budget`, "opportunity-max-budget");
+          if (shown !== null) return shown;
           return (await definitionOf(/^maximum budget$/i)) || figureAbove(`${TWU_VIEW}.max_budget`, /^maximum contract value$/i);
         },
-        resources: () => detailsSection(`${TWU_VIEW}.resources`, /^service areas$/i, /^required skills$/i),
-        assignmentDate: () => figureAbove(`${TWU_VIEW}.assignment_date`, /^contract award date$/i),
-        startDate: () => figureAbove(`${TWU_VIEW}.start_date`, /^contract start date$/i),
+        // The "Resources" section ("opportunity-resources"), one line per resource sought.
+        resources: () =>
+          detailsSection(`${TWU_VIEW}.resources`, /^service areas$/i, /^required skills$/i, "opportunity-resources"),
+        // Each date under "Key dates" ("Start date: October 7, 2026"): the date.
+        assignmentDate: async () => {
+          const shown = await opportunityFact(`${TWU_VIEW}.assignment_date`, "opportunity-assignment-date");
+          return shown !== null ? afterLabel(shown) : figureAbove(`${TWU_VIEW}.assignment_date`, /^contract award date$/i);
+        },
+        startDate: async () => {
+          const shown = await opportunityFact(`${TWU_VIEW}.start_date`, "opportunity-start-date");
+          return shown !== null ? afterLabel(shown) : figureAbove(`${TWU_VIEW}.start_date`, /^contract start date$/i);
+        },
         // The header shows no completion date; the "Key Dates" section does.
-        completionDate: () => keyDate(`${TWU_VIEW}.completion_date`, /^contract completion date( \(anticipated\))?/i),
-        termsSection: () => sectionBehind(`${TWU_VIEW}.terms_section`, "Competition Rules", ["Terms and conditions"]),
+        completionDate: async () => {
+          const shown = await opportunityFact(`${TWU_VIEW}.completion_date`, "opportunity-completion-date");
+          return shown !== null
+            ? afterLabel(shown)
+            : keyDate(`${TWU_VIEW}.completion_date`, /^contract completion date( \(anticipated\))?/i);
+        },
+        termsSection: () =>
+          sectionBehind(`${TWU_VIEW}.terms_section`, "Competition Rules", ["Terms and conditions"], "opportunity-terms"),
         successfulProponentContactDetails: () =>
-          awardDetail(`${TWU_VIEW}.successful_proponent_contact_details`, CONTACT_DETAIL),
-        successfulProponentScore: () => awardDetail(`${TWU_VIEW}.successful_proponent_score`, SCORE_DETAIL),
+          awardDetail(
+            `${TWU_VIEW}.successful_proponent_contact_details`,
+            CONTACT_DETAIL,
+            "opportunity-successful-proponent-contact",
+          ),
+        successfulProponentScore: () =>
+          awardDetail(`${TWU_VIEW}.successful_proponent_score`, SCORE_DETAIL, "opportunity-successful-proponent-score"),
       },
     ),
 

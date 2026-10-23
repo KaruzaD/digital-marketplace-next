@@ -1,9 +1,560 @@
 # Run log
 
+# Run record 2026-10-19
+
+- 17:00:51 run bind-adapter: ok, cost 0.5794822, turns 17, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 17:00:51 propose bind-adapter-new-112 at G3
+- 17:01:13 drive: step 1: `sdlc rule bind-adapter-new-112 --by agent:reviewer` — bind-adapter-new-112 is open at G3, held by agent:reviewer
+- 17:01:23 rule bind-adapter-new-112 approve at G3 by runner:checks (agent)
+- 17:01:27 drive: stopped after 1 step — nothing left to run
+- 17:01:29 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 18 --revise`; reason: Takes up the return of build-slice-18-8, whose revision was interrupted before it ran. Its one condition, R-4.14 (slice 4), was the adapter's and not the application's: the adapter read the user list a cell at a time and took longer than the test waits once the list had grown, and the binding approved just before this run reads the list in one call. Nothing the application does needs to change for it: keep the restyle as it is and make no change for R-4.14.
+- 17:05:17 drive: step 1: `sdlc run verify --slice 18` — build-slice-18-9 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 17:40:57 verify slice 18 verified: every claimed criterion passes against the application in build-slice-18-9. Ready for G3.
+- 17:40:59 run verify: regenerated 3 files in .sdlc, site
+- 17:05:05 run build: ok, cost 0.24305259999999998, turns 7, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 17:05:05 propose build-slice-18-9 at G3
+- 17:41:11 drive: step 2: `sdlc rule build-slice-18-9 --by agent:reviewer` — build-slice-18-9 is open at G3, held by agent:reviewer
+- 17:41:53 rule build-slice-18-9 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 17:41:57 drive: stopped after 2 steps — nothing left to run
+- 17:41:58 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 19`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 17:50:51 drive: step 1: `sdlc run verify --slice 19` — build-slice-19-3 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 18:25:17 verify slice 19 verified: every claimed criterion passes against the application in build-slice-19-3. Ready for G3.
+- 18:25:19 run verify: regenerated 3 files in .sdlc, site
+- 17:50:39 run build: ok, cost 3.1362110000000007, turns 69, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 17:50:39 propose build-slice-19-3 at G3
+- 18:25:34 drive: step 2: `sdlc rule build-slice-19-3 --by agent:reviewer` — build-slice-19-3 is open at G3, held by agent:reviewer
+- 18:26:14 rule build-slice-19-3 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 18:26:18 drive: stopped after 2 steps — nothing left to run
+- 18:26:19 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 4`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 18:32:31 drive: step 1: `sdlc run verify --slice 4` — build-slice-4-2 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 19:07:58 verify slice 4: 9 of the 10 criteria this slice claims pass against the application in build-slice-4-2; the other 1 was never asserted against it at all — R-4.13.
+- 19:08:00 run verify: regenerated 3 files in .sdlc, site
+- 18:32:19 run build: ok, cost 1.6068795999999996, turns 46, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 18:32:19 propose build-slice-4-2 at G3
+- 19:08:12 drive: step 2: `sdlc rule build-slice-4-2 --by agent:reviewer` — build-slice-4-2 is open at G3, held by agent:reviewer
+- 19:08:57 rule build-slice-4-2 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 19:09:00 drive: stopped after 2 steps — nothing left to run
+- 19:09:02 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 5`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 19:19:26 drive: step 1: `sdlc run verify --slice 5` — build-slice-5-5 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 19:54:33 verify slice 5 verified: every claimed criterion passes against the application in build-slice-5-5. Ready for G3.
+- 19:54:35 run verify: regenerated 3 files in .sdlc, site
+- 19:19:13 run build: ok, cost 3.0390286, turns 66, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 19:19:13 propose build-slice-5-5 at G3
+- 19:54:46 drive: step 2: `sdlc rule build-slice-5-5 --by agent:reviewer` — build-slice-5-5 is open at G3, held by agent:reviewer
+- 19:55:20 rule build-slice-5-5 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 19:55:24 drive: stopped after 2 steps — nothing left to run
+- 19:55:26 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 6`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 20:01:46 drive: step 1: `sdlc run verify --slice 6` — build-slice-6-6 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 20:38:12 verify slice 6 verified: every claimed criterion passes against the application in build-slice-6-6. Ready for G3.
+- 20:38:14 run verify: regenerated 3 files in .sdlc, site
+- 20:01:34 run build: ok, cost 1.3414104000000002, turns 36, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 20:01:34 propose build-slice-6-6 at G3
+- 20:38:26 drive: step 2: `sdlc rule build-slice-6-6 --by agent:reviewer` — build-slice-6-6 is open at G3, held by agent:reviewer
+- 20:38:56 rule build-slice-6-6 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 20:39:00 drive: stopped after 2 steps — nothing left to run
+- 20:39:01 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 20`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 20:45:15 drive: step 1: `sdlc run verify --slice 20` — build-slice-20-2 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 21:20:19 verify slice 20 verified: every claimed criterion passes against the application in build-slice-20-2. Ready for G3.
+- 21:20:21 run verify: regenerated 3 files in .sdlc, site
+- 20:45:05 run build: ok, cost 2.0283071999999995, turns 36, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 20:45:06 propose build-slice-20-2 at G3
+- 21:20:35 drive: step 2: `sdlc rule build-slice-20-2 --by agent:reviewer` — build-slice-20-2 is open at G3, held by agent:reviewer
+- 21:21:27 rule build-slice-20-2 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 21:21:31 drive: stopped after 2 steps — nothing left to run
+- 21:21:32 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 21`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 21:26:37 drive: step 1: `sdlc run verify --slice 21` — build-slice-21-4 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 22:02:57 verify slice 21 verified: every claimed criterion passes against the application in build-slice-21-4. Ready for G3.
+- 22:03:00 run verify: regenerated 3 files in .sdlc, site
+- 21:26:27 run build: ok, cost 1.1653067999999998, turns 27, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 21:26:28 propose build-slice-21-4 at G3
+- 22:03:15 drive: step 2: `sdlc rule build-slice-21-4 --by agent:reviewer` — build-slice-21-4 is open at G3, held by agent:reviewer
+- 22:03:53 rule build-slice-21-4 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 22:03:56 drive: stopped after 2 steps — nothing left to run
+- 22:03:58 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 14`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 22:10:20 drive: step 1: `sdlc run verify --slice 14` — build-slice-14-9 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 22:47:04 verify slice 14 verified: every claimed criterion passes against the application in build-slice-14-9. Ready for G3.
+- 22:47:05 run verify: regenerated 3 files in .sdlc, site
+- 22:10:05 run build: ok, cost 1.4966654, turns 35, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 22:10:05 propose build-slice-14-9 at G3
+- 22:47:19 drive: step 2: `sdlc rule build-slice-14-9 --by agent:reviewer` — build-slice-14-9 is open at G3, held by agent:reviewer
+- 22:47:52 rule build-slice-14-9 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+
+# Run record 2026-10-18
+
+- 2026-10-17 16:58:07 drive: step 3: `sdlc run verify --slice 8` — build-slice-8-12 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 17:29:03 verify slice 8 verified: every claimed criterion passes against the application in build-slice-8-12. Ready for G3.
+- 17:29:04 run verify: regenerated 682 files in .sdlc, site
+- 17:30:37 drive: step 5: `sdlc run bind-adapter --target new --revise` — 1 revision request for target new owed by bind-adapter; request request/build-slice-8-12#1
+- 17:30:38 run bind-adapter: pre-checks failed
+- 17:30:38 drive: step 5 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-21-3 (sdlc sandbox up --target new --from proposal/build-slice-21-3), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 17:33:28 run bind-adapter: ok, cost 0.8822124, turns 24, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 17:33:28 propose bind-adapter-new-92 at G3
+- 17:33:28 drive: step 5 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 17:33:47 drive: step 6: `sdlc rule bind-adapter-new-92 --by agent:reviewer` — bind-adapter-new-92 is open at G3, held by agent:reviewer
+- 17:34:37 rule bind-adapter-new-92 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 17:38:31 drive: step 8: `sdlc run verify --slice 8` — build-slice-8-13 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 17:42:17 verify slice 8: R-1.3, R-1.38 fail. R-1.3, R-1.38 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's, so build-slice-8-13 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 17:42:18 run verify: regenerated 684 files in .sdlc, site
+- 17:43:38 drive: step 10: `sdlc run bind-adapter --target new --revise` — 2 revision requests for target new owed by bind-adapter; requests request/build-slice-8-13#1, request/build-slice-8-13#2
+- 17:43:39 run bind-adapter: pre-checks failed
+- 17:43:39 drive: step 10 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-21-3 (sdlc sandbox up --target new --from proposal/build-slice-21-3), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 17:45:30 run bind-adapter: ok, cost 0.3189658, turns 9, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 17:45:30 propose bind-adapter-new-93 at G3
+- 17:45:30 rule bind-adapter-new-93 escalated at G3 to tech-lead by runner:bind-adapter
+- 17:45:30 drive: step 10 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 17:45:48 drive: step 11: `sdlc rule bind-adapter-new-93 --by agent:tech-lead` — bind-adapter-new-93 was escalated at G3 by runner:bind-adapter to tech-lead, a role an agent plays in this project
+- 17:46:26 rule bind-adapter-new-93 approve at G3 by agent:tech-lead (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 17:47:32 drive: step 13: `sdlc run verify --slice 8` — build-slice-8-14 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 18:18:37 verify slice 8 verified: every claimed criterion passes against the application in build-slice-8-14. Ready for G3.
+- 18:18:39 run verify: regenerated 686 files in .sdlc, site
+- 17:46:37 drive: step 12: `sdlc run build --slice 8 --revise` — build-slice-8-13 was returned at G3 by agent:reviewer
+- 17:47:26 run build: ok, cost 0, turns 0
+- 17:47:26 propose build-slice-8-14 at G3
+- 18:18:51 drive: step 14: `sdlc rule build-slice-8-14 --by agent:reviewer` — build-slice-8-14 is open at G3, held by agent:reviewer
+- 18:19:43 rule build-slice-8-14 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 18:19:47 drive: stopped after 14 steps — nothing left to run
+- 18:19:48 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 7`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 18:34:12 drive: step 1: `sdlc run verify --slice 7` — build-slice-7-11 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 18:38:49 verify slice 7: 3 criteria still fail after 3 builds; escalated to tech-lead.
+- 18:38:51 run verify: regenerated 3 files in .sdlc, site
+- 18:40:15 drive: step 3: `sdlc run bind-adapter --target new --revise` — 1 revision request for target new owed by bind-adapter; request request/build-slice-7-11#1
+- 18:40:17 run bind-adapter: pre-checks failed
+- 18:46:07 drive: step 5: `sdlc run bind-adapter --target new --revise` — bind-adapter-new-94 was returned at G3 by agent:tech-lead
+- 18:46:08 run bind-adapter: pre-checks failed
+- 18:46:08 drive: step 5 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-21-3 (sdlc sandbox up --target new --from proposal/build-slice-21-3), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 18:48:00 run bind-adapter: ok, cost 0.4357414, turns 13, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 18:48:00 propose bind-adapter-new-95 at G3
+- 18:48:00 drive: step 5 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 18:48:19 drive: step 6: `sdlc rule bind-adapter-new-95 --by agent:reviewer` — bind-adapter-new-95 is open at G3, held by agent:reviewer
+- 18:49:10 rule bind-adapter-new-95 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 18:50:26 drive: step 8: `sdlc run verify --slice 7` — build-slice-7-12 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 18:54:55 verify slice 7: 2 criteria still fail after 3 builds; escalated to tech-lead.
+- 18:54:57 run verify: regenerated 690 files in .sdlc, site
+- 18:56:53 drive: step 10: `sdlc run bind-adapter --target new --revise` — 1 revision request for target new owed by bind-adapter; request request/build-slice-7-12#1
+- 18:56:54 run bind-adapter: pre-checks failed
+- 18:56:54 drive: step 10 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-21-3 (sdlc sandbox up --target new --from proposal/build-slice-21-3), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 18:59:57 run bind-adapter: ok, cost 0.8728895999999999, turns 31, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 18:59:57 propose bind-adapter-new-96 at G3
+- 18:59:57 rule bind-adapter-new-96 escalated at G3 to tech-lead by runner:bind-adapter
+- 18:59:57 drive: step 10 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 19:00:18 drive: step 11: `sdlc rule bind-adapter-new-96 --by agent:tech-lead` — bind-adapter-new-96 was escalated at G3 by runner:bind-adapter to tech-lead, a role an agent plays in this project
+- 19:00:58 rule bind-adapter-new-96 approve at G3 by agent:tech-lead (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 19:02:14 drive: step 13: `sdlc run verify --slice 7` — build-slice-7-13 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 19:34:09 verify slice 7: 15 of the 16 criteria this slice claims pass against the application in build-slice-7-13; the other 1 was never asserted against it at all — R-1.51.
+- 19:34:11 run verify: regenerated 692 files in .sdlc, site
+- 19:01:06 drive: step 12: `sdlc run build --slice 7 --revise` — build-slice-7-12 was returned at G3 by agent:tech-lead
+- 19:02:07 run build: ok, cost 0, turns 0
+- 19:02:07 propose build-slice-7-13 at G3
+- 19:34:20 drive: step 14: `sdlc rule build-slice-7-13 --by agent:reviewer` — build-slice-7-13 is open at G3, held by agent:reviewer
+- 19:34:55 rule build-slice-7-13 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 19:34:58 drive: stopped after 14 steps — nothing left to run
+- 19:35:01 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 14`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 19:48:27 drive: step 1: `sdlc run verify --slice 14` — build-slice-14-4 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 19:53:34 verify slice 14: R-2.12, R-2.15 fail. R-2.12, R-2.15 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's, so build-slice-14-4 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 19:53:35 run verify: regenerated 4 files in .sdlc, site, tests
+- 19:55:12 drive: step 3: `sdlc run bind-adapter --target new --revise` — 3 revision requests for target new owed by bind-adapter; requests request/build-slice-14-4#1, request/build-slice-14-4#2, request/build-slice-14-4#3
+- 19:55:13 run bind-adapter: pre-checks failed
+- 20:00:51 drive: step 5: `sdlc run bind-adapter --target new --revise` — bind-adapter-new-97 was returned at G3 by agent:reviewer
+- 20:00:51 run bind-adapter: pre-checks failed
+- 20:00:51 drive: step 5 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-14-4 (sdlc sandbox up --target new --from proposal/build-slice-14-4), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-14-4)
+- 20:05:41 run bind-adapter: ok, cost 1.5208414000000003, turns 58, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 20:05:41 propose bind-adapter-new-98 at G3
+- 20:05:41 drive: step 5 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-14-4)
+- 20:06:01 drive: step 6: `sdlc rule bind-adapter-new-98 --by agent:reviewer` — bind-adapter-new-98 is open at G3, held by agent:reviewer
+- 20:06:51 rule bind-adapter-new-98 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 20:08:08 drive: step 8: `sdlc run verify --slice 14` — build-slice-14-5 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 20:13:15 verify slice 14: returned — R-8.31 fail. Next: sdlc run build --slice 14 --revise
+- 20:13:17 run verify: regenerated 697 files in .sdlc, site, tests
+- 20:25:11 drive: step 10: `sdlc run verify --slice 14` — build-slice-14-6 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 20:30:40 verify slice 14: 1 criteria still fail after 3 builds; escalated to tech-lead.
+- 20:30:42 run verify: regenerated 697 files in .sdlc, site
+- 20:32:15 drive: step 12: `sdlc run bind-adapter --target new --revise` — 1 revision request for target new owed by bind-adapter; request request/build-slice-14-6#1
+- 20:32:16 run bind-adapter: pre-checks failed
+- 20:32:16 drive: step 12 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-14-6 (sdlc sandbox up --target new --from proposal/build-slice-14-6), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-14-6)
+- 20:33:35 run bind-adapter: ok, cost 0.28445479999999995, turns 8, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 20:33:35 propose bind-adapter-new-99 at G3
+- 20:33:35 drive: step 12 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-14-6)
+- 20:33:57 drive: step 13: `sdlc rule bind-adapter-new-99 --by agent:reviewer` — bind-adapter-new-99 is open at G3, held by agent:reviewer
+- 20:34:39 rule bind-adapter-new-99 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 20:39:28 drive: step 15: `sdlc run verify --slice 14` — build-slice-14-7 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 20:44:52 verify slice 14: 1 of the 18 criteria this slice claims could not be exercised at all — R-8.31.
+- 20:44:54 run verify: regenerated 700 files in .sdlc, site, tests
+- 20:45:05 drive: step 16: `sdlc run bind-adapter --target new` — 1 binding the adapter reports unbound for target new owed by bind-adapter; the application it binds against is on proposal/build-slice-14-7 alone, so sdlc sandbox up --target new --from proposal/build-slice-14-7 first
+- 20:45:06 run bind-adapter: pre-checks failed
+- 20:45:06 drive: step 16 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-14-7 (sdlc sandbox up --target new --from proposal/build-slice-14-7), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-14-7)
+- 20:50:01 run bind-adapter: ok, cost 1.1857512, turns 37, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 20:50:01 propose bind-adapter-new-100 at G3
+- 20:50:01 drive: step 16 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-14-7)
+- 20:50:22 drive: step 17: `sdlc rule bind-adapter-new-100 --by agent:reviewer` — bind-adapter-new-100 is open at G3, held by agent:reviewer
+- 20:50:29 rule bind-adapter-new-100 approve at G3 by runner:checks (agent)
+- 20:50:37 drive: step 18: `sdlc run verify --slice 14` — 1 unbound row to check again now that its adapter has changed for slice 14 owed by verify
+- 21:23:42 verify slice 14: 1 criteria still fail after 3 builds; escalated to tech-lead.
+- 21:23:44 run verify: regenerated 4 files in .sdlc, site, tests
+- 21:25:00 drive: stopped after 19 steps — waiting on a person: a ruler: revision requests (derive-tests)
+- 21:25:49 deviation: next named `nothing: every open item waits on a person`; ran `sdlc run derive-tests --domain organizations --revise`; reason: Takes up the revision request the G3 ruling of build-slice-14-7 filed to derive-tests about tests/acceptance/organizations/R-3.28.spec.ts, which is in the organizations domain: make its two cases independent of each other's writes.
+- 21:27:00 run derive-tests: ok, cost 0.3404018, turns 9, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 21:27:00 propose derive-tests-organizations-11 at G3
+- 21:27:06 drive: step 1: `sdlc rule derive-tests-organizations-11 --by agent:reviewer` — derive-tests-organizations-11 is open at G3, held by agent:reviewer
+- 21:29:40 rule derive-tests-organizations-11 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 21:31:25 drive: step 3: `sdlc run verify --slice 14` — build-slice-14-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 22:07:00 verify slice 14 verified: every claimed criterion passes against the application in build-slice-14-8. Ready for G3.
+- 22:07:02 run verify: regenerated 702 files in .sdlc, site
+- 21:29:54 drive: step 2: `sdlc run build --slice 14 --revise` — build-slice-14-7 was returned at G3 by agent:tech-lead
+- 21:31:16 run build: ok, cost 0, turns 0
+- 21:31:16 propose build-slice-14-8 at G3
+- 22:07:13 drive: step 4: `sdlc rule build-slice-14-8 --by agent:reviewer` — build-slice-14-8 is open at G3, held by agent:reviewer
+- 22:07:50 rule build-slice-14-8 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 22:07:58 drive: stopped after 4 steps — nothing left to run
+- 22:08:15 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Move the new target's adapter onto the contract's test IDs, as the bind-adapter skill now asks (docs/decisions/0110): for every action and observation whose test_id in spec/contract/surface.yaml the running pages carry, find its element with page.getByTestId(test_id) first, and keep the existing role, label or text lookup only as the fallback where the page does not carry it. Hand back exactly what each member hands back now: the same items, in the same order and form. The screens are being redrawn slice by slice to a design that keeps every test ID and changes words, headings and layout, so a member that finds its element by words breaks on each redrawn screen. Check the moved members against the running application before proposing.
+- 22:08:15 run bind-adapter: pre-checks failed
+- 22:08:52 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Move the new target's adapter onto the contract's test IDs, as the bind-adapter skill now asks (docs/decisions/0110): for every action and observation whose test_id in spec/contract/surface.yaml the running pages carry, find its element with page.getByTestId(test_id) first, and keep the existing role, label or text lookup only as the fallback where the page does not carry it. Hand back exactly what each member hands back now: the same items, in the same order and form. The screens are being redrawn slice by slice to a design that keeps every test ID and changes words, headings and layout, so a member that finds its element by words breaks on each redrawn screen. Check the moved members against the running application before proposing.
+- 23:19:35 run bind-adapter: ok, cost 46.19470260000003, turns 608, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 23:19:35 propose bind-adapter-new-101 at G3
+- 23:19:59 drive: step 1: `sdlc rule bind-adapter-new-101 --by agent:reviewer` — bind-adapter-new-101 is open at G3, held by agent:reviewer
+- 23:20:12 rule bind-adapter-new-101 approve at G3 by runner:checks (agent)
+- 23:20:16 drive: stopped after 1 step — nothing left to run
+- 23:20:17 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 1`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 23:24:35 drive: step 1: `sdlc run verify --slice 1` — build-slice-1-10 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 23:55:48 verify slice 1: R-1.43 (slice 10), R-5.16 (slice 17), R-1.40 (slice 20) fail (3 that an earlier slice passed). R-5.16 stopped where the adapter raised an error of its own, which can be the adapter's as easily as the application's, so build-slice-1-10 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 23:55:50 run verify: regenerated 3 files in .sdlc, site
+- 23:57:11 drive: step 3: `sdlc run bind-adapter --target new --revise` — 3 revision requests for target new owed by bind-adapter; requests request/build-slice-1-10#1, request/build-slice-1-10#2, request/build-slice-1-10#3
+- 23:57:12 run bind-adapter: pre-checks failed
+- 23:57:12 drive: step 3 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-1-10 (sdlc sandbox up --target new --from proposal/build-slice-1-10), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-1-10)
+- 00:00:45 run bind-adapter: ok, cost 0.8857403999999999, turns 30, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 00:00:45 propose bind-adapter-new-102 at G3
+- 00:00:45 drive: step 3 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-1-10)
+- 00:01:06 drive: step 4: `sdlc rule bind-adapter-new-102 --by agent:reviewer` — bind-adapter-new-102 is open at G3, held by agent:reviewer
+- 00:01:40 rule bind-adapter-new-102 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 00:02:53 drive: step 6: `sdlc run verify --slice 1` — build-slice-1-11 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 00:33:04 verify slice 1 verified: every claimed criterion passes against the application in build-slice-1-11. Ready for G3.
+- 00:33:07 run verify: regenerated 706 files in .sdlc, site
+- 00:01:49 drive: step 5: `sdlc run build --slice 1 --revise` — build-slice-1-10 was returned at G3 by agent:reviewer
+- 00:02:45 run build: ok, cost 0, turns 0
+- 00:02:45 propose build-slice-1-11 at G3
+- 00:33:21 drive: step 7: `sdlc rule build-slice-1-11 --by agent:reviewer` — build-slice-1-11 is open at G3, held by agent:reviewer
+- 00:33:59 rule build-slice-1-11 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 00:34:03 drive: stopped after 7 steps — nothing left to run
+- 00:34:05 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 2`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 00:42:20 drive: step 1: `sdlc run verify --slice 2` — build-slice-2-17 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 01:12:55 verify slice 2: not verified — R-6.1 could not be tested in this environment.
+- 01:12:57 run verify: regenerated 3 files in .sdlc, site
+- 01:13:00 drive: stopped after 1 step — waiting on a person: tech-lead: build-slice-2-17
+- 00:42:09 run build: ok, cost 2.404173, turns 52, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 00:42:09 propose build-slice-2-17 at G3
+- 01:14:04 rule build-slice-2-17 approve at G3 by tech-lead (human)
+- 01:14:25 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 10`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 01:30:51 drive: step 1: `sdlc run verify --slice 10` — build-slice-10-6 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 01:42:34 verify slice 10: R-1.9, R-1.43, R-1.55, R-5.1, R-5.17, R-5.18 fail. R-1.9, R-1.43 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's, so build-slice-10-6 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 01:42:36 run verify: regenerated 3 files in .sdlc, site
+- 01:44:39 drive: step 3: `sdlc run bind-adapter --target new --revise` — 5 revision requests for target new owed by bind-adapter; requests request/build-slice-10-6#1, request/build-slice-10-6#2, request/build-slice-10-6#3, request/build-slice-10-6#4, request/build-slice-10-6#5
+- 01:44:40 run bind-adapter: pre-checks failed
+- 01:44:40 drive: step 3 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-10-6 (sdlc sandbox up --target new --from proposal/build-slice-10-6), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-10-6)
+- 01:47:54 run bind-adapter: ok, cost 0.7982768, turns 31, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 01:47:54 propose bind-adapter-new-103 at G3
+- 01:47:54 rule bind-adapter-new-103 escalated at G3 to tech-lead by runner:bind-adapter
+- 01:47:54 drive: step 3 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-10-6)
+- 01:48:13 drive: step 4: `sdlc rule bind-adapter-new-103 --by agent:tech-lead` — bind-adapter-new-103 was escalated at G3 by runner:bind-adapter to tech-lead, a role an agent plays in this project
+- 01:48:57 rule bind-adapter-new-103 approve at G3 by agent:tech-lead (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 01:53:41 drive: step 6: `sdlc run verify --slice 10` — build-slice-10-7 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 02:08:29 verify slice 10: R-1.55, R-5.1, R-5.17 fail. R-1.55, R-5.1, R-5.17 stopped where the adapter raised an error of its own, which can be the adapter's as easily as the application's, so build-slice-10-7 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 02:08:31 run verify: regenerated 710 files in .sdlc, site
+- 02:09:55 drive: step 8: `sdlc run bind-adapter --target new --revise` — 3 revision requests for target new owed by bind-adapter; requests request/build-slice-10-7#1, request/build-slice-10-7#2, request/build-slice-10-7#3
+- 02:09:56 run bind-adapter: pre-checks failed
+- 02:09:56 drive: step 8 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-10-7 (sdlc sandbox up --target new --from proposal/build-slice-10-7), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-10-7)
+- 02:14:05 run bind-adapter: ok, cost 1.3446261999999998, turns 46, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 02:14:05 propose bind-adapter-new-104 at G3
+- 02:14:05 rule bind-adapter-new-104 escalated at G3 to tech-lead by runner:bind-adapter
+- 02:14:05 drive: step 8 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-10-7)
+- 02:14:24 drive: step 9: `sdlc rule bind-adapter-new-104 --by agent:tech-lead` — bind-adapter-new-104 was escalated at G3 by runner:bind-adapter to tech-lead, a role an agent plays in this project
+- 02:15:04 rule bind-adapter-new-104 approve at G3 by agent:tech-lead (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 02:16:13 drive: step 11: `sdlc run verify --slice 10` — build-slice-10-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 02:49:58 verify slice 10: 1 criteria still fail after 3 builds; escalated to tech-lead.
+- 02:50:00 run verify: regenerated 712 files in .sdlc, site
+- 02:51:27 drive: stopped after 12 steps — waiting on a person: tech-lead: build-slice-10-8
+- 02:53:27 deviation: next named `nothing: every open item waits on a person`; ran `sdlc run derive-tests --domain organizations --revise`; reason: Takes up the revision request the G3 ruling of build-slice-10-8 filed to derive-tests about tests/acceptance/organizations/R-3.28.spec.ts, which is in the organizations domain: give it an organization of its own that no other test reads or changes.
+- 02:55:15 run derive-tests: ok, cost 0.5055516000000001, turns 13, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 02:55:15 propose derive-tests-organizations-12 at G3
+- 02:55:22 drive: step 1: `sdlc rule derive-tests-organizations-12 --by agent:reviewer` — derive-tests-organizations-12 is open at G3, held by agent:reviewer
+- 02:56:00 rule derive-tests-organizations-12 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 02:57:12 drive: step 3: `sdlc run verify --slice 10` — build-slice-10-9 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 03:09:51 verify slice 10: not verified — R-7.29 could not be tested in this environment.
+- 03:09:53 run verify: regenerated 714 files in .sdlc, site
+- 03:09:56 drive: stopped after 3 steps — waiting on a person: tech-lead: build-slice-10-9
+- 02:56:09 drive: step 2: `sdlc run build --slice 10 --revise` — build-slice-10-8 was returned at G3 by tech-lead
+- 02:57:04 run build: ok, cost 0, turns 0
+- 02:57:04 propose build-slice-10-9 at G3
+- 03:10:53 rule build-slice-10-9 approve at G3 by tech-lead (human)
+- 03:11:09 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 9`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 03:21:00 drive: step 1: `sdlc run verify --slice 9` — build-slice-9-5 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 03:52:53 verify slice 9 verified: every claimed criterion passes against the application in build-slice-9-5. Ready for G3.
+- 03:52:55 run verify: regenerated 3 files in .sdlc, site
+- 03:20:48 run build: ok after a fix turn, cost 1.7553391999999999, turns 64, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 03:20:48 propose build-slice-9-5 at G3
+- 03:53:06 drive: step 2: `sdlc rule build-slice-9-5 --by agent:reviewer` — build-slice-9-5 is open at G3, held by agent:reviewer
+- 03:53:53 rule build-slice-9-5 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 03:53:58 drive: stopped after 2 steps — nothing left to run
+- 03:53:59 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 3`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 04:03:52 drive: step 1: `sdlc run verify --slice 3` — build-slice-3-6 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 04:36:02 verify slice 3: 23 of the 24 criteria this slice claims pass against the application in build-slice-3-6; the other 1 was never asserted against it at all — R-8.16.
+- 04:36:05 run verify: regenerated 3 files in .sdlc, site
+- 04:03:39 run build: ok, cost 4.0172752, turns 88, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 04:03:39 propose build-slice-3-6 at G3
+- 04:36:15 drive: step 2: `sdlc rule build-slice-3-6 --by agent:reviewer` — build-slice-3-6 is open at G3, held by agent:reviewer
+- 04:36:52 rule build-slice-3-6 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 04:36:56 drive: stopped after 2 steps — nothing left to run
+- 04:36:58 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 15`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 04:36:58 run build: authentication check failed
+- 04:38:12 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 15`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 04:38:13 run build: authentication check failed
+- 08:15:53 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 15`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 08:30:32 drive: step 1: `sdlc run verify --slice 15` — build-slice-15-6 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 08:38:23 verify slice 15: R-2.7, R-2.9, R-2.11, R-2.16, R-2.18, R-2.19, R-2.22 fail. R-2.18 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's; R-2.7, R-2.9, R-2.11, R-2.16, R-2.19, R-2.22 stopped where the adapter raised an error of its own, which can be the adapter's as easily as the application's, so build-slice-15-6 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 08:38:25 run verify: regenerated 3 files in .sdlc, site
+- 08:40:23 drive: step 3: `sdlc run bind-adapter --target new --revise` — 7 revision requests for target new owed by bind-adapter; requests request/build-slice-15-6#1, request/build-slice-15-6#2, request/build-slice-15-6#3, request/build-slice-15-6#4, request/build-slice-15-6#5, request/build-slice-15-6#6, request/build-slice-15-6#7
+- 08:40:25 run bind-adapter: pre-checks failed
+- 08:40:25 drive: step 3 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-15-6 (sdlc sandbox up --target new --from proposal/build-slice-15-6), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-15-6)
+- 08:44:19 run bind-adapter: ok, cost 1.0284884000000003, turns 32, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 08:44:19 propose bind-adapter-new-105 at G3
+- 08:44:19 rule bind-adapter-new-105 escalated at G3 to tech-lead by runner:bind-adapter
+- 08:44:19 drive: step 3 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-15-6)
+- 08:44:40 drive: step 4: `sdlc rule bind-adapter-new-105 --by agent:tech-lead` — bind-adapter-new-105 was escalated at G3 by runner:bind-adapter to tech-lead, a role an agent plays in this project
+- 08:45:34 rule bind-adapter-new-105 approve at G3 by agent:tech-lead (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 08:45:38 drive: stopped after 4 steps — waiting on a person: a ruler: revision requests (design)
+- 08:46:43 deviation: next named `nothing: every open item waits on a person`; ran `sdlc run design --domain proposals --revise`; reason: Takes up the revision request the G3 ruling of build-slice-15-6 filed to design about the proposals domain: design/DESIGN.md says each Sprint With Us scrum master radio carries the label "Scrum master: <name>, <phase> phase", while the approved story design/catalogue/proposal-swu-create.default.stories.tsx draws a radiogroup "Scrum master for the <phase> phase" whose radios are named by the person; the build and the adapter follow the story, so make DESIGN.md say what the story draws. Two faults in the same domain's stories are answered in this run as well. First, design/catalogue/proposal-cwu-edit.editing.stories.tsx asks "Who is submitting this proposal?" with "An individual" and "An organization", while the create story and the original application, which use one form for both, ask "Will you be submitting a proposal for this opportunity as an Individual or Organization?" with "Individual" and "Organization": give the edit story the create story's wording, keeping the test IDs proposal-proponent-individual and proposal-proponent-organization. Second, design/catalogue/proposal-cwu-create-page.tsx labels both street lines "Street Address", so the two fields cannot be told apart by their names (WCAG 2.2 success criterion 2.4.6): give the second line a label of its own that says it is the second line, such as "Street Address line 2", keeping its test ID proposal-street-2-field, and note in DESIGN.md that this label is not the original's.
+- 08:52:12 run design: ok, cost 0.6138938, turns 22, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 08:52:12 propose design-proposals-4 at G-DESIGN
+- 08:52:19 drive: step 1: `sdlc rule design-proposals-4 --by agent:ux-reviewer` — design-proposals-4 is open at G-DESIGN, held by agent:ux-reviewer
+- 08:53:32 rule design-proposals-4 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 08:54:48 drive: step 3: `sdlc run verify --slice 15` — build-slice-15-7 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 09:03:28 verify slice 15: R-2.19 fail. R-2.19 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's, so build-slice-15-7 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 09:03:30 run verify: regenerated 720 files in .sdlc, site
+- 09:04:48 drive: step 5: `sdlc run bind-adapter --target new --revise` — 3 revision requests for target new owed by bind-adapter; requests request/build-slice-15-7#1, request/build-slice-15-7#2, request/build-slice-15-7#3
+- 09:04:49 run bind-adapter: pre-checks failed
+- 09:04:49 drive: step 5 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-15-7 (sdlc sandbox up --target new --from proposal/build-slice-15-7), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-15-7)
+- 09:06:49 run bind-adapter: ok, cost 0.47829239999999995, turns 13, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 09:06:49 propose bind-adapter-new-106 at G3
+- 09:06:49 rule bind-adapter-new-106 escalated at G3 to tech-lead by runner:bind-adapter
+- 09:06:49 drive: step 5 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-15-7)
+- 09:07:09 drive: step 6: `sdlc rule bind-adapter-new-106 --by agent:tech-lead` — bind-adapter-new-106 was escalated at G3 by runner:bind-adapter to tech-lead, a role an agent plays in this project
+- 09:07:53 rule bind-adapter-new-106 approve at G3 by agent:tech-lead (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 09:09:12 drive: step 8: `sdlc run verify --slice 15` — build-slice-15-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 09:43:28 verify slice 15 verified: every claimed criterion passes against the application in build-slice-15-8. Ready for G3.
+- 09:43:30 run verify: regenerated 722 files in .sdlc, site
+- 09:08:04 drive: step 7: `sdlc run build --slice 15 --revise` — build-slice-15-7 was returned at G3 by agent:reviewer
+- 09:09:02 run build: ok, cost 0, turns 0
+- 09:09:03 propose build-slice-15-8 at G3
+- 09:43:42 drive: step 9: `sdlc rule build-slice-15-8 --by agent:reviewer` — build-slice-15-8 is open at G3, held by agent:reviewer
+- 09:44:15 rule build-slice-15-8 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 09:44:21 drive: stopped after 9 steps — nothing left to run
+- 09:44:32 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make the new target's adapter find a part of a screen by its name whether or not the screen numbers it. The redrawn screens number the parts of their forms ("3. Attachments", "4. Cost"), and regionNamed in tests/adapters/new/index.ts matches a region's name, or the name of the heading it holds, against a pattern anchored at its start, so every anchored lookup ("Terms and conditions", "Team capabilities", "Approved service areas", "Key dates", "Addenda", "History" and the others) fails on a numbered part and has been answered one failure at a time. Accept an optional leading part number such as "4. " in regionNamed itself, so it holds for every lookup, rather than member by member, and keep what each member hands back as it is. Check the change against the running application before proposing.
+- 09:44:32 run bind-adapter: pre-checks failed
+- 09:45:09 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make the new target's adapter find a part of a screen by its name whether or not the screen numbers it. The redrawn screens number the parts of their forms ("3. Attachments", "4. Cost"), and regionNamed in tests/adapters/new/index.ts matches a region's name, or the name of the heading it holds, against a pattern anchored at its start, so every anchored lookup ("Terms and conditions", "Team capabilities", "Approved service areas", "Key dates", "Addenda", "History" and the others) fails on a numbered part and has been answered one failure at a time. Accept an optional leading part number such as "4. " in regionNamed itself, so it holds for every lookup, rather than member by member, and keep what each member hands back as it is. Check the change against the running application before proposing.
+- 09:47:43 run bind-adapter: ok, cost 0.7363912, turns 21, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 09:47:43 propose bind-adapter-new-107 at G3
+- 09:48:04 drive: step 1: `sdlc rule bind-adapter-new-107 --by agent:reviewer` — bind-adapter-new-107 is open at G3, held by agent:reviewer
+- 09:48:11 rule bind-adapter-new-107 approve at G3 by runner:checks (agent)
+- 09:48:16 drive: stopped after 1 step — nothing left to run
+- 09:48:17 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 11`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 09:57:06 drive: step 1: `sdlc run verify --slice 11` — build-slice-11-7 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 10:30:04 verify slice 11: returned — R-3.28 (slice 13) fail. Next: sdlc run build --slice 11 --revise
+- 10:30:06 run verify: regenerated 3 files in .sdlc, site
+- 10:30:20 drive: step 2: `sdlc run build --slice 11 --revise` — build-slice-11-7 was returned at G3 by runner:verify
+- 10:32:31 drive: stopped after 2 steps — step 2 (`sdlc run build --slice 11 --revise`) failed
+- 10:33:42 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Fix organizationEdit.serviceAreaCheckbox in tests/adapters/new/index.ts on the restyled Team With Us qualification tab. It decides whether the page is being edited before it opens that tab, on the Organization tab, which has no checkboxes; the restyled tab shows an administrator the service area checkboxes at once, under "Service areas this organization is approved for" with "Save service areas", so the member takes its read-only branch, finds no list items under "Approved service areas" and reads "". Shown by verify on build-slice-11-7: R-3.28 (tests/acceptance/organizations/R-3.28.spec.ts:75) failed while the page showed Full stack developer and Agile coach ticked and the other areas not. Decide whether the tab is being edited once it is open, and hand back the ticked areas' names, as the member does today on a tab drawn the other way. Check the read against the running application, as the administrator and as the organization's owner, before proposing.
+- 10:33:42 run bind-adapter: pre-checks failed
+- 10:34:21 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Fix organizationEdit.serviceAreaCheckbox in tests/adapters/new/index.ts on the restyled Team With Us qualification tab. It decides whether the page is being edited before it opens that tab, on the Organization tab, which has no checkboxes; the restyled tab shows an administrator the service area checkboxes at once, under "Service areas this organization is approved for" with "Save service areas", so the member takes its read-only branch, finds no list items under "Approved service areas" and reads "". Shown by verify on build-slice-11-7: R-3.28 (tests/acceptance/organizations/R-3.28.spec.ts:75) failed while the page showed Full stack developer and Agile coach ticked and the other areas not. Decide whether the tab is being edited once it is open, and hand back the ticked areas' names, as the member does today on a tab drawn the other way. Check the read against the running application, as the administrator and as the organization's owner, before proposing.
+- 10:37:43 run bind-adapter: ok, cost 0.9076326, turns 33, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 10:37:43 propose bind-adapter-new-108 at G3
+- 10:38:05 drive: step 1: `sdlc rule bind-adapter-new-108 --by agent:reviewer` — bind-adapter-new-108 is open at G3, held by agent:reviewer
+- 10:38:12 rule bind-adapter-new-108 approve at G3 by runner:checks (agent)
+- 10:38:16 drive: stopped after 1 step — nothing left to run
+- 10:38:18 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 11 --revise`; reason: Takes up the return of build-slice-11-7, whose revision was interrupted before it ran. Its one condition, R-3.28 (slice 13), was the adapter's and not the application's: organizationEdit.serviceAreaCheckbox read "" on the restyled Team With Us qualification tab while the page showed the approved service areas ticked, and the binding approved just before this run fixed that read. Nothing the application does needs to change for it: keep the restyle as it is and make no change for R-3.28.
+- 10:42:11 drive: step 1: `sdlc run verify --slice 11` — build-slice-11-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 11:15:43 verify slice 11: returned — R-4.14 (slice 4) fail. Next: sdlc run build --slice 11 --revise
+- 11:15:45 run verify: regenerated 3 files in .sdlc, site
+- 11:27:15 drive: step 3: `sdlc run verify --slice 11` — build-slice-11-9 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 11:34:36 verify slice 11 verified: every claimed criterion passes against the application in build-slice-11-9. Ready for G3.
+- 11:34:38 run verify: regenerated 727 files in .sdlc, site
+- 11:15:57 drive: step 2: `sdlc run build --slice 11 --revise` — build-slice-11-8 was returned at G3 by runner:verify
+- 11:27:05 run build: ok, cost 2.7868304000000004, turns 63, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 11:27:05 propose build-slice-11-9 at G3
+- 11:34:50 drive: step 4: `sdlc rule build-slice-11-9 --by agent:reviewer` — build-slice-11-9 is open at G3, held by agent:reviewer
+- 11:35:26 rule build-slice-11-9 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 11:35:31 drive: stopped after 4 steps — nothing left to run
+- 11:35:32 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 12`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 11:45:42 drive: step 1: `sdlc run verify --slice 12` — build-slice-12-6 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 12:21:10 verify slice 12: R-3.28 (slice 13), R-8.31 (slice 14) fail (2 that an earlier slice passed). R-8.31 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's, so build-slice-12-6 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 12:21:13 run verify: regenerated 3 files in .sdlc, site
+- 12:23:14 drive: step 3: `sdlc run bind-adapter --target new --revise` — 2 revision requests for target new owed by bind-adapter; requests request/build-slice-12-6#1, request/build-slice-12-6#2
+- 12:23:16 run bind-adapter: pre-checks failed
+- 12:23:16 drive: step 3 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-12-6 (sdlc sandbox up --target new --from proposal/build-slice-12-6), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-12-6)
+- 12:25:31 run bind-adapter: ok, cost 0.4937298000000001, turns 14, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 12:25:31 propose bind-adapter-new-109 at G3
+- 12:25:31 rule bind-adapter-new-109 escalated at G3 to tech-lead by runner:bind-adapter
+- 12:25:31 drive: step 3 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-12-6)
+- 12:25:54 drive: step 4: `sdlc rule bind-adapter-new-109 --by agent:tech-lead` — bind-adapter-new-109 was escalated at G3 by runner:bind-adapter to tech-lead, a role an agent plays in this project
+- 12:26:34 rule bind-adapter-new-109 approve at G3 by agent:tech-lead (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 12:27:58 drive: step 6: `sdlc run verify --slice 12` — build-slice-12-7 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 13:02:00 verify slice 12 verified: every claimed criterion passes against the application in build-slice-12-7. Ready for G3.
+- 13:02:03 run verify: regenerated 730 files in .sdlc, site
+- 12:26:43 drive: step 5: `sdlc run build --slice 12 --revise` — build-slice-12-6 was returned at G3 by agent:reviewer
+- 12:27:50 run build: ok, cost 0, turns 0
+- 12:27:50 propose build-slice-12-7 at G3
+- 13:02:15 drive: step 7: `sdlc rule build-slice-12-7 --by agent:reviewer` — build-slice-12-7 is open at G3, held by agent:reviewer
+- 13:03:07 rule build-slice-12-7 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 13:03:10 drive: stopped after 7 steps — nothing left to run
+- 13:03:12 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 13`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 13:10:02 drive: step 1: `sdlc run verify --slice 13` — build-slice-13-5 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 13:44:30 verify slice 13 verified: every claimed criterion passes against the application in build-slice-13-5. Ready for G3.
+- 13:44:32 run verify: regenerated 3 files in .sdlc, site
+- 13:09:50 run build: ok, cost 2.3286305999999994, turns 44, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 13:09:50 propose build-slice-13-5 at G3
+- 13:44:45 drive: step 2: `sdlc rule build-slice-13-5 --by agent:reviewer` — build-slice-13-5 is open at G3, held by agent:reviewer
+- 13:45:23 rule build-slice-13-5 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 13:45:27 drive: stopped after 2 steps — nothing left to run
+- 13:45:28 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 16`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 13:52:53 drive: step 1: `sdlc run verify --slice 16` — build-slice-16-7 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 14:27:52 verify slice 16 verified: every claimed criterion passes against the application in build-slice-16-7. Ready for G3.
+- 14:27:55 run verify: regenerated 3 files in .sdlc, site
+- 13:52:41 run build: ok, cost 2.6792032000000003, turns 64, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 13:52:41 propose build-slice-16-7 at G3
+- 14:28:09 drive: step 2: `sdlc rule build-slice-16-7 --by agent:reviewer` — build-slice-16-7 is open at G3, held by agent:reviewer
+- 14:29:03 rule build-slice-16-7 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 14:29:07 drive: stopped after 2 steps — nothing left to run
+- 14:29:08 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 17`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 14:37:33 drive: step 1: `sdlc run verify --slice 17` — build-slice-17-3 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 14:43:58 verify slice 17: R-5.24, R-5.27, R-5.35 fail. R-5.24, R-5.27, R-5.35 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's, so build-slice-17-3 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 14:44:00 run verify: regenerated 3 files in .sdlc, site
+- 14:46:00 drive: step 3: `sdlc run bind-adapter --target new --revise` — 3 revision requests for target new owed by bind-adapter; requests request/build-slice-17-3#1, request/build-slice-17-3#2, request/build-slice-17-3#3
+- 14:46:01 run bind-adapter: pre-checks failed
+- 14:46:02 drive: step 3 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-17-3 (sdlc sandbox up --target new --from proposal/build-slice-17-3), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-17-3)
+- 14:48:36 run bind-adapter: ok, cost 0.687251, turns 24, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 14:48:36 propose bind-adapter-new-110 at G3
+- 14:48:37 drive: step 3 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-17-3)
+- 14:49:00 drive: step 4: `sdlc rule bind-adapter-new-110 --by agent:reviewer` — bind-adapter-new-110 is open at G3, held by agent:reviewer
+- 14:49:41 rule bind-adapter-new-110 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 14:50:54 drive: step 6: `sdlc run verify --slice 17` — build-slice-17-4 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 15:25:08 verify slice 17 verified: every claimed criterion passes against the application in build-slice-17-4. Ready for G3.
+- 15:25:10 run verify: regenerated 735 files in .sdlc, site
+- 14:49:52 drive: step 5: `sdlc run build --slice 17 --revise` — build-slice-17-3 was returned at G3 by agent:reviewer
+- 14:50:46 run build: ok, cost 0, turns 0
+- 14:50:46 propose build-slice-17-4 at G3
+- 15:25:23 drive: step 7: `sdlc rule build-slice-17-4 --by agent:reviewer` — build-slice-17-4 is open at G3, held by agent:reviewer
+- 15:26:00 rule build-slice-17-4 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 15:26:06 drive: stopped after 7 steps — nothing left to run
+- 15:26:07 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 18`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 15:34:24 drive: step 1: `sdlc run verify --slice 18` — build-slice-18-7 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 16:08:14 verify slice 18: returned — R-3.10 (slice 12) fail. Next: sdlc run build --slice 18 --revise
+- 16:08:16 run verify: regenerated 3 files in .sdlc, site
+- 16:08:27 drive: step 2: `sdlc run build --slice 18 --revise` — build-slice-18-7 was returned at G3 by runner:verify
+- 16:09:24 drive: stopped after 2 steps — step 2 (`sdlc run build --slice 18 --revise`) failed
+- 16:10:00 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make organizationUserMemberships.leaveOrganization in tests/adapters/new/index.ts return only once the page shows the membership has ended. Shown by verify on build-slice-18-7: R-3.10 (tests/acceptance/organizations/R-3.10.spec.ts:52) read the affiliated organizations table straight after leaveOrganization and got "Cormorant Bay Membership Ends Ltd. | Member | Leave", while the page captured at that moment shows the status "You have left Cormorant Bay Membership Ends Ltd." and a table without that row, so the read ran before the table was redrawn. After confirming the leave, wait until the organization's row has left the table or the page says the person has left it, and do the same for any other membership action that returns before its table has changed. Keep what each member hands back as it is, and check it against the running application before proposing.
+- 16:10:01 run bind-adapter: pre-checks failed
+- 16:10:35 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make organizationUserMemberships.leaveOrganization in tests/adapters/new/index.ts return only once the page shows the membership has ended. Shown by verify on build-slice-18-7: R-3.10 (tests/acceptance/organizations/R-3.10.spec.ts:52) read the affiliated organizations table straight after leaveOrganization and got "Cormorant Bay Membership Ends Ltd. | Member | Leave", while the page captured at that moment shows the status "You have left Cormorant Bay Membership Ends Ltd." and a table without that row, so the read ran before the table was redrawn. After confirming the leave, wait until the organization's row has left the table or the page says the person has left it, and do the same for any other membership action that returns before its table has changed. Keep what each member hands back as it is, and check it against the running application before proposing.
+- 16:17:30 run bind-adapter: ok, cost 2.0821136000000005, turns 79, on claude claude-opus-5-5 (2.1.302 (Claude Code))
+- 16:17:30 propose bind-adapter-new-111 at G3
+- 16:17:54 drive: step 1: `sdlc rule bind-adapter-new-111 --by agent:reviewer` — bind-adapter-new-111 is open at G3, held by agent:reviewer
+- 16:18:04 rule bind-adapter-new-111 approve at G3 by runner:checks (agent)
+- 16:18:07 drive: stopped after 1 step — nothing left to run
+- 16:18:08 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 18 --revise`; reason: Takes up the return of build-slice-18-7, whose revision was interrupted before it ran. Its one condition, R-3.10 (slice 12), was the adapter's and not the application's: organizationUserMemberships.leaveOrganization returned before the affiliated organizations table was redrawn, while the page already showed "You have left Cormorant Bay Membership Ends Ltd." and a table without that organization, and the binding approved just before this run makes the action wait for the change. Nothing the application does needs to change for it: keep the restyle as it is and make no change for R-3.10.
+- 16:21:50 drive: step 1: `sdlc run verify --slice 18` — build-slice-18-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 16:56:40 verify slice 18: returned — R-4.14 (slice 4) fail. Next: sdlc run build --slice 18 --revise
+- 16:56:42 run verify: regenerated 3 files in .sdlc, site
+- 16:56:54 drive: step 2: `sdlc run build --slice 18 --revise` — build-slice-18-8 was returned at G3 by runner:verify
+- 16:57:45 drive: stopped after 2 steps — step 2 (`sdlc run build --slice 18 --revise`) failed
+- 16:58:17 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make the user list reads in tests/adapters/new/index.ts read the whole list in one call to the browser. userListMarked, behind userList.userRow, statusBadge, accountType and adminCheck, reads each row's status, account type, name and administrator cells with separate test-ID lookups, one after another, so a read costs several browser round trips per row; every test that registers a person makes the list longer, and once it is long the read takes longer than the 5 seconds tests/acceptance/users/R-4.14.spec.ts waits for it (its expect.poll at line 61), which is how R-4.14 failed on build-slice-11-8 and build-slice-18-8 while the application listed everyone. Read every user-list-row and its four cells together, for example with a single evaluateAll over the rows, and keep what each member hands back exactly as it is. Check it against the running application with the full list before proposing.
+- 16:58:17 run bind-adapter: pre-checks failed
+- 16:58:54 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run bind-adapter --target new`; reason: Make the user list reads in tests/adapters/new/index.ts read the whole list in one call to the browser. userListMarked, behind userList.userRow, statusBadge, accountType and adminCheck, reads each row's status, account type, name and administrator cells with separate test-ID lookups, one after another, so a read costs several browser round trips per row; every test that registers a person makes the list longer, and once it is long the read takes longer than the 5 seconds tests/acceptance/users/R-4.14.spec.ts waits for it (its expect.poll at line 61), which is how R-4.14 failed on build-slice-11-8 and build-slice-18-8 while the application listed everyone. Read every user-list-row and its four cells together, for example with a single evaluateAll over the rows, and keep what each member hands back exactly as it is. Check it against the running application with the full list before proposing.
+
+# Run record 2026-10-17
+
+- 12:34:12 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain opportunities --hand-in design-directions`; reason: Hand in the redesign drawn outside the pipeline on the design-directions branch: the shared site header and footer, the home page, the opportunity list and the Code With Us proposal form, with the chosen direction's rules in DESIGN.md
+- 12:37:59 run design: ok, handed in from design-directions at 35b7a503234b
+- 12:37:59 propose design-opportunities-6 at G-DESIGN
+- 12:39:58 rule design-opportunities-6 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 12:40:40 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 1`; reason: Restyle to the design catalogue approved at G-DESIGN in design-opportunities-6. Build the site's skip link, header, navigation, account menu, phone menu and footer from design/catalogue/site.tsx, and the home page from home.default and home.loading (home-page.tsx, marketplace.tsx), keeping every test ID; the home page's sign-in and sign-up test IDs are on the header's Sign In and Sign Up there.
+- 12:56:55 drive: step 1: `sdlc run verify --slice 1` — build-slice-1-8 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 13:00:24 verify slice 1: R-7.19 fail. R-7.19 stopped on a read that came back with nothing, which can be the adapter's as easily as the application's, so build-slice-1-8 is left open for agent:reviewer to send each failure to the build or to bind-adapter.
+- 13:00:26 run verify: regenerated 3 files in .sdlc, site
+- 13:01:39 drive: step 3: `sdlc run bind-adapter --target new --revise` — 1 revision request for target new owed by bind-adapter; request request/build-slice-1-8#1
+- 13:01:40 run bind-adapter: pre-checks failed
+- 13:01:40 drive: step 3 recovery: the new target's sandbox was not up; starting it from proposal/build-slice-21-3 (sdlc sandbox up --target new --from proposal/build-slice-21-3), running the step once more, and taking it down after (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 13:03:39 run bind-adapter: ok, cost 0.42277599999999993, turns 16, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 13:03:39 propose bind-adapter-new-91 at G3
+- 13:03:39 drive: step 3 recovery: taking the new target's sandbox down (sdlc sandbox down --target new --from proposal/build-slice-21-3)
+- 13:03:57 drive: step 4: `sdlc rule bind-adapter-new-91 --by agent:reviewer` — bind-adapter-new-91 is open at G3, held by agent:reviewer
+- 13:04:27 rule bind-adapter-new-91 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 13:05:37 drive: step 6: `sdlc run verify --slice 1` — build-slice-1-9 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 13:35:46 verify slice 1 verified: every claimed criterion passes against the application in build-slice-1-9. Ready for G3.
+- 13:35:48 run verify: regenerated 671 files in .sdlc, site
+- 13:04:35 drive: step 5: `sdlc run build --slice 1 --revise` — build-slice-1-8 was returned at G3 by agent:reviewer
+- 13:05:30 run build: ok, cost 0, turns 0
+- 13:05:30 propose build-slice-1-9 at G3
+- 13:35:56 drive: step 7: `sdlc rule build-slice-1-9 --by agent:reviewer` — build-slice-1-9 is open at G3, held by agent:reviewer
+- 13:36:48 rule build-slice-1-9 approve at G3 by agent:reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 13:36:51 drive: stopped after 7 steps — nothing left to run
+- 13:40:03 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain opportunities`; reason: Bring this domain's remaining screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, OpportunityRows, look and statusOf where they fit; follow its seven rules (an opportunity's facts in the fixed order, colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). The home page and opportunity list stories already follow it: keep them as they are and use them as the reference. Keep every page's states, every filled test_id and the words the stories already carry. Also in site.tsx: the phone menu panel's site name and account actions sit outside any landmark (axe 'region' on the running app); put the open panel inside one labelled landmark.
+- 14:17:19 run design: ok, cost 13.178365399999997, turns 1, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 14:17:19 propose design-opportunities-7 at G-DESIGN
+- 14:17:26 drive: step 1: `sdlc rule design-opportunities-7 --by agent:ux-reviewer` — design-opportunities-7 is open at G-DESIGN, held by agent:ux-reviewer
+- 14:18:43 rule design-opportunities-7 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 14:18:47 drive: stopped after 1 step — nothing left to run
+- 14:19:52 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain proposals`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry. The Code With Us proposal form (proposal-cwu-create) is already drawn this way: keep it, and draw the Sprint With Us and Team With Us proposal forms and the other proposal screens to match it.
+- 14:43:18 run design: ok after a fix turn, cost 18.264894400000003, turns 123, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 14:43:18 propose design-proposals-3 at G-DESIGN
+- 14:43:24 drive: step 1: `sdlc rule design-proposals-3 --by agent:ux-reviewer` — design-proposals-3 is open at G-DESIGN, held by agent:ux-reviewer
+- 14:44:56 rule design-proposals-3 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 14:44:59 drive: stopped after 1 step — nothing left to run
+- 14:45:01 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain users`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry.
+- 14:59:30 run design: ok, cost 4.672479000000001, turns 95, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 14:59:30 propose design-users-5 at G-DESIGN
+- 14:59:36 drive: step 1: `sdlc rule design-users-5 --by agent:ux-reviewer` — design-users-5 is open at G-DESIGN, held by agent:ux-reviewer
+- 15:00:51 rule design-users-5 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:00:55 drive: stopped after 1 step — nothing left to run
+- 15:00:56 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain content`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry.
+- 15:12:17 run design: ok, cost 3.8294668, turns 74, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:12:17 propose design-content-4 at G-DESIGN
+- 15:12:23 drive: step 1: `sdlc rule design-content-4 --by agent:ux-reviewer` — design-content-4 is open at G-DESIGN, held by agent:ux-reviewer
+- 15:13:42 rule design-content-4 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:13:46 drive: stopped after 1 step — nothing left to run
+- 15:13:47 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain organizations`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry.
+- 15:35:37 run design: ok, cost 8.231425999999997, turns 148, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:35:37 propose design-organizations-3 at G-DESIGN
+- 15:35:43 drive: step 1: `sdlc rule design-organizations-3 --by agent:ux-reviewer` — design-organizations-3 is open at G-DESIGN, held by agent:ux-reviewer
+- 15:37:09 rule design-organizations-3 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:37:14 drive: stopped after 1 step — nothing left to run
+- 15:37:15 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain notifications`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry. notification-optin-opportunity-list is drawn on the opportunity list: draw its control inside the redesigned list layout, for a signed-in viewer.
+- 15:47:12 run design: ok, cost 3.448873200000001, turns 58, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:47:12 propose design-notifications-3 at G-DESIGN
+- 15:47:18 drive: step 1: `sdlc rule design-notifications-3 --by agent:ux-reviewer` — design-notifications-3 is open at G-DESIGN, held by agent:ux-reviewer
+- 15:48:28 rule design-notifications-3 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 15:48:31 drive: stopped after 1 step — nothing left to run
+- 15:48:32 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain files`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry.
+- 16:01:11 drive: step 2: `sdlc run design --domain files --revise` — design-files-3 was returned at G-DESIGN by agent:ux-reviewer
+- 16:05:38 run design: ok, cost 0.5809597999999999, turns 19, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 16:05:38 propose design-files-4 at G-DESIGN
+- 16:05:43 drive: step 3: `sdlc rule design-files-4 --by agent:ux-reviewer` — design-files-4 is open at G-DESIGN, held by agent:ux-reviewer
+- 16:06:51 rule design-files-4 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 16:06:55 drive: stopped after 3 steps — nothing left to run
+- 16:06:56 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run design --domain evaluation`; reason: Bring this domain's screens into the chosen direction set out in design/DESIGN.md, 'Site shell and the chosen direction': render every story inside SitePage from design/catalogue/site.tsx, with the viewer each state is seen by and the current section; use marketplace.tsx's Label, look and statusOf, and the opportunities domain's opportunity-kit.tsx, where they fit; follow its seven rules (colour only for status, dense spacing tokens, one primary action per screen, rows becoming stacked cards on phones). Screens already drawn this way (the home page, the opportunity list, the Code With Us proposal form and the opportunities domain's screens) are the reference: keep them as they are. Keep every page's states, every filled test_id and the words the stories already carry.
+- 16:32:19 run design: ok, cost 10.402704600000002, turns 213, on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 16:32:19 propose design-evaluation-3 at G-DESIGN
+- 16:32:25 drive: step 1: `sdlc rule design-evaluation-3 --by agent:ux-reviewer` — design-evaluation-3 is open at G-DESIGN, held by agent:ux-reviewer
+- 16:33:53 rule design-evaluation-3 approve at G-DESIGN by agent:ux-reviewer (agent) on claude claude-opus-5-5 (2.1.300 (Claude Code))
+- 16:33:56 drive: stopped after 1 step — nothing left to run
+- 16:34:21 deviation: next named `nothing: the next stage in the sequence, deploy, is not implemented in this pipeline yet`; ran `sdlc run build --slice 8`; reason: Restyle this slice's screens to the design catalogue approved at G-DESIGN, which follows the chosen direction in design/DESIGN.md, 'Site shell and the chosen direction': build each of the slice's pages from its story in design/catalogue/, keeping every test ID. The site shell and the shared components (site-header, site-footer, marketplace) are already in app/frontend/src/app from slice 1's restyle: reuse them, and add any other shared catalogue component (such as the opportunities domain's opportunity-kit) there once rather than per screen.
+- 16:47:31 drive: step 1: `sdlc run verify --slice 8` — build-slice-8-11 is open at G3 and has no verify result for the application it carries; it is verified before it is ruled
+- 16:51:26 verify slice 8: returned — R-1.38 fail. Next: sdlc run build --slice 8 --revise
+- 16:51:27 run verify: regenerated 3 files in .sdlc, site
+
 # Run record 2026-10-16
 
 - 13:39:36 init: pipeline 67a3510, packs 3, skills installed 0, skipped 0, briefs 0 written, 0 left as the project has them
 - 14:27:00 init: pipeline bba2992, packs 3, skills installed 0, skipped 0, briefs 0 written, 0 left as the project has them
+
+# Run record 2026-10-15
+
+- 08:48:54 oracle up old: http://localhost:3100 (local port 3100)
 
 # Run record 2026-10-05
 

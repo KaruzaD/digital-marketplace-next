@@ -46,5 +46,9 @@ export default defineConfig({
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     setupFiles: ["tests/setup.ts"],
     css: false,
+    // The slowest screen tests take 2.5–3.3s warm; a cold run (the first after an install) is
+    // several times slower and overran the default 5s limit, as the backend's did.
+    testTimeout: 30_000,
+    hookTimeout: 60_000,
   },
 });

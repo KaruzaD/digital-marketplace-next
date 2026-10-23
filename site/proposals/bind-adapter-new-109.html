@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bind-adapter-new-109 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>bind-adapter-new-109</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 19:25</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does this adapter bind every surface action and observation on new, and nothing else?</h2>
+<p><strong>Recommendation.</strong> I made both changes the rulings asked for in <code>tests/adapters/new/index.ts</code> and changed nothing else.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I made both changes the rulings asked for in <code>tests/adapters/new/index.ts</code> and changed nothing else. <code>bindings.yaml</code> is unchanged because both members were already <code>bound</code>. I could not run the type check: the tool refused to run <code>tsc</code> without approval. I checked the new code by hand against the helpers it calls (<code>actionControl</code>, <code>isDisabled</code>, <code>settle</code>, <code>ready</code>, <code>carried</code>, <code>regionNamed</code>), and their signatures match. I did not open the target in the browser again for this revision.</p>
+<p><strong>Condition 1 (R-3.28, <code>organizationEdit.serviceAreaCheckbox</code>).</strong> Before, the member skipped the &quot;Approved service areas&quot; list whenever an &quot;Edit service areas&quot; button was offered. It opened the editor instead and read the ticked boxes, and that read did not give back both areas. Now the order is:</p>
+<ul><li>If the service-area form is already open, the member reads the ticked boxes, as before.</li><li>If the form is closed, it reads the approved areas first: the elements with the <code>organization-service-area</code> test ID where the page has them, otherwise the items of the &quot;Approved service areas&quot; region. It does this whether or not &quot;Edit service areas&quot; is offered.</li><li>Only when the section draws no such list at all does it open the editor to read the ticked boxes (and cancel it afterwards). If there is no editor either, it returns empty.</li></ul>
+<p>What it returns has the same form as before: one area per line, approved areas only.</p>
+<p><strong>Condition 2 (R-8.31, <code>opportunityCwuEdit.deleteOpportunity</code>).</strong> This used to return as soon as the existing confirm step finished, while the delete was still running. It now goes on waiting, for up to 30 seconds, until the page is no longer <code>/opportunities/code-with-us/&lt;id&gt;/edit</code>. It then lets the next page settle before returning.</p>
+<p>One case would otherwise have waited out the full time: the service refusing the delete and leaving the page where it was. So if the Delete control stays enabled on that same page for three seconds in a row, the member takes that as a refusal and returns, and the test&#39;s own next reading decides the outcome. The three seconds stop it from mistaking the brief moment before the button disables for a refusal. If the page is still the edit page with its actions disabled after 30 seconds, the member throws an error naming that state, instead of letting the next read run against a delete that has not finished.</p>
+<p>The ruling named the Code With Us page, so I changed only that one. The Sprint With Us and Team With Us delete members use a separate helper (<code>programManage.act</code>), which I left as I found it.</p>
+<p>No condition was deferred, and nothing outside <code>tests/adapters/new/</code> was touched or needed changing.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:tech-lead (persona agent · claude claude-opus-5-5) on 2026-10-18 19:26.</p>
+<div class="body"><p>The question is whether this revision of the new target&#39;s adapter binds what the two owed requests from build-slice-12-6 asked for, and nothing else. It reached tech-lead only because bind-adapter&#39;s request loop with build-slice-12 went past policy.loops.request (3 sends against a limit of 2). That is a loop count, not a pipeline that cannot produce what G3 asks for, so it is ruled here and not escalated. Approve. R-3.28: with the form closed, organizationEdit.serviceAreaCheckbox now reads the approved areas from the organization-service-area elements, otherwise from the &#39;Approved service areas&#39; region&#39;s list items, whether or not &#39;Edit service areas&#39; is offered. It opens the editor only when no list is drawn (tests/adapters/new/index.ts ~7766-7779). This is what the request asked for, and it fits R-3.28.png, which shows the list over the button. R-8.31: opportunityCwuEdit.deleteOpportunity now waits after confirming until the URL is no longer the opportunity&#39;s edit page, which is what the request asked for. A refusal is recognised as the Delete control staying enabled for 3s on the same page. Still being on the edit page with actions disabled after 30s throws a named error, so neither outcome hangs or passes silently. The change is limited to tests/adapters/new/index.ts and to Code With Us, the page the evidence named. The runner&#39;s typecheck passed with no diagnostics under adapters/new/. What would change this: a fresh verify of slice 12 in which R-3.28 or R-8.31 still fails for an adapter-side reason.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

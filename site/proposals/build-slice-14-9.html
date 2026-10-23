@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-14-9 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-14-9</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-19 05:10</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.302 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 14 (A vendor can propose on a Code With Us opportunity) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I brought the slice 14 screens back in line with the design catalogue.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.302 (Claude Code))</p>
+<p>I brought the slice 14 screens back in line with the design catalogue. Only two wording differences were left, both on the proposal forms. <code>npm --prefix app run check</code> passes: typechecks, then 16 + 862 + 659 unit tests across migrations, backend and frontend.</p>
+<p><strong>What I found.</strong> These screens had already been restyled once, the previous time this stage ran (decision record 0072). Since then the design notes have gained a section called &quot;Corrections after the build&quot;, which changes two things on these screens. I checked every story for the Code With Us create page, its manage page and the vendor dashboard against the app: the words, the order of things and the test IDs. Only those two corrections were missing. Everything else the stories draw is already in the screens, or is left out on purpose for reasons decision record 0072 already gives.</p>
+<p><strong>What I changed:</strong></p>
+<ul><li><strong>Manage page form.</strong> When a vendor presses Edit, the form now asks the create page&#39;s question: &quot;Will you be submitting a proposal for this opportunity as an Individual or Organization?&quot;, with the choices &quot;Individual&quot; and &quot;Organization&quot;. It used to ask &quot;Who is submitting this proposal?&quot; with &quot;An individual&quot; and &quot;An organization&quot;. The test IDs on the two choices are unchanged.</li><li><strong>Create page.</strong> The second street field is now labelled &quot;Street Address line 2&quot;, so the two street fields no longer share a name, which the accessibility guideline WCAG 2.2 requires. Its test ID <code>proposal-street-2-field</code> is unchanged.</li><li><strong>Shared proposal kit.</strong> I added one style rule so the kit&#39;s styles match the catalogue&#39;s copy exactly. It only matters to the scoring screens a later slice builds.</li><li><strong>Decision record.</strong> <code>docs/decisions/0091-the-code-with-us-proposal-forms-take-the-catalogues-corrections.md</code> records these changes and replaces 0072&#39;s line about the question.</li></ul>
+<p><strong>Kept on purpose.</strong> At the end of the manage form the story says &quot;Save changes keeps this proposal as a draft&quot;; I kept the app&#39;s &quot;keeps this proposal as it is&quot;. Edit is also offered on proposals that have been submitted or withdrawn, and saving one of those does not turn it back into a draft, so the story&#39;s sentence would be wrong there. The earlier omissions also stand: no evaluation-criteria section, because the contract gives Code With Us opportunities no evaluation criteria, and no &quot;format with Markdown&quot; sentence, because proposals are shown as plain text.</p>
+<p><strong>Tests.</strong> I added checks to the existing unit tests in <code>app/frontend/tests/proposals.test.tsx</code> rather than writing new tests. The manage-page editing test now checks the corrected question, both choice labels and the &quot;Street address line 2&quot; label. The create-page test now checks that &quot;Street Address line 2&quot; labels the second street field.</p>
+<p><strong>Effect on the acceptance tests.</strong> No test ID changed. An acceptance test that finds the manage form&#39;s choices by &quot;Who is submitting this proposal?&quot;, or the create page&#39;s second street field by &quot;Street Address&quot;, will need the new words.</p>
+<p><strong>Not done here.</strong> I changed no behaviour and nothing in the slice&#39;s criteria. As before, the rules that also cover the Sprint With Us and Team With Us screens are answered for in Slice 15, and scoring and awarding in Slice 16. Nothing outside <code>app/</code> and <code>docs/decisions/</code> was touched. I could not view the pages in a browser here, so the checks rely on the unit tests and the comparison against the stories.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-19 05:47.</p>
+<div class="body"><p>Question: does slice 14 (a vendor can propose on a Code With Us opportunity) do what its criteria say? Ruling: approve. The verify result is a current pass: 18 of 18 claimed criteria met, recorded against application tree 01acf7d, which is the branch&#39;s app tree. The diff makes exactly the two changes listed in design/DESIGN.md under &#39;Corrections after the build&#39;. The manage page&#39;s edit form now asks the create page&#39;s question, &#39;Will you be submitting a proposal for this opportunity as an Individual or Organization?&#39;, with &#39;Individual&#39; and &#39;Organization&#39;. The create page&#39;s second street field is labelled &#39;Street Address line 2&#39; (WCAG 2.2 SC 2.4.6). Test IDs, behaviour and criteria are unchanged. The one CSS rule only collapses an empty proposal-score-actions wrapper. The &#39;keeps this proposal as it is&#39; wording is kept on purpose and is correct under R-2.23, because submitted and withdrawn proposals can be edited and saving does not make them drafts. Unit tests in app/frontend/tests/proposals.test.tsx assert both new wordings. Changes stay within app/ and docs/decisions/, with no secrets or personal data. The ruling would change if a verify run recorded against a newer tree failed a claimed criterion, or if the added style rule were found to differ from the catalogue&#39;s.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

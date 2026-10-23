@@ -1,21 +1,12 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Heading,
-  InlineAlert,
-  Link,
-  Text,
-  TextField,
-} from "@bcgov/design-system-react-components";
+import { Button, Checkbox, Form, InlineAlert, Link, TextField } from "@bcgov/design-system-react-components";
 import { DASHBOARD } from "@rules/sign-in";
 import { needsProfileCompletion, ProfileErrors, validateProfile } from "@rules/users";
 import { Account, changeOwnAccount } from "../api/accounts";
 import { uploadPicture } from "../api/files";
 import { ImagePicker, PictureRejection, checkChosenPicture } from "../app/image-picker";
-import { Stack } from "../app/page-layout";
-import { Loading } from "../app/loading";
+import { Actions, PageTitle, Waiting } from "../app/opportunity-kit";
+import { ErrorSummary, Fields, Group, UserPage } from "../app/user-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { holdAccount, useSession } from "../auth/session";
 import { useGoTo } from "../app/go-to";
@@ -42,10 +33,10 @@ export function SignUpCompleteScreen() {
 
   if (session.status !== "signed-in" || !offered) {
     return (
-      <Stack gap="large">
-        <Heading level={1}>Complete Your Profile</Heading>
-        <Loading label="Loading…" />
-      </Stack>
+      <UserPage>
+        <PageTitle>Complete Your Profile</PageTitle>
+        <Waiting label="Loading" />
+      </UserPage>
     );
   }
   return <CompletionForm account={session.account} />;
@@ -142,9 +133,11 @@ function CompletionForm({ account }: { account: Account }) {
     goTo(DASHBOARD);
   }
 
+  // Above the form: the refusal when the service would not save, the summary when a field is
+  // wrong, and otherwise the introduction (user-sign-up-complete · save-failed, invalid, default).
   return (
-    <Stack gap="large">
-      <Heading level={1}>Complete Your Profile</Heading>
+    <UserPage>
+      <PageTitle>Complete Your Profile</PageTitle>
       {saveFailed ? (
         <InlineAlert
           variant="danger"
@@ -152,31 +145,21 @@ function CompletionForm({ account }: { account: Account }) {
           title="Your profile could not be saved"
           description="Nothing you entered has been lost. Check your details and try again."
         />
-      ) : null}
-      {problems.length > 0 ? (
-        <div tabIndex={-1}>
-          <InlineAlert variant="danger" role="alert">
-            {/* The design system's alert shows no title of its own once it has children, and
-                names itself by the element with this id, so the title is given here. */}
-            <span className="title" id="alert-title">
-              {`Your profile has ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`}
-            </span>
-            <ul>
-              {problems.map((problem) => (
-                <li key={problem.field} data-testid="field-error">
-                  <Link href={`#${FIELD_LABELS[problem.field].id}`}>
-                    {`${problem.label}: ${problem.message.charAt(0).toLowerCase()}${problem.message.slice(1)}`}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </InlineAlert>
-        </div>
+      ) : problems.length > 0 ? (
+        <ErrorSummary title={`Your profile has ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`}>
+          {problems.map((problem) => (
+            <li key={problem.field} data-testid="field-error">
+              <Link href={`#${FIELD_LABELS[problem.field].id}`}>
+                {`${problem.label}: ${problem.message.charAt(0).toLowerCase()}${problem.message.slice(1)}`}
+              </Link>
+            </li>
+          ))}
+        </ErrorSummary>
       ) : (
-        <Text elementType="p">Confirm your details to finish creating your vendor account.</Text>
+        <p className="op-text">Confirm your details to finish creating your vendor account.</p>
       )}
       <Form validationBehavior="aria" onSubmit={complete}>
-        <Stack gap="medium">
+        <div className="us-form">
           <ImagePicker
             storedFileId={account.avatarImageFile}
             chosen={chosen}
@@ -195,61 +178,54 @@ function CompletionForm({ account }: { account: Account }) {
               });
             }}
           />
-          <TextField
-            label="Sign-in username"
-            value={account.idpUsername}
-            isReadOnly
-            description="The account you signed in with. It cannot be changed."
-            data-testid="idp-username-field"
-          />
-          <TextField
-            id="profile-name"
-            label="Name"
-            value={name}
-            onChange={setName}
-            isRequired
-            isInvalid={Boolean(errors.name)}
-            errorMessage={errors.name}
-            data-testid="name-field"
-          />
-          <TextField
-            id="profile-email"
-            label="Email address"
-            type="email"
-            value={email}
-            onChange={setEmail}
-            isRequired
-            isInvalid={Boolean(errors.email)}
-            errorMessage={errors.email}
-            data-testid="email-field"
-          />
-          <Checkbox
-            isSelected={notices}
-            onChange={setNotices}
-            data-testid="sign-up-notifications-checkbox"
-          >
+          <Fields>
+            <TextField
+              label="Sign-in username"
+              value={account.idpUsername}
+              isReadOnly
+              description="The account you signed in with. It cannot be changed."
+              data-testid="idp-username-field"
+            />
+            <TextField
+              id="profile-name"
+              label="Name"
+              value={name}
+              onChange={setName}
+              isRequired
+              isInvalid={Boolean(errors.name)}
+              errorMessage={errors.name}
+              data-testid="name-field"
+            />
+            <TextField
+              id="profile-email"
+              label="Email address"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              isRequired
+              isInvalid={Boolean(errors.email)}
+              errorMessage={errors.email}
+              data-testid="email-field"
+            />
+          </Fields>
+          <Checkbox isSelected={notices} onChange={setNotices} data-testid="sign-up-notifications-checkbox">
             Email me when new opportunities are posted
           </Checkbox>
-          <Stack gap="small">
-            <Text elementType="p">
-              Read the <Link href="/content/terms-and-conditions">terms and conditions</Link> and
-              the <Link href="/content/privacy">privacy policy</Link> before you agree to them.
-            </Text>
-            <Checkbox
-              isRequired
-              isSelected={agreed}
-              onChange={setAgreed}
-              data-testid="sign-up-terms-checkbox"
-            >
+          <Group>
+            <p className="op-text">
+              Read the <Link href="/content/terms-and-conditions">terms and conditions</Link> and the{" "}
+              <Link href="/content/privacy">privacy policy</Link> before you agree to them.
+            </p>
+            <Checkbox isRequired isSelected={agreed} onChange={setAgreed} data-testid="sign-up-terms-checkbox">
               I have read and agree to the terms and conditions and the privacy policy
             </Checkbox>
-          </Stack>
+          </Group>
           {agreed ? null : (
-            <Text id="sign-up-complete-hint" elementType="p" size="small" color="secondary">
+            <p id="sign-up-complete-hint" className="op-note">
               Agree to the terms and conditions and the privacy policy to complete your profile.
-            </Text>
+            </p>
           )}
-          <div>
+          <Actions>
             <Button
               type="submit"
               variant="primary"
@@ -259,9 +235,9 @@ function CompletionForm({ account }: { account: Account }) {
             >
               Complete profile
             </Button>
-          </div>
-        </Stack>
+          </Actions>
+        </div>
       </Form>
-    </Stack>
+    </UserPage>
   );
 }

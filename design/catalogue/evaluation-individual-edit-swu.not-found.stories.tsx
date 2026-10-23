@@ -1,23 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { EvaluationMissing, UNRELATED_STAFF, WIDTHS } from "./evaluation-kit";
 
 // evaluation-individual-edit-swu · not-found — anyone not allowed to read this evaluation, which always includes a public
-// sector employee with no connection to the opportunity (R-5.11). Who else is shut out before consensus is disputed
-// between R-5.11 and R-5.28 (gap 3)
-const meta: Meta = { title: "evaluation/evaluation-individual-edit-swu/not-found" };
+// sector employee with no connection to the opportunity (R-5.11), who this story is drawn for. Who else is shut out
+// before consensus is disputed between R-5.11 and R-5.28 (gap 3)
+const meta: Meta = { title: "evaluation/evaluation-individual-edit-swu/not-found", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-export const NotFound: StoryObj = {
-  render: () => (
-    <PageContainer>
-      <Stack gap="large" data-testid="not-found-page">
-        <Heading level={1}>Page not found</Heading>
-        <Text elementType="p">The page you are looking for does not exist.</Text>
-        <div>
-          <Link href="/" isButton buttonVariant="primary">Back to home</Link>
-        </div>
-      </Stack>
-    </PageContainer>
-  ),
-};
+export const NotFound: StoryObj = { render: () => <EvaluationMissing viewer={UNRELATED_STAFF} /> };

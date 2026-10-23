@@ -150,16 +150,16 @@ pages:
       proposal_deadline: { test_id: opportunity-proposal-deadline }
       # The assignment date and the work start date as this screen shows them. It shows no
       # completion date; that is read on opportunity-cwu-edit.
-      assignment_date: { test_id: null }
-      start_date: { test_id: null }
+      assignment_date: { test_id: opportunity-assignment-date }
+      start_date: { test_id: opportunity-start-date }
       reward: { test_id: opportunity-reward }
       addenda: { test_id: opportunity-addenda }
       successful_proponent: { test_id: opportunity-successful-proponent }
       # What an awarded opportunity shows about its winner beyond the name: the contact
       # details and the score, which only a reader permitted to see proposal scores is
       # shown. Empty for anybody else, and for an opportunity not yet awarded.
-      successful_proponent_contact_details: { test_id: null }
-      successful_proponent_score: { test_id: null }
+      successful_proponent_contact_details: { test_id: opportunity-successful-proponent-contact }
+      successful_proponent_score: { test_id: opportunity-successful-proponent-score }
 
   - id: opportunity-cwu-edit
     domain: opportunities
@@ -187,10 +187,10 @@ pages:
       # The dates the opportunity holds, as its opportunity tab (?tab=opportunity) shows
       # them in its form, each a calendar day; empty when the opportunity has none. This is
       # the one screen where all four, the completion date included, can be read.
-      proposal_deadline: { test_id: null }
-      assignment_date: { test_id: null }
-      start_date: { test_id: null }
-      completion_date: { test_id: null }
+      proposal_deadline: { test_id: opportunity-deadline-field }
+      assignment_date: { test_id: opportunity-assignment-date-field }
+      start_date: { test_id: opportunity-start-date-field }
+      completion_date: { test_id: opportunity-completion-date-field }
       # Read on the History tab (?tab=history): true when the tab offers any control for
       # adding a note to the opportunity's history (a text entry for a note, a control to
       # attach files to one, or a button to save one), false when it lists the history and
@@ -198,7 +198,7 @@ pages:
       # opportunity's author, so read it as one of those; seed.opportunities
       # .cwuWithPrivateNote has users.staffOne (persona public-sector-staff) as its author.
       # Adding a note by request, without a screen, is on opportunity-history-request.
-      note_control_offered: { test_id: null }
+      note_control_offered: { test_id: opportunity-history-section }
 
   - id: opportunity-cwu-complete
     domain: opportunities
@@ -231,7 +231,7 @@ pages:
       # maximum_score and minimum_score. No position or order field is offered; a
       # question's position is its place in the list. Empty when the list holds no
       # question at that place.
-      evaluation_question_fields: { test_id: null }
+      evaluation_question_fields: { test_id: evaluation-question }
 
   - id: opportunity-swu-view
     domain: opportunities
@@ -249,7 +249,7 @@ pages:
       proposal_deadline: { test_id: opportunity-proposal-deadline }
       # The assignment date as this screen shows it. Start and completion dates are each
       # phase's own and stand in phases.
-      assignment_date: { test_id: null }
+      assignment_date: { test_id: opportunity-assignment-date }
       total_max_budget: { test_id: opportunity-total-max-budget }
       phases: { test_id: opportunity-phases }
       # The body of the page at "sprint-with-us-opportunity-scope" (seed.content
@@ -261,7 +261,7 @@ pages:
       # because every Sprint With Us opportunity reads the same page at the same address;
       # an instance started in the configuration service_page_absent
       # (observables.yaml, configurations) is the one where it is missing.
-      scope_section: { test_id: null }
+      scope_section: { test_id: opportunity-scope }
       # The text of every notice, alert, error message or pop-up message the screen shows
       # anywhere outside its own sections (scope_section, phases, addenda and the rest
       # above), one message per line, in the order shown; empty when none is shown. The
@@ -273,14 +273,14 @@ pages:
       # persona vendor (users.vendorOne, who has no proposal on it), so for that pair this
       # is empty under the default and any message it returns on an instance started in
       # service_page_absent is one the missing page caused.
-      page_messages: { test_id: null }
+      page_messages: { test_id: opportunity-page-messages }
       addenda: { test_id: opportunity-addenda }
       successful_proponent: { test_id: opportunity-successful-proponent }
       # What an awarded opportunity shows about its winner beyond the name: the contact
       # details and the score, which only a reader permitted to see proposal scores is
       # shown. Empty for anybody else, and for an opportunity not yet awarded.
-      successful_proponent_contact_details: { test_id: null }
-      successful_proponent_score: { test_id: null }
+      successful_proponent_contact_details: { test_id: opportunity-successful-proponent-contact }
+      successful_proponent_score: { test_id: opportunity-successful-proponent-score }
 
   - id: opportunity-swu-edit
     domain: opportunities
@@ -314,19 +314,19 @@ pages:
       # instructions and the evaluator's own list of individual evaluations. With
       # evaluation_panel_tab and consensus_tab these are the four an evaluation's tools
       # are split into, each present or absent for the signed-in person.
-      instructions_tab: { test_id: null }
-      evaluation_tab: { test_id: null }
+      instructions_tab: { test_id: opportunity-tab-instructions }
+      evaluation_tab: { test_id: opportunity-tab-evaluation }
       # As on opportunity-cwu-edit, for the two dates a Sprint With Us opportunity holds
       # itself; its start and completion dates are its phases'.
-      proposal_deadline: { test_id: null }
-      assignment_date: { test_id: null }
+      proposal_deadline: { test_id: opportunity-deadline-field }
+      assignment_date: { test_id: opportunity-assignment-date-field }
       # As on opportunity-swu-create, read on the team questions tab while editing.
-      evaluation_question_fields: { test_id: null }
+      evaluation_question_fields: { test_id: evaluation-question }
       # As on opportunity-cwu-edit, read on the History tab (?tab=history) as an
       # administrator or the opportunity's author; seed.opportunities
       # .swuOpenWithSubmittedProposal has users.staffOne (persona public-sector-staff) as
       # its author.
-      note_control_offered: { test_id: null }
+      note_control_offered: { test_id: opportunity-history-section }
 
   - id: opportunity-swu-complete
     domain: opportunities
@@ -355,7 +355,7 @@ pages:
       # As on opportunity-swu-create, for one resource question: question, guideline,
       # response_word_limit, maximum_score and minimum_score, and no position or order
       # field.
-      evaluation_question_fields: { test_id: null }
+      evaluation_question_fields: { test_id: evaluation-question }
 
   - id: opportunity-twu-view
     domain: opportunities
@@ -373,21 +373,21 @@ pages:
       proposal_deadline: { test_id: opportunity-proposal-deadline }
       # The contract award (assignment) date, the contract start date and the contract
       # completion date as this screen shows them; empty when the opportunity has none.
-      assignment_date: { test_id: null }
-      start_date: { test_id: null }
-      completion_date: { test_id: null }
+      assignment_date: { test_id: opportunity-assignment-date }
+      start_date: { test_id: opportunity-start-date }
+      completion_date: { test_id: opportunity-completion-date }
       max_budget: { test_id: opportunity-max-budget }
       resources: { test_id: opportunity-resources }
       # The body of the page at "team-with-us-terms-and-conditions" (seed.content
       # .servicePageTeamWithUsTerms) as this screen embeds it, rendered.
-      terms_section: { test_id: null }
+      terms_section: { test_id: opportunity-terms }
       addenda: { test_id: opportunity-addenda }
       successful_proponent: { test_id: opportunity-successful-proponent }
       # What an awarded opportunity shows about its winner beyond the name: the contact
       # details and the score, which only a reader permitted to see proposal scores is
       # shown. Empty for anybody else, and for an opportunity not yet awarded.
-      successful_proponent_contact_details: { test_id: null }
-      successful_proponent_score: { test_id: null }
+      successful_proponent_contact_details: { test_id: opportunity-successful-proponent-contact }
+      successful_proponent_score: { test_id: opportunity-successful-proponent-score }
 
   - id: opportunity-twu-edit
     domain: opportunities
@@ -416,20 +416,20 @@ pages:
       evaluation_panel_tab: { test_id: opportunity-tab-evaluation-panel }
       consensus_tab: { test_id: opportunity-tab-consensus }
       # As on opportunity-swu-edit: offered only to an evaluator.
-      instructions_tab: { test_id: null }
-      evaluation_tab: { test_id: null }
+      instructions_tab: { test_id: opportunity-tab-instructions }
+      evaluation_tab: { test_id: opportunity-tab-evaluation }
       # The changes of state this screen offers the signed-in person from the state the
       # opportunity is in now — award, cancel, move to the next stage — named in the
       # criteria's words. A criterion turns on which changes a Team With Us opportunity in
       # processing permits, and "offered here" is how that set reaches a reader.
-      offered_state_changes: { test_id: null }
+      offered_state_changes: { test_id: opportunity-actions }
       # As on opportunity-cwu-edit.
-      proposal_deadline: { test_id: null }
-      assignment_date: { test_id: null }
-      start_date: { test_id: null }
-      completion_date: { test_id: null }
+      proposal_deadline: { test_id: opportunity-deadline-field }
+      assignment_date: { test_id: opportunity-assignment-date-field }
+      start_date: { test_id: opportunity-start-date-field }
+      completion_date: { test_id: opportunity-completion-date-field }
       # As on opportunity-twu-create, read on the resource questions tab while editing.
-      evaluation_question_fields: { test_id: null }
+      evaluation_question_fields: { test_id: evaluation-question }
 
   - id: opportunity-twu-complete
     domain: opportunities
@@ -476,7 +476,7 @@ pages:
       # name, email address, phone, street address, city, province, postal code, country,
       # proposal text, additional comments) together with its message, so that a test can
       # tell which fields a refused submission was refused for.
-      field_errors_by_field: { test_id: null }
+      field_errors_by_field: { test_id: proposal-field-errors }
       opportunity_summary: { test_id: proposal-opportunity-summary }
       terms_modal: { test_id: proposal-terms-dialog }
       submit_disabled_until_terms_accepted: { test_id: proposal-submit-confirm }
@@ -574,7 +574,7 @@ pages:
       # submit_proposal stays unavailable and the phase says its team must be confirmed
       # (non-pending) members; save_draft still saves the proposal with that person on
       # it, because the service checks membership only when a proposal is submitted.
-      team_member_choices: { test_id: null }
+      team_member_choices: { test_id: proposal-team-member-choice }
       # Phases below are named Inception, Prototype and Implementation, as the criteria
       # name them. The oracle's screen labels the Prototype phase "Proof of Concept", on its
       # team section and on its cost field ("Proof of Concept Cost"); the binding reads that
@@ -585,7 +585,7 @@ pages:
       # other: an opportunity with a Prototype and an Implementation phase and no Inception
       # phase gives [Prototype, Implementation]. Implementation is always among them, since
       # every Sprint With Us opportunity has it.
-      phase_team_sections: { test_id: null }
+      phase_team_sections: { test_id: proposal-phase-team }
       # Each offered phase, by phase name, with whether the form counts its team section as
       # meeting the phase's requirements, and the phase's required capabilities that the
       # team named in it does not yet hold (by capability name, empty when all are held).
@@ -597,7 +597,7 @@ pages:
       # master: a phase whose members include no scrum master reads complete here, and the
       # service refuses it when submitted. The scrum master is a single choice per phase
       # on this form, so two cannot be chosen here.
-      phase_requirements: { test_id: null }
+      phase_requirements: { test_id: proposal-phase-requirements }
       # Each message the form shows against a cost field, with the field it stands
       # against: a phase by phase name (that phase's proposed cost), or total (the total
       # proposed cost, which the form adds up from the phase costs and does not take as
@@ -608,7 +608,7 @@ pages:
       # opportunity's total maximum budget reads "The proposed cost exceeds the maximum
       # budget for this opportunity." against total. Empty when every cost is within its
       # budget. While any is shown, submit_proposal stays unavailable.
-      cost_errors: { test_id: null }
+      cost_errors: { test_id: proposal-cost }
 
   - id: proposal-swu-edit
     domain: proposals
@@ -622,9 +622,9 @@ pages:
       # then named again from the new organization's members with add_phase_team_member and
       # set_scrum_master. The choice stays open on a submitted proposal: the screen does not
       # stop the change, the service does when save_changes sends it.
-      choose_organization: { test_id: null }
-      add_phase_team_member: { test_id: null }
-      set_scrum_master: { test_id: null }
+      choose_organization: { test_id: proposal-organization-field }
+      add_phase_team_member: { test_id: proposal-add-team-member }
+      set_scrum_master: { test_id: proposal-scrum-master }
       save_changes: { test_id: proposal-save-changes }
       save_changes_and_submit: { test_id: proposal-save-and-submit }
       submit_proposal: { test_id: proposal-submit }
@@ -635,17 +635,17 @@ pages:
       # the notice it raises and any message it shows against a field, as text. Absent
       # when the submission went through. The old application's notice is a general one
       # that does not repeat the service's reason; proposal-team-request reads the reason.
-      submission_refusal: { test_id: null }
+      submission_refusal: { test_id: proposal-submit-refused-message }
       # Each message the form shows against one of its fields after save_changes is
       # refused, with the field it stands against (organization, a phase's team or cost,
       # a team question response, a reference). The screen puts the service's own wording
       # there: a submitted proposal whose organization was changed shows "Organization
       # cannot be changed once the proposal has been submitted" against organization.
       # Empty when the save went through, which the form closing and status show.
-      field_error: { test_id: null }
+      field_error: { test_id: field-error }
       # The organization the proposal names, by legal name, as the screen shows it once
       # the form is closed.
-      organization: { test_id: null }
+      organization: { test_id: proposal-organization }
       proposal_identifier: { test_id: proposal-identifier }
       opportunity_identifier: { test_id: opportunity-identifier }
       proposal_tab: { test_id: proposal-tab-proposal }
@@ -685,7 +685,7 @@ pages:
       # administrator and to the opportunity's owner; the seeded evaluation opportunities
       # belong to users.staffOne. Starting point for R-5.32:
       # seed.opportunities.swuConsensusSixProponentsForHistory.
-      history_entries: { test_id: null }
+      history_entries: { test_id: proposal-history-table }
       wrong_stage_error: { test_id: proposal-wrong-stage-error }
       questions_score: { test_id: proposal-questions-score }
       challenge_score: { test_id: proposal-challenge-score }
@@ -702,7 +702,7 @@ pages:
       # seed.opportunities.swuTeamScenarioLastToScoreB, where swuScenarioBLowerBid is ranked,
       # swuScenarioBHigherBid is not until its scenario score is entered, and the third
       # proposal was left behind at the questions.
-      rank: { test_id: null }
+      rank: { test_id: proposal-rank }
       # The score actions the page offers the signed-in person for this proposal, as a list
       # of this page's own action names — score_code_challenge, score_team_scenario — read
       # across the stage tabs; empty when it offers none. A stage's score is offered on its
@@ -714,7 +714,7 @@ pages:
       # seed.proposals.swuScreenedIntoScenarioEarly offers none (it is in the team scenario,
       # which the opportunity has not reached) and seed.proposals.swuScreenedIntoCodeChallenge
       # offers score_code_challenge.
-      offered_score_actions: { test_id: null }
+      offered_score_actions: { test_id: proposal-score-actions }
 
   - id: proposal-swu-export-one
     domain: proposals
@@ -756,7 +756,7 @@ pages:
       # already named on the proposal. Each name is the person's account name, as the
       # manifest gives it (users.organizationOwner is "Blake Placeholder"). Only people
       # whose membership is active are offered.
-      team_member_choices: { test_id: null }
+      team_member_choices: { test_id: proposal-team-member-choice }
 
   - id: proposal-twu-edit
     domain: proposals
@@ -767,8 +767,8 @@ pages:
       # As on proposal-swu-edit: the create screen's controls, open once editing starts.
       # Choosing a different organization empties the team, which add_team_member_for_resource
       # names again from the new organization's active members.
-      choose_organization: { test_id: null }
-      add_team_member_for_resource: { test_id: null }
+      choose_organization: { test_id: proposal-organization-field }
+      add_team_member_for_resource: { test_id: proposal-add-team-member }
       # As on proposal-twu-create: takes the resource by its service area as the
       # opportunity lists it and the hourly rate, replacing the rate the proposal held. The
       # edit screen renders the same form as the create screen, so the field is the same
@@ -777,7 +777,7 @@ pages:
       # field_error or submission_refusal. A proposal saved within budget from
       # proposal-twu-create (save_draft or submit_proposal) lands on this page, where
       # proposal_identifier returns its identifier.
-      set_hourly_rate: { test_id: null }
+      set_hourly_rate: { test_id: proposal-hourly-rate-field }
       save_changes: { test_id: proposal-save-changes }
       save_changes_and_submit: { test_id: proposal-save-and-submit }
       submit_proposal: { test_id: proposal-submit }
@@ -786,12 +786,12 @@ pages:
     observations:
       # As on proposal-swu-edit: what the screen reports when a submission from it is
       # refused, absent when it went through.
-      submission_refusal: { test_id: null }
+      submission_refusal: { test_id: proposal-submit-refused-message }
       # As on proposal-swu-edit: the service's messages against the form's fields after
       # save_changes is refused, "Organization cannot be changed once the proposal has been
       # submitted" among them.
-      field_error: { test_id: null }
-      organization: { test_id: null }
+      field_error: { test_id: field-error }
+      organization: { test_id: proposal-organization }
       proposal_identifier: { test_id: proposal-identifier }
       opportunity_identifier: { test_id: opportunity-identifier }
       proposal_tab: { test_id: proposal-tab-proposal }
@@ -821,7 +821,7 @@ pages:
       # As on proposal-swu-view. The finalising note reads "Resource question scores were
       # entered. Q1: n; Q2: n; Q3: n; Q4: n." Starting point for R-5.32:
       # seed.opportunities.twuConsensusFiveProponentsForHistory.
-      history_entries: { test_id: null }
+      history_entries: { test_id: proposal-history-table }
       wrong_stage_error: { test_id: proposal-wrong-stage-error }
       questions_score: { test_id: proposal-questions-score }
       challenge_score: { test_id: proposal-challenge-score }
@@ -831,12 +831,12 @@ pages:
       # challenge score, and the rank is shown once the opportunity has reached the
       # challenge. seed.opportunities.twuChallengeLastToScore holds one proposal scored on
       # the challenge and one not.
-      rank: { test_id: null }
+      rank: { test_id: proposal-rank }
       # As on proposal-swu-view, from this page's score_challenge. On
       # seed.proposals.twuScreenedIntoChallengeEarly, as the administrator, the list is empty:
       # the proposal is in the challenge but the opportunity is still at the questions
       # consensus. On seed.proposals.twuChallengeLast it holds score_challenge.
-      offered_score_actions: { test_id: null }
+      offered_score_actions: { test_id: proposal-score-actions }
 
   - id: proposal-twu-export-one
     domain: proposals
@@ -1317,7 +1317,7 @@ pages:
     actions:
       # The tab opens read-only; Edit makes the panel changeable. It is offered only at
       # the stages listed above.
-      start_editing: { test_id: null }
+      start_editing: { test_id: evaluation-panel-edit }
       add_panel_member: { test_id: evaluation-panel-add-member }
       remove_panel_member: { test_id: evaluation-panel-remove-member }
       choose_panel_chair: { test_id: evaluation-panel-chair-field }
@@ -1339,7 +1339,7 @@ pages:
     route: /opportunities/team-with-us/:opportunityId/edit?tab=evaluationPanel
     title: "Evaluation Panel"
     actions:
-      start_editing: { test_id: null }
+      start_editing: { test_id: evaluation-panel-edit }
       add_panel_member: { test_id: evaluation-panel-add-member }
       remove_panel_member: { test_id: evaluation-panel-remove-member }
       choose_panel_chair: { test_id: evaluation-panel-chair-field }
@@ -1701,7 +1701,7 @@ pages:
       # pages the service needs for itself (seed.content, fixed: true) plus the ordinary
       # pages the seed adds (fixed: false), so a count of the service's own pages is this
       # less the ordinary ones.
-      page_count: { test_id: null }
+      page_count: { test_id: content-list-count }
 
   - id: content-create
     domain: content
@@ -2278,20 +2278,20 @@ pages:
     actions:
       # Input: the proponents to name, as seed.proposals handles (or proposal identifiers),
       # and an optional note. Sends the submission for exactly those proposals.
-      submit_scores_for_consensus_naming: { test_id: null }
+      submit_scores_for_consensus_naming: { test_id: evaluation-submission-request-submit }
     observations:
       # Whether the service accepted the submission (a successful answer carrying the
       # opportunity).
-      request_accepted: { test_id: null }
+      request_accepted: { test_id: evaluation-submission-request-accepted }
       # The refusal's messages, in the order the service gives them; empty when accepted.
       # A named proposal the evaluator holds no complete draft of is refused with "This
       # evaluation could not be submitted for review because it is incomplete. Please
       # edit, complete and save the appropriate form before trying to submit it again."
-      refusal_messages: { test_id: null }
+      refusal_messages: { test_id: evaluation-submission-request-refusal-messages }
       # The opportunity's status as the service holds it, read afresh after the request
       # (as the signed-in person) rather than taken from the request's answer:
       # EVAL_QUESTIONS_INDIVIDUAL or EVAL_QUESTIONS_CONSENSUS.
-      stored_status: { test_id: null }
+      stored_status: { test_id: evaluation-submission-request-status }
 
   # One consensus — the chair's agreed scores and notes for one proponent — as a request.
   # :userId is the panel member whose consensus it is, which is the chair: on the seeded
@@ -2770,31 +2770,31 @@ pages:
       # second street line, contact title and contact phone, optional. The email must be
       # well formed and a website address, when given, must be a web address. Sent as
       # whoever is signed in, or with no session at all when nobody is.
-      register_by_request: { test_id: null }
+      register_by_request: { test_id: organization-request-register }
       # Input: the organization's profile, the same fields as a registration. Sends the
       # service's profile-update operation for :orgId.
-      change_profile_by_request: { test_id: null }
+      change_profile_by_request: { test_id: organization-request-change-profile }
       # Input: none. Asks the service to archive :orgId.
-      archive_by_request: { test_id: null }
+      archive_by_request: { test_id: organization-request-archive }
     observations:
       # Whether the service accepted the last request (a successful answer carrying the
       # organization: 201 for a registration, 200 for a profile change or an archive).
-      request_accepted: { test_id: null }
+      request_accepted: { test_id: organization-request-accepted }
       # The status code of a refused request; empty when accepted.
-      refusal_status: { test_id: null }
+      refusal_status: { test_id: organization-request-refusal-status }
       # The name the refusal is filed under — permissions for somebody not permitted,
       # notFound for an organization that does not exist, or a field's name for a field
       # error. Absent when accepted.
-      refusal_reason: { test_id: null }
+      refusal_reason: { test_id: organization-request-refusal-reason }
       # The refusal's messages, in the order the service gives them. Empty when accepted.
-      refusal_messages: { test_id: null }
+      refusal_messages: { test_id: organization-request-refusal-messages }
       # The identifier of the organization an accepted registration created, from the
       # service's answer; empty otherwise.
-      organization_identifier: { test_id: null }
+      organization_identifier: { test_id: organization-request-organization-id }
       # Whether :orgId is active, and its legal name, as the service holds them, read
       # afresh after the request (as the signed-in person) rather than taken from the
       # request's answer. The service lets an administrator and the organization's owner
       # or administrators read it, so persona.organizationAdmin can read
       # seed.organizations.qualified after a refused request and see it unchanged.
-      stored_active: { test_id: null }
-      stored_legal_name: { test_id: null }
+      stored_active: { test_id: organization-request-stored-active }
+      stored_legal_name: { test_id: organization-request-stored-legal-name }

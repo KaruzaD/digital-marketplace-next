@@ -1,42 +1,33 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, ButtonGroup, Dialog, Form, Heading, Modal, NumberField, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { STAFF } from "./opportunity-kit";
+import { CatalogueNote, ProposalHead, ProposalPage } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-swu-view · score-dialog — Enter code challenge score was pressed. Enter team scenario score opens the same
 // dialog with its own title and label. An out-of-range score is refused at the field, as in proposal-cwu-view ·
 // score-invalid (R-2.28, R-2.30)
-const meta: Meta = { title: "proposals/proposal-swu-view/score-dialog" };
+const meta: Meta = { title: "proposals/proposal-swu-view/score-dialog", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
-const dialogBody = { padding: "var(--layout-padding-large)" } as const;
 
 export const ScoreDialog: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Sprint With Us proposal</Text>
-          <Heading level={1}><span data-testid="proposal-proponent-name">Example Digital Ltd.</span></Heading>
-        </Stack>
-        <Text elementType="p">Status: <span style={badge} data-testid="proposal-status">Under review: code challenge</span></Text>
-        <div>
+    <SitePage viewer={STAFF} current="dashboard">
+      <ProposalPage>
+        <ProposalHead
+          eyebrow="Sprint With Us proposal"
+          program="sprint-with-us"
+          status="Under review: code challenge"
+          title={<span data-testid="proposal-proponent-name">Example Digital Ltd.</span>}
+        />
+        <div data-testid="proposal-score-actions">
           <Button variant="primary" data-testid="proposal-score-code-challenge">Enter code challenge score</Button>
         </div>
-        <Text elementType="p" size="small" color="secondary">
-          The rest of the page is as in the code-challenge-tab story and is trimmed here.
-        </Text>
-      </Stack>
-      <Modal isOpen isDismissable>
-        <Dialog isCloseable data-testid="proposal-score-dialog">
-          <div style={dialogBody}>
+        <CatalogueNote>The rest of the page is as in the code-challenge-tab story and is trimmed here.</CatalogueNote>
+        <Modal isOpen isDismissable>
+          <Dialog isCloseable data-testid="proposal-score-dialog">
             <Form validationBehavior="aria">
-              <Stack gap="medium">
+              <div className="pp-dialog">
                 <Heading level={2} slot="title">Enter code challenge score</Heading>
                 <Text elementType="p">The score is recorded in the proposal's history.</Text>
                 <NumberField
@@ -49,11 +40,11 @@ export const ScoreDialog: StoryObj = {
                   <Button variant="secondary" data-testid="proposal-dialog-cancel">Cancel</Button>
                   <Button type="submit" variant="primary" data-testid="proposal-score-confirm">Enter score</Button>
                 </ButtonGroup>
-              </Stack>
+              </div>
             </Form>
-          </div>
-        </Dialog>
-      </Modal>
-    </PageContainer>
+          </Dialog>
+        </Modal>
+      </ProposalPage>
+    </SitePage>
   ),
 };

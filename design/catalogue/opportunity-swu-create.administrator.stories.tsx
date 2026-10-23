@@ -6,34 +6,22 @@ import {
   Checkbox,
   DatePicker,
   Form,
-  Heading,
   NumberField,
   Radio,
   RadioGroup,
   Select,
-  Text,
   TextArea,
   TextField,
 } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Stack } from "./layout";
+import { ADMIN, Actions, Fieldset, OpportunityPage, PageTitle, Panel } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // opportunity-swu-create · administrator — an administrator may publish directly instead of submitting for review;
 // no one else is offered Publish (R-1.22, R-1.48)
-const meta: Meta = { title: "opportunities/opportunity-swu-create/administrator" };
+const meta: Meta = { title: "opportunities/opportunity-swu-create/administrator", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const panel = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const group = {
-  margin: "var(--layout-margin-none)",
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
 const currency = { style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 } as const;
 
 // Illustrative only: the spec does not carry the service's list of skills.
@@ -51,199 +39,158 @@ const publicServants = [
 
 export const Administrator: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Create a Sprint With Us opportunity</Heading>
-        <Text elementType="p">Required fields are needed to submit for review or publish. A draft can be saved with any of them blank.</Text>
+    <SitePage viewer={ADMIN} current="dashboard">
+      <OpportunityPage>
+        <PageTitle>Create a Sprint With Us opportunity</PageTitle>
+        <p className="op-text">Required fields are needed to submit for review or publish. A draft can be saved with any of them blank.</p>
         <Form validationBehavior="aria">
           <Stack gap="medium">
-            <section aria-labelledby="form-overview" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-overview">Overview</Heading>
-                <TextField id="opp-title" label="Title" isRequired maxLength={200} description="Up to 200 characters." data-testid="opportunity-title-field" />
+            <Panel id="form-overview" title="Overview">
+              <TextField id="opp-title" label="Title" isRequired maxLength={200} description="Up to 200 characters." data-testid="opportunity-title-field" />
+              <TextArea
+                id="opp-teaser"
+                label="Teaser (optional)"
+                maxLength={500}
+                description="A sentence or two shown in the opportunity list. Up to 500 characters."
+                data-testid="opportunity-teaser-field"
+              />
+              <TextField id="opp-location" label="Location" isRequired data-testid="opportunity-location-field" />
+              <RadioGroup id="opp-remote" label="Is remote work acceptable?" isRequired data-testid="opportunity-remote-field">
+                <Radio value="yes">Yes</Radio>
+                <Radio value="no">No</Radio>
+              </RadioGroup>
+              <TextArea
+                id="opp-remote-description"
+                label="Remote work description"
+                maxLength={500}
+                description="Say what remote work involves. Required when remote work is acceptable. Up to 500 characters."
+                data-testid="opportunity-remote-description-field"
+              />
+            </Panel>
+            <Panel id="form-budget" title="Budget and skills">
+              <NumberField
+                id="opp-budget"
+                label="Total maximum budget"
+                isRequired
+                description="Between $1 and $5,000,000."
+                formatOptions={currency}
+                data-testid="opportunity-budget-field"
+              />
+              <Select
+                id="opp-skills"
+                label="Skills"
+                selectionMode="multiple"
+                isRequired
+                description="Choose at least one skill."
+                items={skills}
+                data-testid="opportunity-skills-field"
+              />
+            </Panel>
+            <Panel id="form-description" title="Description">
+              <TextArea
+                id="opp-description"
+                label="Description"
+                isRequired
+                maxLength={10000}
+                description="Formatted text, up to 10,000 characters."
+                data-testid="opportunity-description-field"
+              />
+            </Panel>
+            <Panel id="form-dates" title="Key dates">
+              <p className="op-text">Each date must fall on or after the one before it.</p>
+              <DatePicker
+                id="opp-deadline"
+                label="Proposal deadline"
+                isRequired
+                description="Proposals close at 4:00 p.m. Pacific time on this day. It cannot be before today."
+                data-testid="opportunity-deadline-field"
+              />
+              <DatePicker id="opp-assignment" label="Assignment date" isRequired description="On or after the proposal deadline." data-testid="opportunity-assignment-date-field" />
+            </Panel>
+            <Panel id="form-phases" title="Phases">
+              <p className="op-text">
+                Every Sprint With Us opportunity has an implementation phase. An inception phase can be added only together with a
+                prototype phase.
+              </p>
+              <Fieldset legend="Implementation phase">
+                <DatePicker id="opp-implementation-start" label="Start date" isRequired data-testid="phase-start-date-field" />
+                <DatePicker id="opp-implementation-completion" label="Completion date" isRequired data-testid="phase-completion-date-field" />
+              </Fieldset>
+              <Actions>
+                <Button variant="secondary" data-testid="add-phase-button">Add an inception phase</Button>
+                <Button variant="secondary" data-testid="add-phase-button">Add a prototype phase</Button>
+              </Actions>
+            </Panel>
+            <Panel id="form-team-questions" title="Team questions">
+              <p className="op-text">Questions are numbered in the order they appear here. You can add up to 100.</p>
+              <Fieldset legend="Question 1" testId="evaluation-question">
+                <TextArea id="opp-question-1" label="Question" isRequired maxLength={1000} description="Up to 1,000 characters." data-testid="question-text-field" />
                 <TextArea
-                  id="opp-teaser"
-                  label="Teaser (optional)"
-                  maxLength={500}
-                  description="A sentence or two shown in the opportunity list. Up to 500 characters."
-                  data-testid="opportunity-teaser-field"
-                />
-                <TextField id="opp-location" label="Location" isRequired data-testid="opportunity-location-field" />
-                <RadioGroup id="opp-remote" label="Is remote work acceptable?" isRequired data-testid="opportunity-remote-field">
-                  <Radio value="yes">Yes</Radio>
-                  <Radio value="no">No</Radio>
-                </RadioGroup>
-                <TextArea
-                  id="opp-remote-description"
-                  label="Remote work description"
-                  maxLength={500}
-                  description="Say what remote work involves. Required when remote work is acceptable. Up to 500 characters."
-                  data-testid="opportunity-remote-description-field"
-                />
-              </Stack>
-            </section>
-            <section aria-labelledby="form-budget" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-budget">Budget and skills</Heading>
-                <NumberField
-                  id="opp-budget"
-                  label="Total maximum budget"
+                  id="opp-question-1-guideline"
+                  label="Guideline for evaluators"
                   isRequired
-                  description="Between $1 and $5,000,000."
-                  formatOptions={currency}
-                  data-testid="opportunity-budget-field"
+                  maxLength={1000}
+                  description="What a strong answer covers. Up to 1,000 characters."
+                  data-testid="question-guideline-field"
                 />
-                <Select
-                  id="opp-skills"
-                  label="Skills"
-                  selectionMode="multiple"
-                  isRequired
-                  description="Choose at least one skill."
-                  items={skills}
-                  data-testid="opportunity-skills-field"
-                />
+                <NumberField id="opp-question-1-score" label="Maximum score" isRequired description="At least 1." data-testid="question-score-field" />
+                <NumberField id="opp-question-1-minimum" label="Minimum score (optional)" description="Lower than the maximum score." data-testid="question-minimum-score-field" />
+                <NumberField id="opp-question-1-word-limit" label="Response word limit" isRequired description="Between 1 and 3,000 words." data-testid="question-word-limit-field" />
+                <Actions>
+                  <Button variant="tertiary" size="small">Remove question 1</Button>
+                </Actions>
+              </Fieldset>
+              <Actions>
+                <Button variant="secondary" data-testid="add-team-question-button">Add a team question</Button>
+              </Actions>
+            </Panel>
+            <Panel id="form-weights" title="Scoring weights">
+              <p className="op-text">Enter each weight as a percentage. The four weights must total 100%.</p>
+              <Stack direction="row" align="end" gap="medium">
+                <NumberField id="opp-weight-questions" label="Team questions (%)" isRequired description="0 to 100." data-testid="score-weight-field" />
+                <NumberField id="opp-weight-code-challenge" label="Code challenge (%)" isRequired description="0 to 100." data-testid="score-weight-field" />
+                <NumberField id="opp-weight-team-scenario" label="Team scenario (%)" isRequired description="0 to 100." data-testid="score-weight-field" />
+                <NumberField id="opp-weight-price" label="Price (%)" isRequired description="0 to 100." data-testid="score-weight-field" />
               </Stack>
-            </section>
-            <section aria-labelledby="form-description" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-description">Description</Heading>
-                <TextArea
-                  id="opp-description"
-                  label="Description"
-                  isRequired
-                  maxLength={10000}
-                  description="Formatted text, up to 10,000 characters."
-                  data-testid="opportunity-description-field"
-                />
+              <p className="op-text" role="status">Total: 0%</p>
+            </Panel>
+            <Panel id="form-panel" title="Evaluation panel">
+              <Stack gap="medium" data-testid="evaluation-panel-editor">
+                <p className="op-text">
+                  Name at least two public sector employees and mark exactly one of them as chair. The panel can be changed until the
+                  consensus stage begins.
+                </p>
+                <Fieldset legend="Panel member 1">
+                  <Select label="Public sector employee" items={publicServants} isRequired />
+                  <Checkbox defaultSelected>Evaluator</Checkbox>
+                  <Checkbox>Chair</Checkbox>
+                </Fieldset>
+                <Fieldset legend="Panel member 2">
+                  <Select label="Public sector employee" items={publicServants} isRequired />
+                  <Checkbox defaultSelected>Evaluator</Checkbox>
+                  <Checkbox>Chair</Checkbox>
+                </Fieldset>
+                <Actions>
+                  <Button variant="secondary">Add a panel member</Button>
+                </Actions>
               </Stack>
-            </section>
-            <section aria-labelledby="form-dates" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-dates">Key dates</Heading>
-                <Text elementType="p">Each date must fall on or after the one before it.</Text>
-                <DatePicker
-                  id="opp-deadline"
-                  label="Proposal deadline"
-                  isRequired
-                  description="Proposals close at 4:00 p.m. Pacific time on this day. It cannot be before today."
-                  data-testid="opportunity-deadline-field"
-                />
-                <DatePicker id="opp-assignment" label="Assignment date" isRequired description="On or after the proposal deadline." data-testid="opportunity-assignment-date-field" />
-              </Stack>
-            </section>
-            <section aria-labelledby="form-phases" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-phases">Phases</Heading>
-                <Text elementType="p">
-                  Every Sprint With Us opportunity has an implementation phase. An inception phase can be added only together with
-                  a prototype phase.
-                </Text>
-                <fieldset style={group}>
-                  <legend style={legend}>Implementation phase</legend>
-                  <Stack gap="medium">
-                    <DatePicker id="opp-implementation-start" label="Start date" isRequired data-testid="phase-start-date-field" />
-                    <DatePicker id="opp-implementation-completion" label="Completion date" isRequired data-testid="phase-completion-date-field" />
-                  </Stack>
-                </fieldset>
-                <Stack direction="row" align="end" gap="medium">
-                  <Button variant="secondary" data-testid="add-phase-button">Add an inception phase</Button>
-                  <Button variant="secondary" data-testid="add-phase-button">Add a prototype phase</Button>
-                </Stack>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-team-questions" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-team-questions">Team questions</Heading>
-                <Text elementType="p">Questions are numbered in the order they appear here. You can add up to 100.</Text>
-                <fieldset style={group}>
-                  <legend style={legend}>Question 1</legend>
-                  <Stack gap="medium">
-                    <TextArea id="opp-question-1" label="Question" isRequired maxLength={1000} description="Up to 1,000 characters." data-testid="question-text-field" />
-                    <TextArea
-                      id="opp-question-1-guideline"
-                      label="Guideline for evaluators"
-                      isRequired
-                      maxLength={1000}
-                      description="What a strong answer covers. Up to 1,000 characters."
-                      data-testid="question-guideline-field"
-                    />
-                    <NumberField id="opp-question-1-score" label="Maximum score" isRequired description="At least 1." data-testid="question-score-field" />
-                    <NumberField id="opp-question-1-minimum" label="Minimum score (optional)" description="Lower than the maximum score." data-testid="question-minimum-score-field" />
-                    <NumberField id="opp-question-1-word-limit" label="Response word limit" isRequired description="Between 1 and 3,000 words." data-testid="question-word-limit-field" />
-                    <div>
-                      <Button variant="tertiary" size="small">Remove question 1</Button>
-                    </div>
-                  </Stack>
-                </fieldset>
-                <div>
-                  <Button variant="secondary" data-testid="add-team-question-button">Add a team question</Button>
-                </div>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-weights" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-weights">Scoring weights</Heading>
-                <Text elementType="p">Enter each weight as a percentage. The four weights must total 100%.</Text>
-                <Stack direction="row" align="end" gap="medium">
-                  <NumberField id="opp-weight-questions" label="Team questions (%)" isRequired description="0 to 100." data-testid="score-weight-field" />
-                  <NumberField id="opp-weight-code-challenge" label="Code challenge (%)" isRequired description="0 to 100." data-testid="score-weight-field" />
-                  <NumberField id="opp-weight-team-scenario" label="Team scenario (%)" isRequired description="0 to 100." data-testid="score-weight-field" />
-                  <NumberField id="opp-weight-price" label="Price (%)" isRequired description="0 to 100." data-testid="score-weight-field" />
-                </Stack>
-                <div role="status">
-                  <Text elementType="p">Total: 0%</Text>
-                </div>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-panel" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-panel">Evaluation panel</Heading>
-                <Stack gap="medium" data-testid="evaluation-panel-editor">
-                  <Text elementType="p">
-                    Name at least two public sector employees and mark exactly one of them as chair. The panel can be changed until
-                    the consensus stage begins.
-                  </Text>
-                  <fieldset style={group}>
-                    <legend style={legend}>Panel member 1</legend>
-                    <Stack gap="medium">
-                      <Select label="Public sector employee" items={publicServants} isRequired />
-                      <Checkbox defaultSelected>Evaluator</Checkbox>
-                      <Checkbox>Chair</Checkbox>
-                    </Stack>
-                  </fieldset>
-                  <fieldset style={group}>
-                    <legend style={legend}>Panel member 2</legend>
-                    <Stack gap="medium">
-                      <Select label="Public sector employee" items={publicServants} isRequired />
-                      <Checkbox defaultSelected>Evaluator</Checkbox>
-                      <Checkbox>Chair</Checkbox>
-                    </Stack>
-                  </fieldset>
-                  <div>
-                    <Button variant="secondary">Add a panel member</Button>
-                  </div>
-                </Stack>
-              </Stack>
-            </section>
-            <section aria-labelledby="form-attachments" style={panel}>
-              <Stack gap="medium">
-                <Heading level={2} id="form-attachments">Attachments</Heading>
-                <Text elementType="p">Attach any documents proponents need. The accepted file types and size limit are shown when you choose a file.</Text>
-                <div>
-                  <FileTrigger>
-                    <Button variant="secondary" data-testid="attachment-add-button">Add attachment</Button>
-                  </FileTrigger>
-                </div>
-              </Stack>
-            </section>
-            <Text elementType="p">Nothing is checked until you publish. You will be asked to confirm before anything is published.</Text>
+            </Panel>
+            <Panel id="form-attachments" title="Attachments">
+              <p className="op-text">Attach any documents proponents need. The accepted file types and size limit are shown when you choose a file.</p>
+              <Actions>
+                <FileTrigger>
+                  <Button variant="secondary" data-testid="attachment-add-button">Add attachment</Button>
+                </FileTrigger>
+              </Actions>
+            </Panel>
+            <p className="op-text">Nothing is checked until you publish. You will be asked to confirm before anything is published.</p>
             <ButtonGroup ariaLabel="Opportunity actions">
               <Button variant="secondary" data-testid="opportunity-save-draft">Save draft</Button>
               <Button type="submit" variant="primary" data-testid="opportunity-publish">Publish</Button>
             </ButtonGroup>
           </Stack>
         </Form>
-      </Stack>
-    </PageContainer>
+      </OpportunityPage>
+    </SitePage>
   ),
 };

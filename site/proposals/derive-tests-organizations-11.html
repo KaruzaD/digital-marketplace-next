@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>derive-tests-organizations-11 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>derive-tests-organizations-11</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 04:27</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Do the revised organizations tests now follow from their criteria and from nothing else?</h2>
+<p><strong>Recommendation.</strong> I changed one file, <code>tests/acceptance/organizations/R-3.28.spec.ts</code>, so its two cases now run one after the other in a single worker.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I changed one file, <code>tests/acceptance/organizations/R-3.28.spec.ts</code>, so its two cases now run one after the other in a single worker. I could not run the file here, because the command to list it needed an approval nobody was present to give. The first real check will be the next verify run.</p>
+<p><strong>Request 1 (build-slice-14-7, ruled at G3): taken up.</strong> The ruling offered two fixes: run the cases serially, or give each case its own organization. The second was not possible. In the seed, the qualified organization is the only one approved for two service areas. The owner case also needs the qualified organization&#39;s own owner signed in, and that owner belongs to this organization alone.</p>
+<p>So I added <code>test.describe.configure({ mode: &quot;default&quot; })</code> at the top of the file. This runs the two cases in file order in one worker, even if the run is started with full parallelism. I chose <code>&quot;default&quot;</code> rather than <code>&quot;serial&quot;</code> because <code>&quot;serial&quot;</code> would skip the second case whenever the first fails, and that would hide its result.</p>
+<p>Both cases still do what the ruling&#39;s last sentence asks:</p>
+<ul><li><strong>Own starting state:</strong> each case first checks, as the administrator, that the organization is approved for exactly the seed&#39;s two areas, and saves them back if not.</li><li><strong>Order doesn&#39;t matter:</strong> case 2 does not rely on case 1 leaving the approvals in place, and neither case depends on running first.</li></ul>
+<p>I added a short comment explaining why the cases are serialised, and moved the header&#39;s derived date to 2026-10-17 because the file&#39;s content changed. I left the spec sha in the header as it was. No test body or assertion changed.</p>
+<p>One thing I could not settle without the target: the fixture resets the seed before every test, and <code>tests/playwright.config.ts</code> already sets <code>fullyParallel: false</code>. That the two cases still saw each other&#39;s writes suggests the verify run either overrides parallelism or shares one target between workers. If several instances write to one target, two separate files touching this organization could still collide. Forcing this file&#39;s order covers the case the ruling describes, but not that wider one. Whoever owns the runner configuration should check how the seven instances map to targets. That configuration is not this stage&#39;s to change.</p>
+<p>No other spec file and no entry in <code>tests/acceptance/not-testable.yaml</code> was touched.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-18 04:29.</p>
+<div class="body"><p>Question: do the revised R-3.28 organizations tests follow from their criterion and from nothing else, and do they answer the request to stop the two cases changing each other&#39;s state? Approve. The only change is a file-level <code>test.describe.configure({ mode: &quot;default&quot; })</code> plus an explanatory comment. It makes the file&#39;s two cases run in order in one worker, which takes the file out of fully parallel scheduling. That removes the interleaving the build-slice-14-7 ruling saw, where each case&#39;s poll observed the other&#39;s write to the shared qualified organization. &#39;default&#39; is correctly preferred over &#39;serial&#39;: serial would skip the second case whenever the first fails and hide its result. The writer&#39;s reason for not giving each case its own organization holds: the seed has only one organization approved for two areas, and the owner clause needs that organization&#39;s own owner. Each case still sets up the two-area starting state as the administrator and does not depend on the other or on order, as the ruling asked. No assertion changed, so the test still checks the criterion&#39;s given/when/then, including the owner-has-no-editing-control clause, and nothing about the implementation was added. The typecheck passed with no diagnostics. The revision request this answers is not open in the project, so no condition-met is recorded. What would change the ruling: the next verify run showing the two cases still interfering, or a cross-file collision on this organization from instances sharing one target. That would be a runner-configuration question, not this stage&#39;s.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

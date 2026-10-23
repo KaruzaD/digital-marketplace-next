@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:tech-lead
+held_by: agent
+rationale: |2-
+  The question is whether this adapter revision binds the scrum master radio and the pending-member option on the Sprint With Us proposal forms as the running target draws them, and nothing beyond that. I approve. It reached me because bind-adapter was sent work back more times than policy.loops.request allows, not because the pipeline cannot do what the proposal needs, so it is ruled here rather than escalated. The diff matches the evidence it cites: .sdlc/evidence/slice-15/R-2.7.txt lines 44-51 show a radiogroup 'Scrum master for the implementation phase (required)' holding a radio named only 'Charlie Placeholder', and the new shared scrumMasterRadio locator finds the radio by the member's name inside that group or the proposal-scrum-master test ID, keeping the old name only as a fallback. onPhase, tickScrumMaster and so proposalSwuEdit.setScrumMaster all use it. The approved catalogue (design/catalogue/proposal-swu-create.default.stories.tsx:21) uses the wording '(membership pending)', and pickListed and choicesOffered now accept it, which is the same fix applied where the chooser is read. Only tests/adapters/new/index.ts changes, bindings.yaml is untouched, and the runner's typecheck on this revision passed with no diagnostics. The DESIGN.md mismatch that caused these failures stays with the design stage under its own open request, build-slice-15-6#8, and the three R-2.19 cases nobody has re-run are left to the next calibration run. I would return this if that run showed the scrum master radio still unfound, or a pending member still not added, on the create or edit form.
+conditions: []
+cost: 0.39526880000000003
+turns: 2
+session: "bc7c5f09-c162-4d28-bf6c-594fb934b390"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T15:45:34.818Z

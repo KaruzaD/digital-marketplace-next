@@ -162,6 +162,30 @@ describe("a stage's score on the proposal page (R-2.28)", () => {
     renderAt(VIEW("sprint-with-us", "teamScenario"));
     expect(await screen.findByText(/can be scored once the opportunity has reached the team scenario/)).toBeTruthy();
     expect(screen.queryByTestId("proposal-score-team-scenario")).toBeNull();
+    // The score actions' wrapper is always on a stage tab, empty when no score is offered.
+    expect(screen.getByTestId("proposal-score-actions").childElementCount).toBe(0);
+  });
+
+  it("draws the catalogue's frame: the head, the tabs at the service's addresses, and the stage's score in its wrapper", async () => {
+    answering("sprint-with-us", proposal("sprint-with-us", "UNDER_REVIEW_CODE_CHALLENGE", "EVAL_CC"));
+    renderAt(VIEW("sprint-with-us", "codeChallenge"));
+    const actions = await screen.findByTestId("proposal-score-actions");
+    expect(within(actions).getByTestId("proposal-score-code-challenge")).toBeTruthy();
+    expect(screen.getByTestId("proposal-status").textContent).toBe("Under review: code challenge");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Northern Pines Digital Ltd.");
+    expect(screen.getByTestId("proposal-tab-team-questions").getAttribute("href")).toContain("?tab=teamQuestions");
+    expect(screen.getByTestId("proposal-tab-code-challenge").getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("heading", { level: 2, name: "Code challenge" })).toBeTruthy();
+  });
+
+  it("lists the responses on their own tab, not on the Proposal tab", async () => {
+    answering("sprint-with-us", proposal("sprint-with-us", "UNDER_REVIEW_CODE_CHALLENGE", "EVAL_CC"));
+    const first = renderAt(VIEW("sprint-with-us", "proposal"));
+    expect(await screen.findByText("The responses to the team questions are on the Team questions tab.")).toBeTruthy();
+    expect(screen.queryByText("We fit.")).toBeNull();
+    first.unmount();
+    renderAt(VIEW("sprint-with-us", "teamQuestions"));
+    expect(await screen.findByText("We fit.")).toBeTruthy();
   });
 
   it("offers no code challenge score to a proposal carried past it, but offers to screen it out", async () => {
@@ -215,6 +239,15 @@ describe("the price score and rank (R-2.30, R-2.31)", () => {
     expect((await screen.findByTestId("proposal-price-score")).textContent).toBe("50%");
     expect(screen.getByTestId("proposal-total-score").textContent).toBe("69%");
     expect(screen.getByTestId("proposal-rank").textContent).toBe("2nd");
+  });
+
+  it("keeps the rank in place, empty beside 'Not yet ranked', until the proposal is fully evaluated", async () => {
+    answering("sprint-with-us", proposal("sprint-with-us", "UNDER_REVIEW_CODE_CHALLENGE", "EVAL_CC"));
+    renderAt(VIEW("sprint-with-us", "proposal"));
+    const rank = await screen.findByTestId("proposal-rank");
+    expect(rank.textContent).toBe("");
+    expect(rank.parentElement?.textContent).toBe("Not yet ranked");
+    expect(screen.getByTestId("proposal-total-score").textContent).toBe("Not yet calculated");
   });
 
   it("names places as ordinals", () => {

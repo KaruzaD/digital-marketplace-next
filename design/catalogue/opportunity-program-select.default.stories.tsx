@@ -1,17 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Link } from "@bcgov/design-system-react-components";
+import { Actions, OpportunityPage, PageTitle, Panel, STAFF } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // opportunity-program-select · default — a public sector employee choosing a program (R-1.7, R-1.8, R-1.12, R-1.13)
 // The one-line program descriptions are placeholder copy; the spec does not carry them.
-const meta: Meta = { title: "opportunities/opportunity-program-select/default" };
+const meta: Meta = { title: "opportunities/opportunity-program-select/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const card = {
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
 
 const programs = [
   {
@@ -34,31 +29,29 @@ const programs = [
   },
 ];
 
+// The three programs are equal choices, so none of their links is the screen's primary action.
 export const Default: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Heading level={1}>Create an opportunity</Heading>
-        <Text elementType="p">
+    <SitePage viewer={STAFF} current="dashboard">
+      <OpportunityPage>
+        <PageTitle>Create an opportunity</PageTitle>
+        <p className="op-text">
           Choose the program the opportunity belongs to. The program cannot be changed once the opportunity is created.
-        </Text>
+        </p>
         {programs.map((p) => (
-          <section key={p.slug} aria-labelledby={`program-${p.slug}`} style={card} data-testid="program-card">
-            <Stack gap="medium">
-              <Heading level={2} id={`program-${p.slug}`}>{p.name}</Heading>
-              <Text elementType="p">{p.description}</Text>
-              <Text elementType="p">
-                Maximum budget: <span data-testid="program-max-budget">{p.maxBudget}</span>
-              </Text>
-              <div>
-                <Link href={`/opportunities/${p.slug}/create`} isButton buttonVariant="primary" data-testid={`program-choose-${p.slug}`}>
-                  Create a {p.name} opportunity
-                </Link>
-              </div>
-            </Stack>
-          </section>
+          <Panel key={p.slug} as="section" id={`program-${p.slug}`} title={p.name} testId="program-card">
+            <p className="op-text">{p.description}</p>
+            <p className="op-text">
+              Maximum budget: <span data-testid="program-max-budget">{p.maxBudget}</span>
+            </p>
+            <Actions>
+              <Link href={`/opportunities/${p.slug}/create`} isButton buttonVariant="secondary" data-testid={`program-choose-${p.slug}`}>
+                Create a {p.name} opportunity
+              </Link>
+            </Actions>
+          </Panel>
         ))}
-      </Stack>
-    </PageContainer>
+      </OpportunityPage>
+    </SitePage>
   ),
 };

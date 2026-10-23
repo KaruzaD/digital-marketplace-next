@@ -1,76 +1,68 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Heading, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Details, PageTitle, Region, VENDOR } from "./opportunity-kit";
+import { ProposalPage } from "./proposal-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // proposal-team-request · refused — a Team With Us proposal names a person who is not an active member of the
 // organization, and names another person twice; the service refuses it and nothing is created (R-2.18). A Sprint With
 // Us phase naming one person twice passes validation and fails to store instead, answered with status 503.
 // Not a screen: the address answers with data. This response reference names the parts of the request and the answer.
-const meta: Meta = { title: "proposals/proposal-team-request/refused" };
+const meta: Meta = { title: "proposals/proposal-team-request/refused", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
 
 export const Refused: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Response reference: this address answers with data, not a page</Text>
-          <Heading level={1}>A team proposal, by request</Heading>
-        </Stack>
-        <Stack as="section" gap="medium" aria-labelledby="proposal-team-request-requests">
-          <Heading level={2} id="proposal-team-request-requests">Request</Heading>
-          <Stack as="dl" gap="medium">
-            <Stack gap="small">
-              <dt style={term}>Submit a team proposal</dt>
-              <dd data-testid="proposal-team-request-submit">
-                Sent to /api/proposals/team-with-us, with a team naming a person whose membership of the organization is
-                pending in position 1, and one person in both positions 2 and 3. Sent as a submission rather than a draft.
-              </dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Asked by</dt>
-              <dd>The signed-in vendor, for an organization they may submit for</dd>
-            </Stack>
-          </Stack>
-        </Stack>
-        <Stack as="section" gap="medium" aria-labelledby="proposal-team-request-answer">
-          <Heading level={2} id="proposal-team-request-answer">Answer</Heading>
-          <Stack as="dl" gap="medium">
-            <Stack gap="small">
-              <dt style={term}>Proposal accepted</dt>
-              <dd data-testid="proposal-team-request-accepted">No</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Refusal status</dt>
-              <dd data-testid="proposal-team-request-refusal-status">400: refused at validation (503 when it fails to store)</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Messages, by where they are reported</dt>
-              <dd>
-                <Stack as="ul" gap="small" data-testid="proposal-team-request-refusal-by-field">
-                  <li>Team, position 1: “User is not an active member of the organization.”</li>
-                  <li>Team: “Please select unique team members.”</li>
-                </Stack>
-              </dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Messages, in the service's order</dt>
-              <dd>
-                <Stack as="ol" gap="small" data-testid="proposal-team-request-refusal-messages">
-                  <li>User is not an active member of the organization.</li>
-                  <li>Please select unique team members.</li>
-                </Stack>
-              </dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>What changed</dt>
-              <dd>Nothing. No proposal is created.</dd>
-            </Stack>
-          </Stack>
-        </Stack>
-      </Stack>
-    </PageContainer>
+    <SitePage viewer={VENDOR}>
+      <ProposalPage>
+        <div className="op-head">
+          <p className="op-eyebrow">Response reference: this address answers with data, not a page</p>
+          <PageTitle>A team proposal, by request</PageTitle>
+        </div>
+        <Region id="proposal-team-request-requests" title="Request">
+          <Details
+            items={[
+              {
+                term: "Submit a team proposal",
+                value:
+                  "Sent to /api/proposals/team-with-us, with a team naming a person whose membership of the organization is pending in position 1, and one person in both positions 2 and 3. Sent as a submission rather than a draft.",
+                testId: "proposal-team-request-submit",
+              },
+              { term: "Asked by", value: "The signed-in vendor, for an organization they may submit for" },
+            ]}
+          />
+        </Region>
+        <Region id="proposal-team-request-answer" title="Answer">
+          <Details
+            items={[
+              { term: "Proposal accepted", value: "No", testId: "proposal-team-request-accepted" },
+              {
+                term: "Refusal status",
+                value: "400: refused at validation (503 when it fails to store)",
+                testId: "proposal-team-request-refusal-status",
+              },
+              {
+                term: "Messages, by where they are reported",
+                value: (
+                  <ul className="op-list" data-testid="proposal-team-request-refusal-by-field">
+                    <li>Team, position 1: “User is not an active member of the organization.”</li>
+                    <li>Team: “Please select unique team members.”</li>
+                  </ul>
+                ),
+              },
+              {
+                term: "Messages, in the service's order",
+                value: (
+                  <ol className="op-list" data-testid="proposal-team-request-refusal-messages">
+                    <li>User is not an active member of the organization.</li>
+                    <li>Please select unique team members.</li>
+                  </ol>
+                ),
+              },
+              { term: "What changed", value: "Nothing. No proposal is created." },
+            ]}
+          />
+        </Region>
+      </ProposalPage>
+    </SitePage>
   ),
 };

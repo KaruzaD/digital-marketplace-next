@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-3-6 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-3-6</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 11:03</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 3 (A person can keep their own profile, picture and notification choice) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> No test ID, wording or behaviour changed.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I&#39;ve restyled slice 3&#39;s screens to match the design catalogue approved at G-DESIGN. No test ID, wording or behaviour changed. <code>npm --prefix app run check</code> passes: 862 backend tests, 611 frontend tests and every package&#39;s typecheck. I couldn&#39;t look at any page in a browser, so the layouts are checked by unit tests, not by eye.</p>
+<p>Slice 3&#39;s criteria were already built and recorded in decision records 0021 and 0023. This pass changed only how the screens look, so each criterion is still reached the way 0023 describes.</p>
+<p><strong>What changed</strong></p>
+<ul><li><strong>Shared profile pieces.</strong> I added them once to <code>app/frontend/src/app/user-kit.tsx</code>, following the catalogue&#39;s user kit:</li><li>the account&#39;s status as a coloured label, green for Active and grey for Inactive;</li><li>the section links, drawn as the manage page&#39;s tabs;</li><li>the account facts as labelled values (&quot;Account type&quot;, &quot;Status&quot;, &quot;Account ID&quot;), with their test IDs on the values;</li><li>the Details section;</li><li>the capability rows;</li><li>an empty status message area that announces the result of a save.</li><li><strong>The profile page</strong> (<code>app/frontend/src/screens/user-profile.tsx</code>):</li><li><strong>Profile view and editing:</strong></li><li>The H1 now uses the smaller H3 size.</li><li>Below the tabs and the facts comes the Details section, with Edit profile as the page&#39;s only primary button.</li><li>While editing, &quot;Edit your details&quot; holds the picture picker and the fields in a grid. The error summary is the kit&#39;s, with its title now visible, and it takes focus.</li><li>Permissions and &quot;Deactivate your account&quot; are sections of their own.</li><li><strong>Capabilities, legal, notifications and the unsubscribe landing:</strong></li><li>Capabilities are bordered rows, each with its checkbox and description toggle on one line.</li><li>The legal page is three sections.</li><li>The notifications section and the unsubscribe landing follow their stories. When opened from an unsubscribe link, the page waits under &quot;Notifications&quot; and says &quot;Loading your notification settings…&quot;.</li><li>After Unsubscribe is pressed, focus goes back to the cleared checkbox.</li><li><strong>The picture picker</strong> (<code>app/frontend/src/app/image-picker.tsx</code>) now matches the catalogue&#39;s picture group:</li><li>the refusal&#39;s title is now visible, and the refusal takes focus with a visible outline;</li><li>the stated rule carries <code>image-file-rule</code> on the paragraph itself.</li></ul>
+<p>It carries its own small style sheet because the organization form uses the same picker for a logo. It is also the picker on the sign-up completion page.</p>
+<p><strong>Where I departed from the stories, and why</strong> (recorded in <code>docs/decisions/0077-…</code>):</p>
+<ul><li><strong>Status on your own profile.</strong> The status label stays there, although the story shows status only to administrators. The contract lists <code>profile-status-badge</code> on <code>/users/me</code>, and decision 0023 keeps it there for R-4.1.</li><li><strong>The line naming whose profile it is</strong> stays above the facts, as 0023 has it.</li><li><strong>The sentence saying what the email setting covers</strong> (R-6.16) appears on the notifications section however it is reached. The profile&#39;s own notifications story leaves it out; the unsubscribe landing&#39;s story has it.</li><li><strong>The administrator&#39;s view of someone else&#39;s profile</strong> is restyled too. What its controls do belongs to slice 4, but it is the same page and uses the same pieces.</li></ul>
+<p><strong>Tested.</strong> <code>app/frontend/tests/slice-three-screens.test.tsx</code> adds 13 tests. They cover:</p>
+<ul><li>the user kit pieces;</li><li>the picker&#39;s layout, and focus on its refusal;</li><li>the own profile in view and edit, and a public sector employee&#39;s Permissions section;</li><li>the capabilities and legal layouts;</li><li>the unsubscribe landing&#39;s wait and the focus after unsubscribing;</li><li>the administrator&#39;s view.</li></ul>
+<p>All earlier tests pass unchanged.</p>
+<p><strong>Left for other slices.</strong></p>
+<ul><li><strong>Organizations section:</strong> the profile&#39;s organizations section keeps its older layout. Its stories belong to the organizations domain.</li><li><strong>Sign-in wait:</strong> the wait screen shown while the sign-in check runs is unchanged; it is slice 2&#39;s.</li><li><strong>User list:</strong> the user list&#39;s phone cards and export dialog layout are still to be added to the user kit when the user list (slice 4) is restyled.</li></ul>
+<p>I changed nothing outside <code>app/</code> and <code>docs/decisions/</code>.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-18 11:36.</p>
+<div class="body"><p>Question: does slice 3 (own profile, picture and notification choice) still do what its criteria say after this restyle? Approve. Verify is pass-unasserted against the current tree c02d0d9: 23 of the 24 claimed criteria passed and none failed. The only criterion never put to the application is R-8.16, which says an upload&#39;s working copy is written on the server and then removed. Its not-testable reason is real: nothing the service sends back shows that working directory, and only reading the server&#39;s filesystem could check it. This change does not touch upload handling, so accepting the slice with R-8.16 unasserted adds no risk. The diff is limited to app/ and docs/decisions/ (plus the verify-written results file). It changes only how slice 3&#39;s screens look and keeps the test IDs, wording and behaviour that decision record 0023 depends on: the status label stays on the person&#39;s own profile (R-4.1) and the scope sentence stays on the notifications section (R-6.16). Restyling the administrator&#39;s view is justified because it is the same page, and its controls do not change. No protected path is touched, and there are no secrets or real personal data (fixtures use placeholder names and example.test addresses). Thirteen new unit tests cover the new shared user-kit pieces, focus handling and layouts. Returning focus to the checkbox after unsubscribing uses a setTimeout and a lookup by test ID, which is fragile but tested and correct. The ruling would change if the verify result became stale against a newer tree or any slice-3 criterion failed.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

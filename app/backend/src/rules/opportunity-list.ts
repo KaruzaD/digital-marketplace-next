@@ -12,6 +12,7 @@ import {
   isProgram,
   isUnpublished,
   recordedInstantOf,
+  statusLabel,
 } from "./opportunities";
 
 // ------------------------------------------------------------------------ the three groups
@@ -121,6 +122,23 @@ export function isStatusFilter(value: unknown): value is StatusFilter {
   return typeof value === "string" && (STATUS_FILTERS as readonly string[]).includes(value);
 }
 
+/** Whether any condition is chosen at all, so an empty group says nothing matched rather than that it is empty. */
+export function isNarrowed(filters: ListFilters): boolean {
+  return filters.program !== "all" || filters.status !== "all" || filters.remoteOnly || filters.search.trim() !== "";
+}
+
+/**
+ * Whether the words typed are found, in the order typed, in a title or a location, ignoring case,
+ * as the original site's search matches them (design/DESIGN.md, "Opportunity list"). Nothing
+ * typed matches everything.
+ */
+export function matchesSearch(search: string, ...texts: readonly string[]): boolean {
+  const words = search.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const pattern = new RegExp(words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*"), "i");
+  return texts.some((text) => pattern.test(text));
+}
+
 /**
  * Whether an opportunity meets every condition chosen (R-1.39): its program, its state, remote
  * work accepted, and the words typed found in its title or its location, ignoring case.
@@ -129,9 +147,25 @@ export function matchesFilters(opportunity: Listable, filters: ListFilters): boo
   if (filters.program !== "all" && opportunity.program !== filters.program) return false;
   if (filters.status !== "all" && !STATES_FILTERED[filters.status].includes(opportunity.status)) return false;
   if (filters.remoteOnly && !opportunity.remoteOk) return false;
-  const words = filters.search.trim().toLowerCase();
-  if (words === "") return true;
-  return opportunity.title.toLowerCase().includes(words) || opportunity.location.toLowerCase().includes(words);
+  return matchesSearch(filters.search, opportunity.title, opportunity.location);
+}
+
+/**
+ * The words the list shows for an opportunity's status, as the original site words them. Public
+ * sector staff and administrators see its stage, as every other screen names it; anyone else sees
+ * whether it is open, in evaluation (closed, processing, or any evaluation stage), cancelled or
+ * completed (awarded).
+ */
+export function listStatusWords(
+  opportunity: Pick<Listable, "status" | "proposalDeadline" | "program">,
+  now: Date,
+  asStaff: boolean,
+): string {
+  if (asStaff) return statusLabel(opportunity.status, opportunity.program);
+  if (listGroupOf(opportunity, now) === "open") return "Open";
+  if (opportunity.status === "CANCELED") return "Canceled";
+  if (opportunity.status === "AWARDED") return "Completed";
+  return "Evaluation";
 }
 
 // ------------------------------------------------------------------------ watching

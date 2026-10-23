@@ -1,100 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, ButtonGroup, Form, Heading, Link, NumberField, Text, TextArea } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { SWU, WIDTHS } from "./evaluation-kit";
+import { IndividualCreate } from "./evaluation-pages";
 
 // evaluation-individual-create-swu · default — an evaluator starts scoring the second of three proponents, who is named
 // only anonymously. One score and one comment per team question (R-5.22, R-5.35)
-const meta: Meta = { title: "evaluation/evaluation-individual-create-swu/default" };
+const meta: Meta = { title: "evaluation/evaluation-individual-create-swu/default", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
 
-const group = {
-  margin: "var(--layout-margin-none)",
-  padding: "var(--layout-padding-large)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-  borderRadius: "var(--layout-border-radius-medium)",
-} as const;
-const legend = { paddingInline: "var(--layout-padding-small)", font: "var(--typography-bold-body)" } as const;
-const response = {
-  padding: "var(--layout-padding-small)",
-  borderInlineStart: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-} as const;
-
-// Illustrative questions and responses.
-const questions = [
-  {
-    n: 1,
-    text: "Describe how your team would approach user research for the renewal service.",
-    max: 5,
-    min: 3,
-    response: "We would begin with two weeks of interviews with people renewing a licence and the staff who process renewals, then test paper prototypes with both groups before building anything.",
-  },
-  {
-    n: 2,
-    text: "Describe a time your team replaced a legacy system without interrupting service.",
-    max: 10,
-    min: 6,
-    response: "We moved a permit service to a new platform in stages, running both side by side for six weeks and switching one office at a time.",
-  },
-];
-
-export const Default: StoryObj = {
-  render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Evaluate a Sprint With Us proponent</Text>
-          <Heading level={1}><span data-testid="proposal-proponent-name">Proponent 2</span></Heading>
-        </Stack>
-        <Stack direction="row" align="center" gap="medium">
-          <Text elementType="p">Modernize the licence renewal service</Text>
-          <Text elementType="p" size="small" color="secondary">Proponent 2 of 3</Text>
-        </Stack>
-        <div>
-          <Link href="/opportunities/sprint-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000201/edit?tab=evaluation">Back to your evaluations</Link>
-        </div>
-        <Text elementType="p">
-          Score each question between 0 and its maximum, with up to two decimal places, and explain each score in a comment. Your
-          draft is saved as you move between proponents. Nothing is shared until you submit your scores for consensus.
-        </Text>
-        <Form validationBehavior="aria">
-          <Stack gap="medium">
-            {questions.map((q) => (
-              <fieldset key={q.n} style={group} id={`question-${q.n}`}>
-                <legend style={legend}>Question {q.n}</legend>
-                <Stack gap="medium">
-                  <Text elementType="p">{q.text}</Text>
-                  <Text elementType="p" size="small" color="secondary">Worth up to {q.max} points. The minimum score to move on is {q.min}.</Text>
-                  <div style={response} data-testid="evaluation-question-response">
-                    <Stack gap="small">
-                      <Text elementType="p" size="small" color="secondary">Proponent 2's response</Text>
-                      <Text elementType="p">{q.response}</Text>
-                    </Stack>
-                  </div>
-                  <NumberField
-                    id={`question-${q.n}-score`}
-                    label={`Score for question ${q.n}`}
-                    isRequired
-                    description={`Between 0 and ${q.max}, with up to two decimal places.`}
-                    data-testid="evaluation-question-score-field"
-                  />
-                  <TextArea
-                    id={`question-${q.n}-notes`}
-                    label={`Comment for question ${q.n}`}
-                    isRequired
-                    description="At least one word, explaining the score."
-                    data-testid="evaluation-question-notes-field"
-                  />
-                </Stack>
-              </fieldset>
-            ))}
-            <ButtonGroup ariaLabel="Evaluation actions">
-              <Button variant="secondary" data-testid="evaluation-save-previous">Save and go to previous proponent</Button>
-              <Button variant="secondary" data-testid="evaluation-save-draft">Save draft</Button>
-              <Button type="submit" variant="primary" data-testid="evaluation-save-next">Save and go to next proponent</Button>
-            </ButtonGroup>
-          </Stack>
-        </Form>
-      </Stack>
-    </PageContainer>
-  ),
-};
+export const Default: StoryObj = { render: () => <IndividualCreate p={SWU} state="default" /> };

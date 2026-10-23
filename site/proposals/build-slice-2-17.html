@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-2-17 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-2-17</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 07:42</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 2 (A person can sign in, finish signing up and sign out) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I restyled slice 2&#39;s screens to the design catalogue approved at G-DESIGN.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I restyled slice 2&#39;s screens to the design catalogue approved at G-DESIGN. Every test ID is kept on the same element, and <code>npm --prefix app run check</code> passes: types check in every package, and 862 frontend tests, 584 backend tests and 16 migration tests pass.</p>
+<p><strong>What this run was.</strong> Slice 2&#39;s six criteria (R-4.1, R-4.2, R-4.3, R-4.17, R-4.24, R-6.1) were already built by an earlier run. That covers the sign-in with PKCE through the Keycloak realm, account creation on first sign-in, the welcome message, terms agreement, the new-opportunity notice choice and sign-out from both the service and the identity provider. The compose file already publishes the app at <a href="http://localhost:4300">http://localhost:4300</a> and the realm at <a href="http://localhost:8080/realms/digital-marketplace.">http://localhost:8080/realms/digital-marketplace.</a> As the operator asked, this run changed only how the screens are drawn. Behaviour, routes, the service and compose are untouched, and how each criterion is reached is the same as before.</p>
+<p><strong>What changed:</strong></p>
+<ul><li><strong>One shared user kit.</strong> <code>app/frontend/src/app/user-kit.tsx</code> holds the catalogue kit&#39;s page frame, the two-account-choices layout, the label group, the field grid and the error summary, built on the opportunity kit the shell already uses. I added only the pieces these screens need. The profile&#39;s own pieces belong to slices 3 and 4 and should be added there when those screens are restyled.</li><li><strong>Sign In and Choose Account Type</strong> (<code>screens/sign-in.tsx</code>) follow their stories. Each kind of account is a bordered panel with one secondary button, side by side where there is room and stacked on a phone, and there is no primary button. When a page sends someone to sign in, the screen shows the sign-in-required story instead: an info alert in place of the introduction and shorter panel text.</li><li><strong>Complete Your Profile</strong> (<code>screens/sign-up-complete.tsx</code>) follows its four stories:</li><li>Above the form it shows the save refusal, or else the error summary, or else the introduction. The summary&#39;s title now actually renders and takes focus.</li><li>Username, name and email sit in the field grid, the terms links and agreement box form one group, and Complete profile is the one primary action.</li><li><strong>Signed Out</strong> (<code>screens/sign-out.tsx</code>) follows its three stories, with the wait drawn as the kit&#39;s status row.</li><li><strong>The notices</strong> (<code>screens/notice.tsx</code>) are restyled too, because a refused sign-in lands on the sign-in-failed notice. The deactivation notice&#39;s behaviour is still slice 3&#39;s; only its layout changed.</li></ul>
+<p><strong>Three places I didn&#39;t follow a story exactly.</strong> All are recorded in <code>docs/decisions/0074-…</code>:</p>
+<ul><li>The sign-in-required state keeps the &quot;Don&#39;t have an account? Sign up&quot; link, though its story leaves it out, because the contract offers that action on the sign-in page without naming a state.</li><li>The terms links stay on the completion form in every state, though the <code>invalid</code> and <code>save-failed</code> stories leave them out, because the agreement box still refers to what they link to.</li><li>The shared picture picker (used by the profile and the organization form too) is unchanged; its wording already matches the story, and restyling it belongs to slice 3.</li></ul>
+<p><strong>Tests.</strong> A new <code>tests/slice-two-screens.test.tsx</code> checks the layout:</p>
+<ul><li><strong>Sign-in and sign-up:</strong> the H1 and panel heading sizes, the two panels side by side, and no primary button.</li><li><strong>The sign-in-required state:</strong> the alert replaces the introduction.</li><li><strong>The completion form:</strong> the field grid, the terms group, and the error summary focused with its title.</li><li><strong>Signed Out and the notices:</strong> the wait row while signing out, and each notice&#39;s region with its actions after it.</li></ul>
+<p>The existing behaviour and axe accessibility tests for these screens still pass unchanged. I couldn&#39;t look at the pages in a browser here, so widths and reflow are covered only through the class structure these tests check. Installing dependencies created <code>app/node_modules</code>, which <code>app/.gitignore</code> already excludes.</p>
+<p><strong>What I didn&#39;t do and what&#39;s left.</strong> I changed nothing under <code>spec/</code>, <code>design/</code> or <code>plan/</code>. DESIGN.md gaps 41 and 42 are still open, because the spec doesn&#39;t answer them:</p>
+<ul><li><strong>Gap 41:</strong> whether the header should offer its navigation to someone who hasn&#39;t yet agreed to the terms.</li><li><strong>Gap 42:</strong> which header to show when sign-out fails.</li></ul>
+<p>The screens keep today&#39;s behaviour on both. The next restyle (slice 3&#39;s profile screens) will find the user kit has no profile pieces yet, and the picture picker still in its older layout.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by tech-lead (a person) on 2026-10-18 08:14.</p>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

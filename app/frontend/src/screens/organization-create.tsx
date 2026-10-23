@@ -1,11 +1,11 @@
-import { Heading, Text } from "@bcgov/design-system-react-components";
 import { mayRegisterOrganization } from "@rules/organizations";
 import { createOrganization } from "../api/organizations";
 import { useSession } from "../auth/session";
 import { useGoTo } from "../app/go-to";
-import { Loading, useLoadingShown } from "../app/loading";
+import { useLoadingShown } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { PageTitle, Waiting } from "../app/opportunity-kit";
+import { OrganizationPage } from "../app/organization-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { EMPTY_PROFILE, OrganizationForm } from "./organization-form";
 
@@ -21,10 +21,10 @@ export function OrganizationCreateScreen() {
   if (session.status === "starting") {
     if (!loadingShown) return null;
     return (
-      <Stack gap="large">
-        <Heading level={1}>Create Organization</Heading>
-        <Loading label="Loading…" />
-      </Stack>
+      <OrganizationPage>
+        <PageTitle>Create Organization</PageTitle>
+        <Waiting label="Loading" />
+      </OrganizationPage>
     );
   }
   if (session.status !== "signed-in" || !mayRegisterOrganization(session.account)) return <NotFound />;
@@ -35,9 +35,9 @@ function CreateOrganization({ ownerName }: { ownerName: string }) {
   useScreenTitle("Create Organization");
   const goTo = useGoTo();
   return (
-    <Stack gap="large">
-      <Heading level={1}>Create Organization</Heading>
-      <Text elementType="p">You will be the organization’s owner. Fields not marked “(optional)” are required.</Text>
+    <OrganizationPage>
+      <PageTitle>Create Organization</PageTitle>
+      <p className="op-text">You will be the organization’s owner. Fields not marked “(optional)” are required.</p>
       <OrganizationForm
         kind="create"
         initial={EMPTY_PROFILE}
@@ -47,6 +47,6 @@ function CreateOrganization({ ownerName }: { ownerName: string }) {
         onSaved={(organization) => goTo(`/organizations/${organization.id}/edit`)}
         onCancel={() => goTo("/organizations")}
       />
-    </Stack>
+    </OrganizationPage>
   );
 }

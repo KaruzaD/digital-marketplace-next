@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ALREADY_HAVE_PROPOSAL, NOT_ACCEPTING_PROPOSALS } from "@rules/proposals";
 import type { Account } from "../src/api/accounts";
 import type { IdentityClient } from "../src/auth/identity-client";
+import { proposalColour } from "../src/app/proposal-kit";
 import { resetSessionForTests } from "../src/auth/session";
 import { routeTree } from "../src/router";
 
@@ -256,11 +257,31 @@ describe("the create page (R-2.3, R-2.12, R-2.13, R-2.14)", () => {
     const { router } = renderAt(CREATE);
     const summary = await screen.findByTestId("proposal-opportunity-summary");
     expect(within(summary).getByText("Build an accessible permit tracker")).toBeTruthy();
-    expect(within(summary).getByText("$45,000")).toBeTruthy();
-    expect(screen.getByTestId("attachment-size-limit")).toBeTruthy();
+    // The direction's fixed order: program, title, closing date, then value, location and Remote OK.
+    expect(within(summary).getByText("Code With Us")).toBeTruthy();
+    expect(within(summary).getByText("Closes June 1, 2030 at 4:00 p.m. Pacific time")).toBeTruthy();
+    expect(within(summary).getByText("$45,000 · Victoria · Remote OK")).toBeTruthy();
+    // The actions sit in the summary, primary first.
+    expect(within(summary).getAllByRole("button").map((button) => button.textContent)).toEqual(["Submit", "Save Draft", "Cancel"]);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Create a Code With Us Proposal");
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "1. Proponent",
+      "2. Proposal",
+      "3. Attachments",
+    ]);
+    expect(screen.getByTestId("attachment-size-limit").textContent).toBe(
+      "Upload any supporting material for your proposal here. Attachments must be smaller than 10MB.",
+    );
+    expect(screen.getByTestId("attachment-add-button").getAttribute("aria-describedby")).toBe("attachment-size-limit");
+    // No two street lines share a name (WCAG 2.2 SC 2.4.6), so the second is "Street Address line 2".
+    chooseIndividual();
+    expect(screen.getByLabelText(/^Street Address line 2/)).toBe(field("proposal-street-2-field"));
 
     fireEvent.click(screen.getByTestId("proposal-save-draft"));
     await waitFor(() => expect(router.state.location.pathname).toBe(MANAGE));
+    // The manage page says the draft was saved, in the create page's own words.
+    expect((await screen.findByText("Draft Proposal Saved")).closest("[role='status']")).toBeTruthy();
+    expect(within(screen.getByTestId("proposal-actions")).getAllByRole("button").map((button) => button.textContent)).toContain("Delete");
     const created = requests.find((request) => request.method === "POST");
     expect(created?.address).toBe("/api/proposals/code-with-us");
     expect(created?.body).toMatchObject({ opportunity: OPPORTUNITY, status: "DRAFT", proposalText: "", proponent: { tag: "individual" } });
@@ -288,6 +309,40 @@ describe("the create page (R-2.3, R-2.12, R-2.13, R-2.14)", () => {
     ]);
     expect(screen.queryByTestId("proposal-terms-dialog")).toBeNull();
     expect(requests.filter((request) => request.method !== "GET")).toEqual([]);
+  });
+
+  it("lists the problems in the original site's error summary, focused, each linking to its field", async () => {
+    aNewProposal();
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(CREATE);
+    await screen.findByTestId("proposal-submit");
+    chooseIndividual();
+    fireEvent.click(screen.getByTestId("proposal-submit"));
+
+    const list = await screen.findByTestId("proposal-field-errors");
+    const summary = list.closest("[tabindex='-1']")!;
+    expect(summary.textContent).toContain("Unable to Submit Proposal");
+    await waitFor(() => expect(document.activeElement).toBe(summary));
+    const links = within(list).getAllByRole("link");
+    expect(links[0]!.getAttribute("href")).toBe("#proposal-legal-name");
+    expect(within(list).getAllByTestId("field-error")).toHaveLength(links.length);
+    expect(document.getElementById("proposal-legal-name")).toBeTruthy();
+  });
+
+  it("asks for the terms in the original site's words, Submit Proposal first and unavailable until both are ticked", async () => {
+    aNewProposal();
+    resetSessionForTests({ status: "signed-in", account: vendor }, fakeIdentity());
+    renderAt(CREATE);
+    await screen.findByTestId("proposal-submit");
+    fillIndividual();
+    fireEvent.click(screen.getByTestId("proposal-submit"));
+    const dialog = await screen.findByTestId("proposal-terms-dialog");
+    expect(within(dialog).getByRole("heading", { level: 2 }).textContent).toBe("Review Terms and Conditions");
+    const buttons = within(dialog)
+      .getAllByRole("button")
+      .filter((button) => button.textContent !== "");
+    expect(buttons.map((button) => button.textContent).slice(-2)).toEqual(["Submit Proposal", "Cancel"]);
+    expect(screen.getByTestId("proposal-submit-confirm").hasAttribute("disabled")).toBe(true);
   });
 
   it("chooses no proponent for the vendor, and refuses to submit one that carries none, sending nothing", async () => {
@@ -505,6 +560,22 @@ describe("the manage page (R-2.4, R-2.9, R-2.15, R-2.23)", () => {
     fireEvent.click(await screen.findByTestId("proposal-edit-button"));
     expect(field("proposal-legal-name-field").value).toBe(individual.legalName);
     expect(screen.queryByTestId("proposal-actions")).toBeNull();
+    // The create page's layout: the head, its identifiers and the tabs above, the summary holding the actions.
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Build an accessible permit tracker");
+    expect(screen.getByTestId("proposal-tab-proposal").getAttribute("aria-current")).toBe("page");
+    // The create page's proponent question and choices, as the corrected editing story asks them.
+    const question = screen.getByRole("radiogroup", {
+      name: /Will you be submitting a proposal for this opportunity as an Individual or Organization\?/,
+    });
+    expect(within(question).getAllByRole("radio").map((radio) => radio.closest("label")?.textContent)).toEqual(["Individual", "Organization"]);
+    expect(screen.getByLabelText(/Street address line 2/)).toBeTruthy();
+    const summary = screen.getByTestId("proposal-opportunity-summary");
+    expect(within(summary).getByText("Draft")).toBeTruthy();
+    expect(within(summary).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Save changes and submit",
+      "Save changes",
+      "Cancel",
+    ]);
     type("proposal-text-field", "Changed.");
     fireEvent.click(screen.getByTestId("proposal-save-changes"));
     await waitFor(() => expect(screen.getByTestId("proposal-actions")).toBeTruthy());
@@ -594,6 +665,9 @@ describe("the vendor's dashboard (R-2.24, R-4.23)", () => {
     expect(myRows).toHaveLength(1);
     expect(within(myRows[0]!).getByTestId("proposal-status").textContent).toBe("Submitted");
     expect(within(myRows[0]!).getByTestId("dashboard-proposal-link").getAttribute("href")).toBe(MANAGE);
+    // The program is a grey label and the status a coloured one, always in words.
+    expect(within(myRows[0]!).getByText("Code With Us").className).toContain("dm-label-grey");
+    expect(within(myRows[0]!).getByTestId("proposal-status").className).toContain("dm-label-green");
 
     const theirs = within(screen.getByTestId("dashboard-org-proposals-table")).getAllByTestId("dashboard-proposal-row");
     expect(theirs).toHaveLength(1);
@@ -615,6 +689,21 @@ describe("the vendor's dashboard (R-2.24, R-4.23)", () => {
     await screen.findByTestId("dashboard-my-proposals-table");
     expect(screen.queryByTestId("dashboard-show-org-proposals")).toBeNull();
     expect(screen.queryByTestId("dashboard-empty-org-proposals")).toBeNull();
+  });
+});
+
+describe("a proposal's status colour", () => {
+  it.each([
+    ["Draft", "blue"],
+    ["Submitted", "green"],
+    ["Awarded", "green"],
+    ["Under review", "yellow"],
+    ["Evaluated", "yellow"],
+    ["Not awarded", "grey"],
+    ["Withdrawn", "grey"],
+    ["Disqualified", "red"],
+  ])("colours %s %s", (status, colour) => {
+    expect(proposalColour(status)).toBe(colour);
   });
 });
 

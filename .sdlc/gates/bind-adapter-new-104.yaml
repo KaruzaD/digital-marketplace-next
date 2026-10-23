@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:tech-lead
+held_by: agent
+rationale: |2-
+  Question: does the new adapter bind every surface action and observation on new, and nothing else, now that it has answered the three open requests from build-slice-10-7? This reached tech-lead because bind-adapter was sent work more often than policy.loops.request allows. The pipeline is not at fault: each send in the account carried different faults that were fixed in their round (status reads, the top-level chair, the 'create' identifier, refusals on add, read-only rows), and only build-slice-10-7#1-#3 are still open. Those three exist because the new Evaluation panel opens read-only behind 'Edit evaluation panel'. The diff answers them where they are owed. A shared editing() step presses that button before start_editing, add_panel_member, remove_panel_member, choose_panel_chair and mark_member_as_chair, and a locked panel is still recorded as a refusal. add_panel_member adds through the single 'Public sector employee to add' chooser and 'Add an evaluator', waits for the new row, and throws refused: when the person is not offered. Names shown as 'Name (email)' are compared by name alone, which fixes 'nobody chosen, nobody chosen' in mark_member_as_chair. chair_field reads the chair from the read-only member list when no Chair chooser is drawn. The change stays inside the evaluation-panel binding and one bindings.yaml comment, every binding stays bound, and the runner's tsc on af73ecd5aa passed with no diagnostics under adapters/new/, which covers the check the authoring session could not run. Approved. If the next verify of R-1.55, R-5.1 or R-5.17 still fails on these panel steps, it returns to bind-adapter, or goes to build if the panel's markup turns out to be unstable.
+conditions: []
+cost: 0.4044114
+turns: 1
+session: "4f419fc2-b842-4051-8b5b-f836de0fbf44"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T09:15:04.011Z

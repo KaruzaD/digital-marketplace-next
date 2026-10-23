@@ -4,6 +4,7 @@ import type { Program } from "@rules/opportunities";
 import { CwuProposal, listCwuProposals } from "../api/proposals";
 import { TeamProposal, listTeamProposals } from "../api/team-proposals";
 import { Loading } from "../app/loading";
+import { DataTable } from "../app/opportunity-kit";
 import { TitledAlert } from "../app/titled-alert";
 import { deadlineLabel, momentLabel } from "./opportunity-parts";
 import { ProposalStatusBadge } from "./proposal-cwu-form";
@@ -30,13 +31,6 @@ type Listed =
   | { readonly kind: "listed"; readonly proposals: readonly ListedProposal[] }
   | { readonly kind: "refused" }
   | { readonly kind: "failed" };
-
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
 
 function listedFromCwu(proposal: CwuProposal): ListedProposal {
   return { id: proposal.id, status: proposal.status, name: proponentName(proposal), submittedAt: proposal.submittedAt };
@@ -103,43 +97,21 @@ export function ProposalsTab({
     );
   }
   return (
-    <div role="region" aria-labelledby="proposals-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-      <table style={{ borderCollapse: "collapse", width: "100%" }} data-testid="opportunity-proposals-table">
-        <caption id="proposals-caption" style={{ textAlign: "start" }}>
-          <Text size="small" color="secondary">
-            Every proposal submitted to this opportunity
-          </Text>
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col" style={cell}>
-              Proponent
-            </th>
-            <th scope="col" style={cell}>
-              Status
-            </th>
-            <th scope="col" style={cell}>
-              Submitted
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((proposal) => (
-            <tr key={proposal.id} data-testid="opportunity-proposal-row">
-              <td style={cell}>
-                <Link href={`/opportunities/${program}/${opportunity.id}/proposals/${proposal.id}`} data-testid="opportunity-proposal-link">
-                  <span data-testid="proposal-proponent-name">{proposal.name}</span>
-                </Link>
-              </td>
-              <td style={cell}>
-                <ProposalStatusBadge status={proposal.status} />
-              </td>
-              <td style={cell}>{proposal.submittedAt ? momentLabel(proposal.submittedAt) : ""}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable captionId="proposals-caption" caption="Every proposal submitted to this opportunity" columns={["Proponent", "Status", "Submitted"]} testId="opportunity-proposals-table">
+      {shown.map((proposal) => (
+        <tr key={proposal.id} data-testid="opportunity-proposal-row">
+          <td>
+            <Link href={`/opportunities/${program}/${opportunity.id}/proposals/${proposal.id}`} data-testid="opportunity-proposal-link">
+              <span data-testid="proposal-proponent-name">{proposal.name}</span>
+            </Link>
+          </td>
+          <td>
+            <ProposalStatusBadge status={proposal.status} />
+          </td>
+          <td>{proposal.submittedAt ? momentLabel(proposal.submittedAt) : ""}</td>
+        </tr>
+      ))}
+    </DataTable>
   );
 }
 

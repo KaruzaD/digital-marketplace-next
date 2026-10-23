@@ -1,12 +1,12 @@
 import { FormEvent, useState } from "react";
-import { AlertDialog, Button, Form, Heading, Link, Modal, Text, TextArea } from "@bcgov/design-system-react-components";
+import { AlertDialog, Button, Form, Link, Modal, TextArea } from "@bcgov/design-system-react-components";
 import { fileContentAddress } from "@rules/files";
 import { ADDENDUM_MAX, NOTE_MAX, addendumProblem, cancellationNoteProblem, historyEntryLabel } from "@rules/opportunities";
 import { downloadFile } from "../api/files";
 import { Addendum, Attachment, HistoryEntry, Reporting } from "../api/opportunities";
-import { Stack } from "../app/page-layout";
+import { Actions, DataTable, Details, Region, SectionTitle } from "../app/opportunity-kit";
 import { readDate } from "../lib/dates";
-import { Fact, momentLabel } from "./opportunity-parts";
+import { momentLabel } from "./opportunity-parts";
 
 /**
  * Running an opportunity once it is under way, as every program's manage page does it (design/
@@ -30,21 +30,17 @@ export function addendumHeading(addendum: Addendum): string {
  * it; on the public page it does not (opportunity-cwu-view).
  */
 export function AddendaList({ addenda, showAuthor }: { addenda: readonly Addendum[]; showAuthor: boolean }) {
-  if (addenda.length === 0) return <Text elementType="p">No addenda have been added.</Text>;
+  if (addenda.length === 0) return <p className="op-text">No addenda have been added.</p>;
   return (
     <>
       {addenda.map((addendum, index) => (
-        <Stack as="article" gap="small" aria-labelledby={`addendum-${index + 1}`} key={addendum.id} data-testid="addendum">
-          <Heading level={3} id={`addendum-${index + 1}`}>
+        <article className="op-region" aria-labelledby={`addendum-${index + 1}`} key={addendum.id} data-testid="addendum">
+          <SectionTitle level={3} id={`addendum-${index + 1}`}>
             {addendumHeading(addendum)}
-          </Heading>
-          {showAuthor && addendum.createdBy ? (
-            <Text elementType="p" size="small" color="secondary">
-              {`Added by ${addendum.createdBy.name}`}
-            </Text>
-          ) : null}
-          <Text elementType="p">{addendum.description}</Text>
-        </Stack>
+          </SectionTitle>
+          {showAuthor && addendum.createdBy ? <p className="op-note">{`Added by ${addendum.createdBy.name}`}</p> : null}
+          <p className="op-text">{addendum.description}</p>
+        </article>
       ))}
     </>
   );
@@ -92,87 +88,57 @@ export function AddendaTab({
     <>
       <AddendaList addenda={addenda} showAuthor />
       {mayAdd ? (
-        <Form validationBehavior="aria" onSubmit={(event) => void add(event)}>
-          <Stack gap="medium">
-            <TextArea
-              label="New addendum"
-              isRequired
-              description={`Up to ${ADDENDUM_MAX.toLocaleString("en-CA")} characters.`}
-              value={text}
-              onChange={(value) => {
-                setText(value);
-                if (problem) setProblem(null);
-              }}
-              isInvalid={problem !== null}
-              errorMessage={problem ?? undefined}
-              data-testid="addendum-text-field"
-            />
-            <Text elementType="p">
-              {announced
-                ? "An addendum cannot be changed or removed once it is added. Everyone watching this opportunity, everyone who has submitted a proposal, and its author will be emailed."
-                : "An addendum cannot be changed or removed once it is added. Nobody is emailed, because this opportunity has been cancelled."}
-            </Text>
-            <div>
-              <Button type="submit" variant="primary" isDisabled={sending} data-testid="addendum-add-button">
-                Add addendum
-              </Button>
-            </div>
-          </Stack>
+        <Form validationBehavior="aria" className="op-region" onSubmit={(event) => void add(event)}>
+          <TextArea
+            label="New addendum"
+            isRequired
+            description={`Up to ${ADDENDUM_MAX.toLocaleString("en-CA")} characters.`}
+            value={text}
+            onChange={(value) => {
+              setText(value);
+              if (problem) setProblem(null);
+            }}
+            isInvalid={problem !== null}
+            errorMessage={problem ?? undefined}
+            data-testid="addendum-text-field"
+          />
+          <p className="op-text">
+            {announced
+              ? "An addendum cannot be changed or removed once it is added. Everyone watching this opportunity, everyone who has submitted a proposal, and its author will be emailed."
+              : "An addendum cannot be changed or removed once it is added. Nobody is emailed, because this opportunity has been cancelled."}
+          </p>
+          <Actions>
+            <Button type="submit" variant="primary" isDisabled={sending} data-testid="addendum-add-button">
+              Add addendum
+            </Button>
+          </Actions>
         </Form>
       ) : null}
     </>
   );
 }
 
-const cell = {
-  textAlign: "start",
-  verticalAlign: "top",
-  padding: "var(--layout-padding-small)",
-  borderBottom: "var(--layout-border-width-small) solid var(--surface-color-border-default)",
-} as const;
-
 /** Every change of state and every event, newest first, with who made it (R-1.4, R-1.30). */
 export function HistoryTable({ history }: { history: readonly HistoryEntry[] }) {
   return (
-    <div role="region" aria-labelledby="history-caption" tabIndex={0} style={{ overflowX: "auto" }}>
-      <table style={{ borderCollapse: "collapse", width: "100%" }}>
-        <caption id="history-caption" style={{ textAlign: "start" }}>
-          <Text size="small" color="secondary">
-            Every change of state and every event, newest first
-          </Text>
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col" style={cell}>
-              Date
-            </th>
-            <th scope="col" style={cell}>
-              Entry
-            </th>
-            <th scope="col" style={cell}>
-              By
-            </th>
-            <th scope="col" style={cell}>
-              Note
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {history.map((entry, index) => (
-            <tr key={`${entry.createdAt}-${index}`}>
-              <td style={cell}>
-                <time dateTime={entry.createdAt}>{momentLabel(entry.createdAt)}</time>
-              </td>
-              <td style={cell}>{historyEntryLabel(entry)}</td>
-              <td style={cell}>{entry.createdBy?.name ?? ""}</td>
-              <td style={cell}>
-                <HistoryNote note={entry.note} attachments={entry.attachments} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      captionId="history-caption"
+      caption="Every change of state and every event, newest first"
+      columns={["Date", "Entry", "By", "Note"]}
+    >
+      {history.map((entry, index) => (
+        <tr key={`${entry.createdAt}-${index}`}>
+          <td>
+            <time dateTime={entry.createdAt}>{momentLabel(entry.createdAt)}</time>
+          </td>
+          <td>{historyEntryLabel(entry)}</td>
+          <td>{entry.createdBy?.name ?? ""}</td>
+          <td>
+            <HistoryNote note={entry.note} attachments={entry.attachments} />
+          </td>
+        </tr>
+      ))}
+    </DataTable>
   );
 }
 
@@ -240,11 +206,11 @@ export function CancelDialog({
           </>
         }
       >
-        <Stack gap="medium">
-          <Text elementType="p">
+        <div className="op-dialog">
+          <p className="op-text">
             It will stop accepting proposals, and this cannot be undone. Everyone watching it and everyone who has submitted a
             proposal will be told it has been cancelled, and its author will be told separately.
-          </Text>
+          </p>
           <TextArea
             label="Note (optional)"
             description={`Up to ${NOTE_MAX.toLocaleString("en-CA")} characters.`}
@@ -254,7 +220,7 @@ export function CancelDialog({
             errorMessage={problem ?? undefined}
             data-testid="opportunity-cancel-note-field"
           />
-        </Stack>
+        </div>
       </AlertDialog>
     </Modal>
   );
@@ -266,28 +232,17 @@ export function CancelDialog({
  */
 export function ReportingSection({ reporting, unpublished }: { reporting: Reporting | undefined; unpublished: boolean }) {
   if (unpublished || !reporting) {
-    return unpublished ? (
-      <Text elementType="p" size="small" color="secondary">
-        Views, watchers and proposals are counted once the opportunity is published.
-      </Text>
-    ) : null;
+    return unpublished ? <p className="op-note">Views, watchers and proposals are counted once the opportunity is published.</p> : null;
   }
   return (
-    <Stack as="section" gap="medium" aria-labelledby="reporting-heading">
-      <Heading level={3} id="reporting-heading">
-        Reporting
-      </Heading>
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label="Views" testId="reporting-views">
-          {String(reporting.numViews)}
-        </Fact>
-        <Fact label="Watchers" testId="reporting-watchers">
-          {String(reporting.numWatchers)}
-        </Fact>
-        <Fact label="Proposals submitted" testId="reporting-proposals">
-          {String(reporting.numProposals)}
-        </Fact>
-      </Stack>
-    </Stack>
+    <Region id="reporting-heading" title="Reporting" level={3}>
+      <Details
+        items={[
+          { term: "Views", value: String(reporting.numViews), testId: "reporting-views" },
+          { term: "Watchers", value: String(reporting.numWatchers), testId: "reporting-watchers" },
+          { term: "Proposals submitted", value: String(reporting.numProposals), testId: "reporting-proposals" },
+        ]}
+      />
+    </Region>
   );
 }

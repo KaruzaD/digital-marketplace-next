@@ -449,6 +449,25 @@ describe("the manage page a draft lands on", () => {
     expect(await screen.findByRole("heading", { level: 1, name: /not found/i })).toBeTruthy();
     await waitFor(() => expect(screen.queryByTestId("opportunity-identifier")).toBeNull());
   });
+
+  it.each([
+    ["sprint-with-us", ["Proposal deadline", "Assignment date", "Total maximum budget"]],
+    ["team-with-us", ["Proposal deadline", "Assignment date", "Start date", "Maximum budget"]],
+  ])("lists the dates a %s draft was given on its Summary tab (R-1.9)", async (program, terms) => {
+    serve((method, path) =>
+      method === "GET" && path === `/api/opportunities/${program}/${ID}`
+        ? json(200, drafted(program, { proposalDeadline: "2026-11-01", assignmentDate: "2026-11-01", startDate: "2026-11-01" }))
+        : json(404, { errors: ["Not here."] }),
+    );
+    resetSessionForTests({ status: "signed-in", account: staff }, fakeIdentity());
+    renderAt(`/opportunities/${program}/${ID}/edit?tab=summary`);
+    const summary = await screen.findByRole("region", { name: "Summary" });
+    const listed = within(summary).getAllByRole("term").map((term) => term.textContent);
+    expect(listed.slice(0, terms.length)).toEqual(terms);
+    const assignment = within(summary).getByText("Assignment date").nextElementSibling;
+    expect(assignment?.textContent).toBe("November 1, 2026");
+    expect(within(summary).queryByText(/Completion date/)).toBeNull();
+  });
 });
 
 describe("the create form's panel rules (R-1.55, R-5.1)", () => {

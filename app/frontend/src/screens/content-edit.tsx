@@ -1,27 +1,22 @@
 import { useEffect, useState } from "react";
-import {
-  AlertDialog,
-  Button,
-  ButtonGroup,
-  Heading,
-  Link,
-  Modal,
-  Text,
-  TextArea,
-  TextField,
-} from "@bcgov/design-system-react-components";
+import { AlertDialog, Button, Modal, Text } from "@bcgov/design-system-react-components";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Author, ManagedPage, fetchManagedPage, publishChanges, removePage } from "../api/content";
+import { ManagedPage, fetchManagedPage, publishChanges, removePage } from "../api/content";
 import { AdministratorsOnly } from "../app/administrators-only";
-import { term } from "../app/layout";
-import { Loading } from "../app/loading";
+import {
+  ContentPage,
+  CurrentWording,
+  FixedPageWarning,
+  ManageHead,
+  PageActions,
+  PageFacts,
+  Refusal,
+} from "../app/content-kit";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { PageTitle, Region, Waiting } from "../app/opportunity-kit";
 import { useScreenTitle } from "../app/screen-title";
-import { TitledAlert } from "../app/titled-alert";
-import { readMoment } from "../lib/dates";
 import { carriesTermsAnnouncement } from "@rules/content";
-import { PageForm } from "./content-form";
+import { PageEditor } from "./content-form";
 import { TermsBroadcast } from "./terms-broadcast";
 import {
   ChangesPublishedNotice,
@@ -43,7 +38,7 @@ import {
  */
 export function ContentEditScreen({ slug }: { slug: string }) {
   return (
-    <AdministratorsOnly title="Manage a page" loadingLabel="Loading page…">
+    <AdministratorsOnly title="Manage a page" loadingLabel="Loading page">
       {() => <ContentEdit slug={slug} />}
     </AdministratorsOnly>
   );
@@ -76,43 +71,33 @@ function ContentEdit({ slug }: { slug: string }) {
 
   if (page === "missing") return <NotFound />;
   if (page === "loading") {
+    // The surface title stands in for the H1 until the page's own title is known.
     return (
-      <Stack gap="large">
-        <Heading level={1}>Manage a page</Heading>
-        <Loading label="Loading page…" />
-      </Stack>
+      <ContentPage>
+        <PageTitle>Manage a page</PageTitle>
+        <Waiting label="Loading page" />
+      </ContentPage>
     );
   }
 
-  const heading = (
-    <Stack gap="small">
-      <Text elementType="p" size="small" color="secondary">
-        Manage a page
-      </Text>
-      <Heading level={1}>{page.title}</Heading>
-    </Stack>
-  );
-  const warning = page.fixed ? <NeededPageWarning slug={page.slug} /> : null;
+  const warning = page.fixed ? <FixedPageWarning slug={page.slug} /> : null;
 
   if (editing) {
     return (
-      <Stack gap="large">
-        {heading}
+      <ContentPage>
+        <ManageHead title={page.title} />
         {warning}
-        <Stack as="section" gap="medium" aria-labelledby="content-edit-heading">
-          <Heading level={2} id="content-edit-heading">
-            Edit the page
-          </Heading>
-          <PageForm
+        <Region id="content-edit-heading" title="Edit the page">
+          <PageEditor
             purpose="change"
             initial={{ title: page.title, slug: page.slug, body: page.body }}
             addressLocked={page.fixed}
             intro={
-              <Text elementType="p">
+              <p className="op-text">
                 {page.fixed
                   ? "The title and body are required. Your changes are public as soon as you publish them."
                   : "Every field is required. Your changes are public as soon as you publish them."}
-              </Text>
+              </p>
             }
             onCancel={() => setEditing(false)}
             onPublish={(wording) => publishChanges(page.id, wording)}
@@ -132,15 +117,14 @@ function ContentEdit({ slug }: { slug: string }) {
               }
             }}
           />
-        </Stack>
-      </Stack>
+        </Region>
+      </ContentPage>
     );
   }
 
   return (
     <ManagingView
       page={page}
-      heading={heading}
       warning={warning}
       notice={notice}
       onEdit={() => {
@@ -157,52 +141,19 @@ function ContentEdit({ slug }: { slug: string }) {
   );
 }
 
-function NeededPageWarning({ slug }: { slug: string }) {
-  return (
-    <div data-testid="content-fixed-page-warning">
-      <TitledAlert variant="warning" title="The service needs this page">
-        <Text elementType="p">
-          {`Parts of the service link to this page or show its text, so it must stay at /content/${slug}. You can change its title and body, but you cannot change its address or delete it.`}
-        </Text>
-      </TitledAlert>
-    </div>
-  );
-}
-
-/** Who published or last changed a page: the person, linked to their profile, or the service itself. */
-function AuthorName({ author, testId }: { author: Author | null; testId: string }) {
-  return author ? (
-    <Link href={`/users/${author.id}`} data-testid={testId}>
-      {author.name}
-    </Link>
-  ) : (
-    <span data-testid={testId}>System</span>
-  );
-}
-
 /**
- * When a page was published or last changed, to the minute: publishing a change makes the
- * updated date the moment of the change (R-7.8), and the day alone would not show it.
+ * The managing screen in view: the head, the notice the person arrived with, the facts, the
+ * warning a needed page carries, the actions, and the current wording (content-edit default,
+ * fixed, created, changes-published).
  */
-function DateFact({ iso, testId }: { iso: string; testId: string }) {
-  const date = readMoment(iso);
-  return (
-    <time dateTime={date?.dateTime} data-testid={testId}>
-      {date?.label ?? ""}
-    </time>
-  );
-}
-
 function ManagingView({
   page,
-  heading,
   warning,
   notice,
   onEdit,
   onRemoved,
 }: {
   page: ManagedPage;
-  heading: JSX.Element;
   warning: JSX.Element | null;
   notice: ContentNotice | null;
   onEdit: () => void;
@@ -225,89 +176,19 @@ function ManagingView({
     setRefusal(answer.kind === "refused" ? answer.reasons.join(" ") : "The service could not remove it. Try again.");
   }
 
-  const published =
-    notice?.kind === "created" ? (
-      <PublishedPageNotice slug={page.slug} />
-    ) : notice?.kind === "changes-published" ? (
-      <ChangesPublishedNotice slug={page.slug} />
-    ) : null;
-  const factList = (
-    <Stack as="dl" direction="row" gap="medium">
-      <div>
-        <dt style={term}>Public address</dt>
-        <dd>
-          <Link href={`/content/${page.slug}`} data-testid="content-page-address">
-            {`/content/${page.slug}`}
-          </Link>
-        </dd>
-      </div>
-      <div>
-        <dt style={term}>Published</dt>
-        <dd>
-          <DateFact iso={page.createdAt} testId="content-published-date" />
-        </dd>
-      </div>
-      <div>
-        <dt style={term}>Published by</dt>
-        <dd>
-          <AuthorName author={page.createdBy} testId="content-published-by" />
-        </dd>
-      </div>
-      <div>
-        <dt style={term}>Last updated</dt>
-        <dd>
-          <DateFact iso={page.updatedAt} testId="content-updated-date" />
-        </dd>
-      </div>
-      <div>
-        <dt style={term}>Last updated by</dt>
-        <dd>
-          <AuthorName author={page.updatedBy} testId="content-updated-by" />
-        </dd>
-      </div>
-    </Stack>
-  );
-
   return (
-    <Stack gap="large">
-      {/* With a notice, the notice sits between the title and the facts; without one, the facts
-          belong to the title (content-edit created / changes-published and default / fixed). */}
-      {published ? (
-        <>
-          {heading}
-          {published}
-          {factList}
-        </>
-      ) : (
-        <Stack gap="medium">
-          {heading}
-          {factList}
-        </Stack>
-      )}
-      {refusal ? (
-        <TitledAlert variant="danger" role="alert" title="The page was not removed">
-          <Text elementType="p">{refusal}</Text>
-        </TitledAlert>
+    <ContentPage>
+      <ManageHead title={page.title} />
+      {notice?.kind === "created" ? (
+        <PublishedPageNotice slug={page.slug} />
+      ) : notice?.kind === "changes-published" ? (
+        <ChangesPublishedNotice slug={page.slug} />
       ) : null}
+      <PageFacts page={page} />
+      {refusal ? <Refusal title="The page was not removed">{refusal}</Refusal> : null}
       {warning}
-      <ButtonGroup ariaLabel="Page actions">
-        <Button variant="primary" onPress={onEdit} data-testid="content-edit-button">
-          Edit page
-        </Button>
-        {page.fixed ? null : (
-          <Button variant="secondary" danger onPress={() => setAsking(true)} data-testid="content-delete-button">
-            Delete page
-          </Button>
-        )}
-      </ButtonGroup>
-      <Stack as="section" gap="medium" aria-labelledby="content-current-heading">
-        <Heading level={2} id="content-current-heading">
-          Current wording
-        </Heading>
-        <TextField label="Title" isReadOnly value={page.title} data-testid="content-title-field" />
-        <TextField label="Address" isReadOnly value={page.slug} data-testid="content-slug-field" />
-        <TextArea label="Body" isReadOnly value={page.body} data-testid="content-body-field" />
-      </Stack>
+      <PageActions onEdit={onEdit} onDelete={page.fixed ? undefined : () => setAsking(true)} />
+      <CurrentWording title={page.title} slug={page.slug} body={page.body} />
       {carriesTermsAnnouncement(page.slug) ? <TermsBroadcast /> : null}
       <Modal isOpen={asking} isDismissable onOpenChange={(open) => (removing ? undefined : setAsking(open))}>
         <AlertDialog
@@ -341,6 +222,6 @@ function ManagingView({
           </Text>
         </AlertDialog>
       </Modal>
-    </Stack>
+    </ContentPage>
   );
 }

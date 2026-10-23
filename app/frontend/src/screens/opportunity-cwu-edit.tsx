@@ -1,5 +1,5 @@
 import { ReactNode, RefObject, useEffect, useRef, useState } from "react";
-import { AlertDialog, Button, ButtonGroup, Heading, Link, Modal, Text } from "@bcgov/design-system-react-components";
+import { AlertDialog, Button, Modal, Text } from "@bcgov/design-system-react-components";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   CwuStatus,
@@ -15,6 +15,7 @@ import {
   mayManageOpportunity,
   mayPublishOpportunity,
   maySubmitForReview,
+  statusLabel,
 } from "@rules/opportunities";
 import type { Account } from "../api/accounts";
 import {
@@ -27,21 +28,23 @@ import {
   fetchCwuOpportunity,
   runCwuOpportunity,
 } from "../api/opportunities";
-import { Loading } from "../app/loading";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import {
+  ActionBar,
+  Details,
+  ManageTabs,
+  OpportunityHead,
+  OpportunityPage,
+  PageTitle,
+  Region,
+  Waiting,
+  type Detail,
+} from "../app/opportunity-kit";
 import { RequireSignIn } from "../app/require-sign-in";
 import { useScreenTitle } from "../app/screen-title";
 import { TitledAlert } from "../app/titled-alert";
 import { CwuOpportunityForm, PublishDialog, valuesFrom } from "./opportunity-cwu-form";
-import {
-  Fact,
-  StatusBadge,
-  deadlineLabel,
-  publishedLabel,
-  rewardLabel,
-  todayInPacific,
-} from "./opportunity-parts";
+import { deadlineLabel, publishedLabel, rewardLabel, todayInPacific } from "./opportunity-parts";
 import { AddendaTab, CancelDialog, HistoryTable, ReportingSection, Sent } from "./opportunity-running";
 import { ProposalsTab } from "./opportunity-cwu-proposals-tab";
 
@@ -88,10 +91,10 @@ function ManageLoader({ account, opportunityId }: { account: Account; opportunit
 
   if (loaded.kind === "loading") {
     return (
-      <Stack gap="large">
-        <Heading level={1}>Manage a Code With Us opportunity</Heading>
-        <Loading label="Loading opportunity…" />
-      </Stack>
+      <OpportunityPage>
+        <PageTitle>Manage a Code With Us opportunity</PageTitle>
+        <Waiting label="Loading opportunity" />
+      </OpportunityPage>
     );
   }
   if (
@@ -212,73 +215,52 @@ function Manage({ account, initial }: { account: Account; initial: CwuOpportunit
   }
 
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          Manage a Code With Us opportunity
-        </Text>
-        <Heading level={1}>{opportunity.title || "Untitled opportunity"}</Heading>
-      </Stack>
-      <Stack direction="row" align="center" gap="medium">
-        <Text elementType="p">
-          Status: <StatusBadge status={opportunity.status} />
-        </Text>
-        <Text elementType="p" size="small" color="secondary">
-          Opportunity ID: <span data-testid="opportunity-identifier">{opportunity.id}</span>
-        </Text>
-      </Stack>
+    <OpportunityPage>
+      <OpportunityHead
+        eyebrow="Manage a Code With Us opportunity"
+        program="code-with-us"
+        status={statusLabel(opportunity.status, "code-with-us")}
+        title={opportunity.title || "Untitled opportunity"}
+      />
+      <Details items={[{ term: "Opportunity ID", value: opportunity.id, testId: "opportunity-identifier" }]} />
       {/* The actions stay on every tab, the Opportunity tab's form included, so a draft can be put
           forward from wherever its author is; only Edit is left off where the form is already
-          open (decision record 0032). */}
-      {(offers.edit && !editing) || offers.submit || offers.publish || offers.delete || offers.cancel ? (
-        <ButtonGroup ariaLabel="Opportunity actions">
-          {offers.edit && !editing ? (
-            <Button variant="secondary" onPress={() => goToTab("opportunity")} data-testid="opportunity-edit-button">
-              Edit
-            </Button>
-          ) : null}
-          {offers.submit ? (
-            <Button variant="primary" isDisabled={busy} onPress={() => void act("submit")} data-testid="opportunity-submit-for-review">
-              Submit for review
-            </Button>
-          ) : null}
-          {offers.publish ? (
-            <Button variant="primary" isDisabled={busy} onPress={() => setDialog("publish")} data-testid="opportunity-publish">
-              Publish
-            </Button>
-          ) : null}
-          {offers.delete ? (
-            <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("delete")} data-testid="opportunity-delete-button">
-              Delete
-            </Button>
-          ) : null}
-          {offers.cancel ? (
-            <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("cancel")} data-testid="opportunity-cancel-button">
-              Cancel opportunity
-            </Button>
-          ) : null}
-        </ButtonGroup>
-      ) : null}
-      <nav aria-label="Opportunity sections">
-        <Stack as="ul" direction="row" gap="medium">
-          {offered.map((name) => (
-            <li key={name}>
-              <Link
-                href={name === "summary" ? `${base}?tab=summary` : `${base}?tab=${name}`}
-                aria-current={name === tab ? "page" : undefined}
-                data-testid={`opportunity-tab-${name}`}
-              >
-                {TAB_NAMES[name]}
-              </Link>
-            </li>
-          ))}
-        </Stack>
-      </nav>
-      <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-        <Heading level={2} id="tab-heading">
-          {TAB_NAMES[tab]}
-        </Heading>
-        {/* What an action came to is said in the section being read, whichever tab it is. */}
+          open (decision record 0032). The bar is always present, and empty when nothing is offered. */}
+      <ActionBar>
+        {(offers.edit && !editing) || offers.submit || offers.publish || offers.delete || offers.cancel ? (
+          <>
+            {offers.edit && !editing ? (
+              <Button variant="secondary" onPress={() => goToTab("opportunity")} data-testid="opportunity-edit-button">
+                Edit
+              </Button>
+            ) : null}
+            {offers.submit ? (
+              <Button variant="primary" isDisabled={busy} onPress={() => void act("submit")} data-testid="opportunity-submit-for-review">
+                Submit for review
+              </Button>
+            ) : null}
+            {offers.publish ? (
+              <Button variant="primary" isDisabled={busy} onPress={() => setDialog("publish")} data-testid="opportunity-publish">
+                Publish
+              </Button>
+            ) : null}
+            {offers.delete ? (
+              <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("delete")} data-testid="opportunity-delete-button">
+                Delete
+              </Button>
+            ) : null}
+            {offers.cancel ? (
+              <Button variant="secondary" danger isDisabled={busy} onPress={() => setDialog("cancel")} data-testid="opportunity-cancel-button">
+                Cancel opportunity
+              </Button>
+            ) : null}
+          </>
+        ) : null}
+      </ActionBar>
+      <ManageTabs base={base} current={tab} tabs={offered.map((key) => ({ key, label: TAB_NAMES[key] }))} />
+      <Region id="tab-heading" title={TAB_NAMES[tab]} testId={tab === "history" ? "opportunity-history-section" : undefined}>
+        {/* What an action came to is said in the section being read, directly under its heading,
+            whichever tab it is (decision record 0032). */}
         <NoticeArea notice={notice} noticeRef={noticeRef} />
         {tab === "summary" ? <SummaryTab opportunity={opportunity} /> : null}
         {tab === "opportunity" ? (
@@ -294,11 +276,11 @@ function Manage({ account, initial }: { account: Account; initial: CwuOpportunit
             headingLevel={3}
             readOnly={!mayEdit}
             consequence={
-              <Text elementType="p">
+              <p className="op-text">
                 {draft
                   ? "Saving records a new version of the draft. Nothing is checked until it is submitted for review or published."
                   : "Saving records a new version. Everyone watching this opportunity, everyone who has submitted a proposal, and its author will be emailed."}
-              </Text>
+              </p>
             }
             onSend={(_action, submission) => changeCwuOpportunity(opportunity.id, "edit", submission)}
             onSaved={(saved) => {
@@ -331,7 +313,7 @@ function Manage({ account, initial }: { account: Account; initial: CwuOpportunit
         {tab === "history" ? <HistoryTable history={opportunity.history ?? []} /> : null}
         {/* Withheld until the opportunity closes, and never a draft (R-1.31, R-2.25). */}
         {tab === "proposals" ? <ProposalsTab opportunity={opportunity} /> : null}
-      </Stack>
+      </Region>
       <CancelDialog
         key={dialog === "cancel" ? "open" : "closed"}
         isOpen={dialog === "cancel"}
@@ -346,7 +328,7 @@ function Manage({ account, initial }: { account: Account; initial: CwuOpportunit
         onConfirm={() => void act("publish")}
       />
       <DeleteDialog isOpen={dialog === "delete"} isSending={busy} onCancel={() => setDialog(null)} onConfirm={() => void remove()} />
-    </Stack>
+    </OpportunityPage>
   );
 }
 
@@ -379,7 +361,7 @@ export function DeleteDialog({
           </>
         }
       >
-        <Text elementType="p">The opportunity and everything entered in it will be removed. This cannot be undone.</Text>
+        <p className="op-text">The opportunity and everything entered in it will be removed. This cannot be undone.</p>
       </AlertDialog>
     </Modal>
   );
@@ -437,7 +419,7 @@ export function NoticeArea({ notice, noticeRef }: { notice: Notice | null; notic
   return (
     <>
       {shown}
-      <div role="status">{notice?.kind === "done" ? <Text elementType="p">{notice.text}</Text> : null}</div>
+      <div role="status">{notice?.kind === "done" ? <p className="op-text">{notice.text}</p> : null}</div>
     </>
   );
 }
@@ -445,22 +427,21 @@ export function NoticeArea({ notice, noticeRef }: { notice: Notice | null; notic
 function SummaryTab({ opportunity }: { opportunity: CwuOpportunity }) {
   return (
     <>
-      <Stack as="dl" direction="row" gap="medium">
-        <Fact label="Proposal deadline">{deadlineLabel(opportunity.proposalDeadline)}</Fact>
-        <Fact label="Reward">{rewardLabel(opportunity.reward)}</Fact>
-        <Fact label="Published">{publishedLabel(opportunity.publishedAt)}</Fact>
-        {opportunity.createdBy ? (
-          <Fact label="Created by" testId="opportunity-created-by">
-            {opportunity.createdBy.name}
-          </Fact>
-        ) : null}
-        {opportunity.updatedBy ? (
-          <Fact label="Last changed by" testId="opportunity-last-changed-by">
-            {opportunity.updatedBy.name}
-          </Fact>
-        ) : null}
-      </Stack>
+      <Details items={summaryDetails(opportunity)} />
       <ReportingSection reporting={opportunity.reporting} unpublished={isUnpublished(opportunity.status)} />
     </>
   );
+}
+
+/** The Summary tab's facts, in the head's order, then who made and last changed it (R-1.23, R-1.29). */
+export function summaryDetails(opportunity: CwuOpportunity): Detail[] {
+  return [
+    { term: "Proposal deadline", value: deadlineLabel(opportunity.proposalDeadline) },
+    { term: "Reward", value: rewardLabel(opportunity.reward) },
+    { term: "Published", value: publishedLabel(opportunity.publishedAt) },
+    ...(opportunity.createdBy ? [{ term: "Created by", value: opportunity.createdBy.name, testId: "opportunity-created-by" }] : []),
+    ...(opportunity.updatedBy
+      ? [{ term: "Last changed by", value: opportunity.updatedBy.name, testId: "opportunity-last-changed-by" }]
+      : []),
+  ];
 }

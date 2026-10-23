@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
-import { Heading, Text } from "@bcgov/design-system-react-components";
 import { exportedInOrder, mayReadOpportunityReport, type ExportProgram } from "@rules/exports";
-import { historyEntryLabel } from "@rules/opportunities";
+import { historyEntryLabel, statusLabel } from "@rules/opportunities";
 import { SERVICE_AREAS, SWU_PHASE_NAMES } from "@rules/other-program-drafts";
 import { proposalStatusLabel } from "@rules/proposals";
 import { Addendum, CwuOpportunity, HistoryEntry, Person, fetchCwuOpportunity } from "../api/opportunities";
 import { OtherProgramOpportunity, fetchOtherProgramOpportunity } from "../api/other-programs";
 import { CwuProposal, listCwuProposals } from "../api/proposals";
 import { TeamProposal, listTeamProposals } from "../api/team-proposals";
-import { Loading, useLoadingShown } from "../app/loading";
+import { useLoadingShown } from "../app/loading";
+import { Label } from "../app/marketplace";
 import { NotFound } from "../app/not-found";
-import { Stack } from "../app/page-layout";
+import { Details, OpportunityHead, OpportunityPage, PageTitle, Panel, Region, Waiting, statusColour, type Detail } from "../app/opportunity-kit";
 import { useScreenTitle } from "../app/screen-title";
 import { useSession } from "../auth/session";
 import { readDate } from "../lib/dates";
 import { FormattedText } from "../lib/formatted-text/formatted-text";
-import { Fact, StatusBadge, dayLabel, deadlineLabel, publishedLabel } from "./opportunity-parts";
+import { dayLabel, deadlineLabel, publishedLabel } from "./opportunity-parts";
 import { proponentName } from "./proposal-cwu-view";
 import { CwuExportContent, TeamExportContent } from "./proposal-export";
 import { teamProponentName } from "./proposal-team-view";
@@ -24,7 +24,7 @@ import { teamProponentName } from "./proposal-team-view";
  * The full report of an opportunity, at `/opportunities/<program>/:opportunityId/complete`
  * (opportunity-cwu-complete, opportunity-swu-complete, opportunity-twu-complete): the
  * opportunity, its addenda, its history and every proposal put forward to it, as one continuous
- * document (R-1.40).
+ * document (R-1.40), drawn as the catalogue's stories draw it (decision record 0089).
  *
  * An administrator reads it and nobody else does, the opportunity's own author included: anybody
  * else is shown the missing page and nothing is asked of the service. It is drawn from the
@@ -52,6 +52,11 @@ const areaName = (key: string) => {
   return name.charAt(0) + name.slice(1).toLowerCase();
 };
 
+/** A score as the report says it, to two places: "91.50%", or "not scored". */
+export function reportScore(value: number | null | undefined): string {
+  return typeof value === "number" ? `${value.toFixed(2)}%` : "not scored";
+}
+
 export function OpportunityReportScreen({ program, opportunityId }: { program: ExportProgram; opportunityId: string }) {
   const title = TITLES[program];
   useScreenTitle(title);
@@ -64,10 +69,10 @@ export function OpportunityReportScreen({ program, opportunityId }: { program: E
 
 function LoadingReport({ title }: { title: string }) {
   return (
-    <Stack gap="large">
-      <Heading level={1}>{title}</Heading>
-      <Loading label="Loading report…" />
-    </Stack>
+    <OpportunityPage>
+      <PageTitle>{title}</PageTitle>
+      <Waiting label="Loading report" />
+    </OpportunityPage>
   );
 }
 
@@ -101,48 +106,32 @@ function ReportLoader({ program, opportunityId, title }: { program: ExportProgra
 function Report({ program, loaded, title }: { program: ExportProgram; loaded: Extract<Loaded, { kind: "cwu" | "team" }>; title: string }) {
   const { opportunity } = loaded;
   const createdBy: Person | null | undefined = opportunity.createdBy;
+  const status = statusLabel(opportunity.status, program);
+  const facts: Detail[] = [
+    { term: "Status", value: <Label colour={statusColour(status)}>{status}</Label> },
+    loaded.kind === "cwu"
+      ? { term: "Reward", value: dollars(loaded.opportunity.reward) }
+      : { term: loaded.opportunity.value.term, value: dollars(loaded.opportunity.value.amount) },
+    { term: "Proposal deadline", value: deadlineLabel(opportunity.proposalDeadline) },
+    { term: "Published", value: publishedLabel(opportunity.publishedAt) },
+    ...(createdBy ? [{ term: "Created by", value: createdBy.name }] : []),
+  ];
   return (
-    <Stack gap="large">
-      <Stack gap="small">
-        <Text elementType="p" size="small" color="secondary">
-          {title}
-        </Text>
-        <Heading level={1} id="report-title">
-          {opportunity.title || "Untitled opportunity"}
-        </Heading>
-      </Stack>
-      <Stack as="article" gap="large" aria-labelledby="report-title" data-testid="opportunity-full-report">
-        <Stack as="section" gap="medium" aria-labelledby="report-opportunity">
-          <Heading level={2} id="report-opportunity">
-            Opportunity
-          </Heading>
-          <Stack as="dl" direction="row" gap="medium">
-            <Fact label="Status">
-              <StatusBadge status={opportunity.status} program={program} />
-            </Fact>
-            {loaded.kind === "cwu" ? (
-              <Fact label="Reward">{dollars(loaded.opportunity.reward)}</Fact>
-            ) : (
-              <Fact label={loaded.opportunity.value.term}>{dollars(loaded.opportunity.value.amount)}</Fact>
-            )}
-            <Fact label="Proposal deadline">{deadlineLabel(opportunity.proposalDeadline)}</Fact>
-            <Fact label="Published">{publishedLabel(opportunity.publishedAt)}</Fact>
-            {createdBy ? <Fact label="Created by">{createdBy.name}</Fact> : null}
-            <Fact label="Opportunity ID">{opportunity.id}</Fact>
-          </Stack>
+    <OpportunityPage>
+      <OpportunityHead eyebrow={title} program={program} status={status} title={opportunity.title || "Untitled opportunity"} titleId="report-title" />
+      <article className="op-region" aria-labelledby="report-title" data-testid="opportunity-full-report">
+        <Region id="report-opportunity" title="Opportunity">
+          <Details items={facts} />
           {loaded.kind === "team" ? <TeamTerms opportunity={loaded.opportunity} /> : null}
           <FormattedText markup={opportunity.description} />
-        </Stack>
+        </Region>
         <AddendaSection addenda={opportunity.addenda} />
         <HistorySection history={opportunity.history ?? []} />
-        <Stack as="section" gap="medium" aria-labelledby="report-proposals">
-          <Heading level={2} id="report-proposals">
-            Proposals
-          </Heading>
+        <Region id="report-proposals" title="Proposals">
           {loaded.kind === "cwu" ? <CwuProposals proposals={loaded.proposals} /> : <TeamProposals opportunity={loaded.opportunity} proposals={loaded.proposals} />}
-        </Stack>
-      </Stack>
-    </Stack>
+        </Region>
+      </article>
+    </OpportunityPage>
   );
 }
 
@@ -153,47 +142,47 @@ function TeamTerms({ opportunity }: { opportunity: OtherProgramOpportunity }) {
   return (
     <>
       {sprint ? (
-        <Text elementType="p">
+        <p className="op-text">
           {`Phases: ${
             opportunity.phases.length === 0
               ? "none entered"
               : opportunity.phases.map((phase) => `${SWU_PHASE_NAMES[phase.phase].toLowerCase()}, ${dayLabel(phase.startDate)} to ${dayLabel(phase.completionDate)}`).join("; ")
           }.`}
-        </Text>
+        </p>
       ) : (
-        <Text elementType="p">
-          {`Resources: ${
-            opportunity.resources.length === 0
-              ? "none entered"
-              : opportunity.resources.map((resource) => `${areaName(resource.serviceArea)}, ${resource.targetAllocation}% of full time`).join("; ")
-          }. Contract from ${dayLabel(opportunity.startDate)} to ${dayLabel(opportunity.completionDate)}.`}
-        </Text>
+        <>
+          <p className="op-text">
+            {`Resources: ${
+              opportunity.resources.length === 0
+                ? "none entered"
+                : opportunity.resources.map((resource) => `${areaName(resource.serviceArea)}, ${resource.targetAllocation}% of full time`).join("; ")
+            }.`}
+          </p>
+          <p className="op-text">{`Contract from ${dayLabel(opportunity.startDate)} to ${dayLabel(opportunity.completionDate)}.`}</p>
+        </>
       )}
-      <Text elementType="p">
+      <p className="op-text">
         {sprint
           ? `Scoring weights: team questions ${weight("questions")}, code challenge ${weight("codeChallenge")}, team scenario ${weight("scenario")}, price ${weight("price")}.`
           : `Scoring weights: resource questions ${weight("questions")}, challenge ${weight("challenge")}, price ${weight("price")}.`}
-      </Text>
+      </p>
     </>
   );
 }
 
 function AddendaSection({ addenda }: { addenda: readonly Addendum[] }) {
   return (
-    <Stack as="section" gap="medium" aria-labelledby="report-addenda">
-      <Heading level={2} id="report-addenda">
-        Addenda
-      </Heading>
+    <Region id="report-addenda" title="Addenda">
       {addenda.length === 0 ? (
-        <Text elementType="p">No addenda were added.</Text>
+        <p className="op-text">No addenda were added.</p>
       ) : (
         addenda.map((addendum) => (
-          <Text elementType="p" key={addendum.id}>
+          <p className="op-text" key={addendum.id}>
             {`${dayOf(addendum.createdAt)}: ${addendum.description}`}
-          </Text>
+          </p>
         ))
       )}
-    </Stack>
+    </Region>
   );
 }
 
@@ -206,41 +195,35 @@ export function reportHistoryLine(entry: HistoryEntry): string {
 
 function HistorySection({ history }: { history: readonly HistoryEntry[] }) {
   return (
-    <Stack as="section" gap="medium" aria-labelledby="report-history">
-      <Heading level={2} id="report-history">
-        History
-      </Heading>
+    <Region id="report-history" title="History">
       {history.length === 0 ? (
-        <Text elementType="p">Nothing has been recorded.</Text>
+        <p className="op-text">Nothing has been recorded.</p>
       ) : (
-        <ul>
+        <ul className="op-list">
           {history.map((entry, index) => (
             <li key={`${entry.createdAt}-${index}`}>{reportHistoryLine(entry)}</li>
           ))}
         </ul>
       )}
-    </Stack>
+    </Region>
   );
 }
 
 const NOT_YET_LISTED = "The proposals are listed here once the opportunity has closed.";
 
 function CwuProposals({ proposals }: { proposals: readonly CwuProposal[] | null }) {
-  if (proposals === null) return <Text elementType="p">{NOT_YET_LISTED}</Text>;
+  if (proposals === null) return <p className="op-text">{NOT_YET_LISTED}</p>;
   const shown = exportedInOrder(proposals);
-  if (shown.length === 0) return <Text elementType="p">No proposals were submitted.</Text>;
+  if (shown.length === 0) return <p className="op-text">No proposals were submitted.</p>;
   return (
     <>
       {shown.map((proposal, index) => {
         const id = `report-p${index + 1}`;
         return (
-          <Stack as="article" gap="small" key={proposal.id} aria-labelledby={id} data-testid="report-proposal">
-            <Heading level={3} id={id}>
-              {proponentName(proposal)}
-            </Heading>
-            <Text elementType="p">{`Status: ${proposalStatusLabel(proposal.status)}. Score: ${typeof proposal.score === "number" ? `${proposal.score}%` : "not scored"}.`}</Text>
-            <CwuExportContent proposal={proposal} level={4} anonymous={false} idPrefix={id} />
-          </Stack>
+          <Panel as="article" level={3} key={proposal.id} id={id} testId="report-proposal" title={proponentName(proposal)}>
+            <p className="op-text">{`Status: ${proposalStatusLabel(proposal.status)}. Score: ${reportScore(proposal.score)}.`}</p>
+            <CwuExportContent proposal={proposal} level={4} anonymous={false} idPrefix={id} listed />
+          </Panel>
         );
       })}
     </>
@@ -248,10 +231,9 @@ function CwuProposals({ proposals }: { proposals: readonly CwuProposal[] | null 
 }
 
 function TeamProposals({ opportunity, proposals }: { opportunity: OtherProgramOpportunity; proposals: readonly TeamProposal[] | null }) {
-  if (proposals === null) return <Text elementType="p">{NOT_YET_LISTED}</Text>;
+  if (proposals === null) return <p className="op-text">{NOT_YET_LISTED}</p>;
   const shown = exportedInOrder(proposals);
-  if (shown.length === 0) return <Text elementType="p">No proposals were submitted.</Text>;
-  const percent = (value: number | null | undefined) => (typeof value === "number" ? `${value}%` : "not scored");
+  if (shown.length === 0) return <p className="op-text">No proposals were submitted.</p>;
   return (
     <>
       {shown.map((proposal, index) => {
@@ -260,25 +242,22 @@ function TeamProposals({ opportunity, proposals }: { opportunity: OtherProgramOp
         const sprint = proposal.program === "sprint-with-us";
         const stages = sheet
           ? [
-              `${sprint ? "team questions" : "resource questions"} ${percent(sheet.questions)}`,
-              `${sprint ? "code challenge" : "challenge"} ${percent(sheet.challenge)}`,
-              ...(sprint ? [`team scenario ${percent(sheet.scenario)}`] : []),
-              `price ${percent(sheet.price)}`,
+              `${sprint ? "team questions" : "resource questions"} ${reportScore(sheet.questions)}`,
+              `${sprint ? "code challenge" : "challenge"} ${reportScore(sheet.challenge)}`,
+              ...(sprint ? [`team scenario ${reportScore(sheet.scenario)}`] : []),
+              `price ${reportScore(sheet.price)}`,
             ].join(", ")
           : null;
         return (
-          <Stack as="article" gap="small" key={proposal.id} aria-labelledby={id} data-testid="report-proposal">
-            <Heading level={3} id={id}>
-              {teamProponentName(proposal)}
-            </Heading>
-            <Text elementType="p">
-              {`Status: ${proposalStatusLabel(proposal.status)}. Total score: ${percent(sheet?.total)}.${
+          <Panel as="article" level={3} key={proposal.id} id={id} testId="report-proposal" title={teamProponentName(proposal)}>
+            <p className="op-text">
+              {`Status: ${proposalStatusLabel(proposal.status)}. Total score: ${reportScore(sheet?.total)}.${
                 proposal.anonymousProponentName ? ` Evaluated as ${proposal.anonymousProponentName}.` : ""
               }`}
-            </Text>
-            {stages ? <Text elementType="p">{`Scores: ${stages}.`}</Text> : null}
+            </p>
+            {stages ? <p className="op-text">{`Scores: ${stages}.`}</p> : null}
             <TeamExportContent proposal={proposal} questions={opportunity.questions} level={4} idPrefix={id} />
-          </Stack>
+          </Panel>
         );
       })}
     </>

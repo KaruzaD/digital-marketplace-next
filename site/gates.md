@@ -2,6 +2,86 @@
 
 | When | Proposal | Gate | Verdict | By | Made by | Cost | Sample |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-19T05:47:52.177Z | build-slice-14-9 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.3174992 |  |
+| 2026-10-19T05:03:53.010Z | build-slice-21-4 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.35800699999999996 |  |
+| 2026-10-19T04:21:27.303Z | build-slice-20-2 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.4745344 |  |
+| 2026-10-19T03:38:56.623Z | build-slice-6-6 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.31586420000000004 |  |
+| 2026-10-19T02:55:20.946Z | build-slice-5-5 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.5108638 | sample |
+| 2026-10-19T02:08:57.047Z | build-slice-4-2 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.3986006 | sample |
+| 2026-10-19T01:26:14.336Z | build-slice-19-3 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.48057740000000004 | sample |
+| 2026-10-19T00:41:53.282Z | build-slice-18-9 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.8227673999999999 | sample |
+| 2026-10-19T00:01:23.666Z | bind-adapter-new-112 | G3 | approve | runner:checks | persona agent | $0 | sample |
+| 2026-10-18T23:56:15.538Z | build-slice-18-8 | G3 | return | runner:verify | the runner, automatically |  |  |
+| 2026-10-18T23:18:04.236Z | bind-adapter-new-111 | G3 | approve | runner:checks | persona agent | $0 |  |
+| 2026-10-18T23:07:50.553Z | build-slice-18-7 | G3 | return | runner:verify | the runner, automatically |  |  |
+| 2026-10-18T22:26:00.208Z | build-slice-17-4 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.4926224 |  |
+| 2026-10-18T21:49:41.880Z | bind-adapter-new-110 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.3308756 |  |
+| 2026-10-18T21:45:48.775Z | build-slice-17-3 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.7524286000000001 |  |
+| 2026-10-18T21:29:03.435Z | build-slice-16-7 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.6876104 |  |
+| 2026-10-18T20:45:23.090Z | build-slice-13-5 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.4454552 |  |
+| 2026-10-18T20:03:07.353Z | build-slice-12-7 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.5722188 |  |
+| 2026-10-18T19:26:34.562Z | bind-adapter-new-109 | G3 | approve | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.35919840000000003 |  |
+| 2026-10-18T19:23:01.563Z | build-slice-12-6 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.9674726000000001 |  |
+| 2026-10-18T18:35:26.904Z | build-slice-11-9 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.714024 |  |
+| 2026-10-18T18:15:21.397Z | build-slice-11-8 | G3 | return | runner:verify | the runner, automatically |  |  |
+| 2026-10-18T17:38:12.857Z | bind-adapter-new-108 | G3 | approve | runner:checks | persona agent | $0 |  |
+| 2026-10-18T17:29:42.374Z | build-slice-11-7 | G3 | return | runner:verify | the runner, automatically |  |  |
+| 2026-10-18T16:48:11.226Z | bind-adapter-new-107 | G3 | approve | runner:checks | persona agent | $0 |  |
+| 2026-10-18T16:44:15.820Z | build-slice-15-8 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.6332568 |  |
+| 2026-10-18T16:07:53.254Z | bind-adapter-new-106 | G3 | approve | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.3821294 |  |
+| 2026-10-18T16:04:39.897Z | build-slice-15-7 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.7754789999999999 |  |
+| 2026-10-18T15:53:32.859Z | design-proposals-4 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $0.35228600000000004 |  |
+| 2026-10-18T15:45:34.818Z | bind-adapter-new-105 | G3 | approve | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.39526880000000003 |  |
+| 2026-10-18T15:40:14.644Z | build-slice-15-6 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $1.3679609999999998 |  |
+| 2026-10-18T11:36:52.254Z | build-slice-3-6 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.4562194 |  |
+| 2026-10-18T10:53:53.838Z | build-slice-9-5 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.3637262 |  |
+| 2026-10-18T10:10:53.287Z | build-slice-10-9 | G3 | approve | tech-lead | a person |  |  |
+| 2026-10-18T09:56:00.294Z | derive-tests-organizations-12 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.3244692 |  |
+| 2026-10-18T09:52:39.709Z | build-slice-10-8 | G3 | return | tech-lead | a person |  |  |
+| 2026-10-18T09:15:04.011Z | bind-adapter-new-104 | G3 | approve | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.4044114 |  |
+| 2026-10-18T09:09:46.722Z | build-slice-10-7 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.9124864 |  |
+| 2026-10-18T08:48:57.283Z | bind-adapter-new-103 | G3 | approve | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.4384682 |  |
+| 2026-10-18T08:44:30.901Z | build-slice-10-6 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $1.4600196 |  |
+| 2026-10-18T08:14:04.447Z | build-slice-2-17 | G3 | approve | tech-lead | a person |  |  |
+| 2026-10-18T07:33:59.461Z | build-slice-1-11 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.3414914 |  |
+| 2026-10-18T07:01:40.767Z | bind-adapter-new-102 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.2826714 |  |
+| 2026-10-18T06:57:02.307Z | build-slice-1-10 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.8606018 |  |
+| 2026-10-18T06:20:12.139Z | bind-adapter-new-101 | G3 | approve | runner:checks | persona agent | $0 |  |
+| 2026-10-18T05:07:50.693Z | build-slice-14-8 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.7504859999999999 |  |
+| 2026-10-18T04:29:40.975Z | derive-tests-organizations-11 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $1.0729618 |  |
+| 2026-10-18T04:24:57.700Z | build-slice-14-7 | G3 | return | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.8745985999999999 |  |
+| 2026-10-18T03:50:29.723Z | bind-adapter-new-100 | G3 | approve | runner:checks | persona agent | $0 |  |
+| 2026-10-18T03:34:39.327Z | bind-adapter-new-99 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.30764779999999997 |  |
+| 2026-10-18T03:32:03.746Z | build-slice-14-6 | G3 | return | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.9415553999999999 |  |
+| 2026-10-18T03:12:58.973Z | build-slice-14-5 | G3 | return | runner:verify | the runner, automatically |  |  |
+| 2026-10-18T03:06:51.837Z | bind-adapter-new-98 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.3824498 |  |
+| 2026-10-18T03:00:41.381Z | bind-adapter-new-97 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.39381959999999994 |  |
+| 2026-10-18T02:55:02.383Z | build-slice-14-4 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $1.0648678 |  |
+| 2026-10-18T02:34:55.347Z | build-slice-7-13 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.5277514 |  |
+| 2026-10-18T02:00:58.639Z | bind-adapter-new-96 | G3 | approve | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.3293794 |  |
+| 2026-10-18T01:56:46.032Z | build-slice-7-12 | G3 | return | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.8461844000000001 |  |
+| 2026-10-18T01:49:10.314Z | bind-adapter-new-95 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.3279954 |  |
+| 2026-10-18T01:45:57.610Z | bind-adapter-new-94 | G3 | return | agent:tech-lead | persona agent · claude claude-opus-5-5 | $1.1395346 |  |
+| 2026-10-18T01:40:05.461Z | build-slice-7-11 | G3 | return | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.7459555999999999 |  |
+| 2026-10-18T01:19:43.844Z | build-slice-8-14 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.7256584 |  |
+| 2026-10-18T00:46:26.189Z | bind-adapter-new-93 | G3 | approve | agent:tech-lead | persona agent · claude claude-opus-5-5 | $0.30250499999999997 |  |
+| 2026-10-18T00:43:27.005Z | build-slice-8-13 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.8005742000000001 |  |
+| 2026-10-18T00:34:37.234Z | bind-adapter-new-92 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.2998434 | sample |
+| 2026-10-18T00:30:29.208Z | build-slice-8-12 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.839712 | sample |
+| 2026-10-17T23:51:09.561Z | build-slice-8-11 | G3 | return | runner:verify | the runner, automatically |  |  |
+| 2026-10-17T23:33:53.009Z | design-evaluation-3 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $0.8147938 |  |
+| 2026-10-17T23:06:51.928Z | design-files-4 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $0.7067418000000001 |  |
+| 2026-10-17T23:01:05.450Z | design-files-3 | G-DESIGN | return | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $1.0387667999999999 |  |
+| 2026-10-17T22:48:28.191Z | design-notifications-3 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $0.7643713999999999 |  |
+| 2026-10-17T22:37:09.167Z | design-organizations-3 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $0.8844888000000001 |  |
+| 2026-10-17T22:13:42.950Z | design-content-4 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $0.9208635999999999 | sample |
+| 2026-10-17T22:00:51.882Z | design-users-5 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $0.7827692 | sample |
+| 2026-10-17T21:44:56.588Z | design-proposals-3 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $1.0202434 | sample |
+| 2026-10-17T21:18:43.959Z | design-opportunities-7 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $0.8220984 | sample |
+| 2026-10-17T20:36:48.036Z | build-slice-1-9 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $1.574471 | sample |
+| 2026-10-17T20:04:27.544Z | bind-adapter-new-91 | G3 | approve | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.26209140000000003 | sample |
+| 2026-10-17T20:01:32.458Z | build-slice-1-8 | G3 | return | agent:reviewer | persona agent · claude claude-opus-5-5 | $0.9887636 | sample |
+| 2026-10-17T19:39:58.419Z | design-opportunities-6 | G-DESIGN | approve | agent:ux-reviewer | persona agent · claude claude-opus-5-5 | $1.0403103999999999 | sample |
 | 2026-10-04T22:49:33.100Z | derive-tests-proposals-stale-22 | G3 | approve | runner:checks | persona agent | $0 |  |
 | 2026-10-04T22:46:08.320Z | calibrate-old-29 | G1 | approve | agent:product-owner | persona agent · claude claude-opus-5-5 | $0.35665280000000005 |  |
 | 2026-10-04T22:43:29.270Z | bind-adapter-old-71 | G3 | approve | runner:checks | persona agent | $0 |  |

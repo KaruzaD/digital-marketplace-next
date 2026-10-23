@@ -2751,8 +2751,8 @@ stories already compile with.
 | `TextArea` | Proposal text and comments (`maxLength={10000}`), question responses, and the disqualification reason (`maxLength={5000}`). |
 | `NumberField` | Phase cost (`formatOptions` currency CAD, no decimals), hourly rate (currency, two decimals), and each score. There is no `minValue` or `maxValue`, as in the opportunities domain. The limit is stated and checked on submit, so the refusals the criteria describe can be shown and nothing is silently changed. |
 | `Select` | The organization, and the team member to add to a phase or resource. |
-| `RadioGroup` + `Radio` | Code With Us "Who is submitting this proposal?" (An individual / An organization). |
-| `Checkbox` | Scrum master (one per team member per phase), the two terms acceptances, and "Name proponents anonymously" on export-all. |
+| `RadioGroup` + `Radio` | Code With Us "Will you be submitting a proposal for this opportunity as an Individual or Organization?" (Individual / Organization), the same words on create and edit; and each Sprint With Us phase's "Scrum master for the <phase> phase", one `Radio` per member named by the person. |
+| `Checkbox` | The two terms acceptances, and "Name proponents anonymously" on export-all. |
 | `Form` | Always `validationBehavior="aria"`. |
 | `InlineAlert` | Error summaries (`danger`), service refusals (`danger`, `role="alert"`), the wrong-stage refusal (`danger`) and the unqualified-organization notice (`warning`). Each is wrapped in a `div` that carries the test ID, because `InlineAlert` does not pass `data-*` through. |
 | `Modal` + `Dialog` | The terms dialog and the score dialog. These are small forms, not yes/no decisions. |
@@ -3014,10 +3014,16 @@ domain adds the following.
 - **Status is words.** Every status, membership and capability-coverage value is written out
   ("Membership pending", "Security engineering: not covered"). Scores are numbers with their
   unit. Nothing is conveyed by colour alone.
-- **Controls with the same visible text are told apart.** "Add team member", "Remove" and "Scrum
-  master" repeat once per phase, resource or person. Each has an `aria-label` that begins with its
-  visible text and names its target ("Add team member to the prototype phase", "Scrum master: Test
-  Designer, implementation phase"), meeting WCAG 2.5.3.
+- **Controls with the same visible text are told apart.** "Add team member" and "Remove" repeat
+  once per phase, resource or person. Each has an `aria-label` that begins with its visible text and
+  names its target ("Add team member to the prototype phase", "Remove Test Designer from the
+  implementation phase"), meeting WCAG 2.5.3.
+- **The scrum master is one radio group per phase.** Each Sprint With Us phase has a required
+  `RadioGroup` whose label names the phase ("Scrum master for the implementation phase"). Each `Radio`
+  in it (`proposal-scrum-master`) is named by the person alone, its visible text ("Test Designer"),
+  with no `aria-label`; the group's label supplies the phase. So the radio's accessible name is
+  "Test Designer" inside the group "Scrum master for the implementation phase (required)", and a
+  test or adapter finds it by that group and that name.
 - **Long forms are navigable.** Each form part is a labelled section with a heading. Each
   repeated item is a fieldset with a legend. The error summary links to every problem.
 - **Announcements.** Word counts and live cost totals use `role="status"`. Refusals and error
@@ -3775,3 +3781,1838 @@ show something, the story marks it as illustrative or says which gap it rests on
     identifying the member, without its words. The reference uses the design's own: "Panel member
     2: Test Evaluator Two must be an evaluator, the chair, or both." The missing-chair refusal
     reuses the panel form's message (R-5.9 asks only that the service apply the form's rule).
+
+---
+
+## Site shell and the chosen direction
+
+The screens drawn from the chosen direction share the site shell and the components below. They are
+this project's own compositions of design-system components and tokens; none is a design-system
+component.
+
+### The chosen direction
+
+Opportunities first, with the original site's three illustrated program panels: the open opportunities
+and the way to find them lead, and the programs are introduced by their panels, placed on the home page
+directly after the opportunities. These rules extend it to every screen:
+
+1. **Opportunities and the way to find them come first** on any screen that lists them.
+2. **An opportunity always shows the same facts in the same order:** program and status, title, closing
+   date, value, location and Remote OK, then its summary.
+3. **Colour marks only an opportunity's status.** Program labels and everything else stay neutral.
+4. **The programs are explained by the illustrated panels where they are introduced,** on the home page.
+   Elsewhere they appear as the opportunity type filter and as labels.
+5. **Dense by default:** small text for facts, the tighter spacing tokens, and one primary action per
+   screen.
+6. **The only imagery is the original program illustrations,** inside the program panels.
+7. **On phones,** rows become stacked cards with the facts on two lines, panels stack at full width, and
+   the header and footer are the shared phone versions.
+
+The words are the original site's. A screen adds wording only where a requirement needs something the
+original site did not have, such as a way to clear a search that matched nothing.
+
+### Site header and footer
+
+`design/catalogue/site.tsx`. `SitePage` lays out a whole screen: a skip link, the header, the page as the
+`main` region (`id="main"`), and the footer.
+
+- **Skip link.** "Skip to main content" is the first Tab stop on every screen and appears on focus, drawn
+  with the tokens the design system uses for its own skip links. The design system's `Header` renders its
+  skip links after the logo link, which would make the skip link the second Tab stop, so the shell renders
+  its own before the header.
+- **Wide screens (768 pixels and wider).** The design system's `Header` with the title "Digital
+  Marketplace" and the account area, and its `Subheader` holding the navigation, separated by the
+  Subheader's dividers. A visitor is offered Home, Opportunities and Organizations; a signed-in person
+  Dashboard, Opportunities and Organizations; an administrator also Users and Content. The account area
+  offers a visitor Sign In (tertiary) and Sign Up (secondary), so a page's own main action is its only
+  primary button. A signed-in person's email address opens the design system's `Menu`: My Profile, My
+  Organizations (vendors only) and Sign Out. The menu opens with a click, Enter or Space, the arrow keys
+  move through it, and Escape closes it and returns focus to the button.
+- **Narrow screens (below 768 pixels).** The design system's header with the logo and a secondary Menu
+  button that shows its name: "Menu" beside a menu icon, and "Close" beside the design system's close icon
+  when the menu is open, with `aria-expanded` and `aria-controls`. The open menu repeats "Digital
+  Marketplace", lists the navigation, then the account actions: Sign In and Sign Up at full width, or
+  "Signed in as" the email address with My Profile, My Organizations (vendors only) and Sign Out. Escape
+  closes it and returns focus to the button. 768 pixels is the narrowest width the design system's Figma
+  header is drawn for above its phone version. The switch is read in script, so only one header is ever in
+  the document and each account action carries its test ID once.
+- **The current page** carries `aria-current="page"` and is marked by a bar and bold text, never by colour
+  alone: a bar under the item on wide screens, beside it in the menu.
+- **Footer.** The design system's `Footer` with its land acknowledgement and logo, the original site's line
+  "Owned and operated by the B.C. Government." in place of the contact details, and the original site's
+  eight links in the Footer's two-column list: Home, About, Disclaimer, Privacy, Accessibility, Copyright,
+  Contact Us and Source Code. The list has no heading and there is no copyright line.
+- **Test IDs.** The header is `site-header` and the footer `site-footer`. The footer's About, Disclaimer,
+  Privacy, Accessibility and Copyright links keep `footer-about-link`, `footer-disclaimer-link`,
+  `footer-privacy-link`, `footer-accessibility-link` and `footer-copyright-link`. A page whose contract
+  names its own sign-in and sign-up actions passes their test IDs to the header: on the home page the
+  header's Sign In and Sign Up are `home-sign-in` and `home-sign-up`.
+
+### The chosen direction's components
+
+`design/catalogue/marketplace.tsx`.
+
+- **Label.** A short static label drawn like the design system's small rectangular `Tag`, from the same
+  tokens: grey for a program, and the support colours for an opportunity's status (green for Open). The
+  design system's `Tag` is an interactive grid item inside `TagGroup`, the wrong role for text that only
+  labels. Colour marks status and nothing else, and the label always says the status in words.
+- **Opportunity rows.** A list of opportunities, each an `article` labelled by its title link. Every
+  opportunity shows the same facts in the same order: program and status, title, closing date, value,
+  location and Remote OK, then its summary. Where the list is at least 760 pixels wide the facts sit in
+  aligned columns beside the title (190, 70, 70 and 80 pixels with `medium` gaps; from 1000 pixels, 280,
+  80, 80 and 80 with `xlarge` gaps). Narrower, each opportunity is a stacked card with the closing date on
+  one line and the value, location and Remote OK on the next. The switch follows the width of the list (a
+  container query), not of the window.
+- **Program panels.** Direction A's three panels at Direction B's density: a gold rule
+  (`--theme-primary-gold`), the original site's program illustration, the name, the original description,
+  the budget limit where there is one, and "Learn More", to which screen readers hear the program's name
+  added. The illustrations are decorative (`alt=""`): the program's name is the panel's heading. Three
+  across where they fit (each at least 260 pixels wide), stacked where they do not.
+
+### Opportunity list
+
+`design/catalogue/opportunity-list-page.tsx`, states `default` (a signed-in vendor), `signed-out`, `staff`
+(an administrator), `loading` and `no-results`.
+
+- **Layout.** The H1 "Welcome to the Digital Marketplace", then, where the page is at least 720 pixels
+  wide, a 240-pixel filter sidebar beside the results; narrower, the search, the filters, the results and
+  the program descriptions in one column. The filters are "Filter Opportunities" (all three programs, or
+  one), "Opportunity Status" for staff only, Remote OK and Reset. The sidebar ends with the original site's
+  one-line description of each program and its Learn More link.
+- **Groups.** "Open Opportunities" with the number of open opportunities beside it, then "Closed
+  Opportunities", and for staff "Unpublished Opportunities" first. Closed and Unpublished start closed, as
+  on the original site: each heading holds a button with `aria-expanded` that shows or hides its rows, the
+  chevron turning to match. Each group keeps its test ID (`opportunity-group-open`,
+  `opportunity-group-closed`, `opportunity-group-unpublished`) whether open or closed; each row keeps
+  `opportunity-status` and `opportunity-proposal-deadline`, and a vendor's rows `opportunity-watch-toggle`.
+- **Status wording.** The original site's: staff see an opportunity's stage (Draft, Under Review,
+  Published, Evaluation, Awarded, Canceled); everyone else sees Open, Evaluation, Canceled or Completed.
+  The label's colour follows the original site's colour for that status.
+- **Searching and filtering.** The search matches its words, in order, against an opportunity's title or
+  location, ignoring case. When a group has nothing to show it says so in the original site's words, which
+  tell a search that matched nothing ("There are no open opportunities that match your search criteria.")
+  apart from a group that is empty ("There are currently no open opportunities. Check back soon!"). The
+  open group's message sits in a polite status region that is always present, so it is announced when the
+  results change. When a search has matched nothing, Clear search empties the search field and returns
+  focus to it; Reset clears the search and every filter.
+
+### Code With Us proposal form
+
+`design/catalogue/proposal-cwu-create-page.tsx`, states `default`, `organization`, `invalid`, `refused`,
+`terms`, `draft-saved` and `not-found`.
+
+- **Layout.** One long form in the original site's three parts, "1. Proponent", "2. Proposal" and "3.
+  Attachments", under the H1 "Create a Code With Us Proposal", the opportunity's title and the original
+  site's introduction. On wide screens a 320-pixel summary of the opportunity stays in view beside the
+  form and holds the actions in the order Submit, Save Draft, Cancel. On narrow screens the summary is a
+  compact card under the opportunity's title, and the actions follow the form at full width. As with the
+  header, the switch is read in script so each action and its test ID appear once.
+- **Fields.** The original site's labels, help text and required fields, with "(required)" added by the
+  design system to each required label. Choosing Organization replaces the individual's details with the
+  Organization select and the original site's guidance on adding an organization. Proposal Evaluation
+  Criteria is the design system's `Accordion` inside a light-blue `Callout`: closed until opened, as on the
+  original site. One label is not the original's: the original names both street lines "Street Address",
+  which leaves two fields with the same name (WCAG 2.2 success criterion 2.4.6), so the second line is
+  labelled "Street Address line 2" (`proposal-street-2-field`, unchanged).
+- **Messages.** Each message is the original site's and takes keyboard focus when it appears, so it is
+  read out and a keyboard user starts from it:
+  - `draft-saved`: "Draft Proposal Saved" with its explanation, a success `InlineAlert` that stays until it
+    is dismissed; the summary gains a Draft label.
+  - `invalid`: "Unable to Submit Proposal" with its explanation and a link to each problem (`field-error`);
+    each field shows the original site's message for it, and what was typed is kept.
+  - `refused`: the service's refusal when the vendor already holds a proposal for the opportunity
+    (`proposal-refused-message`), with a link to that proposal.
+- **Terms.** Submit opens the original site's "Review Terms and Conditions" dialog. Its Submit Proposal
+  button (`proposal-submit-confirm`) stays disabled until both acknowledgements are ticked.
+- **Test IDs.** Every test ID the form's stories carried is kept on the matching element, the contract's
+  own and the field-level ones (`proposal-legal-name-field` and the rest).
+
+### Document title and focus
+
+After moving to a new page, focus starts at the page's H1, as the application's root layout already
+arranges. Each page's H1 keeps level 1 and takes the design system's H3 size, the direction's denser scale;
+section headings take the H4 size.
+
+### Widths and reflow
+
+Each story drawn from the chosen direction offers the three widths it is drawn at (Desktop 1440, Phone 390
+and Narrow phone 320) in Storybook's viewport menu. Layouts reflow with their content: rows that wrap,
+grids that fit as many columns as have room, and the container query above. The header is the one part
+that switches at a fixed width. Each of these stories must show no sideways scrolling and no axe
+violations at all three widths; the catalogue scan checks desktop width only.
+
+### Gaps in the design system
+
+1. **Skip link order.** The `Header` renders its skip links after the logo link (see above).
+2. **Links drawn as buttons keep the browser's underline.** `Link` with `isButton` takes the button
+   classes, which do not remove an anchor's underline. The shell removes it, so these look like the design
+   system's buttons.
+3. **The Footer is wider than a 320-pixel screen.** It gives the logo block and the link list minimum
+   widths of 324 and 320 pixels. Below 576 pixels the shell lets both shrink to the screen.
+4. **InlineAlert drops its title when it has content of its own.** Given `children`, it renders neither
+   `title` nor `description`, and its `aria-labelledby` points at a title that is not there. Alerts with
+   content write their title in the alert's own title markup.
+5. **Line heights differ from the Figma library.** The CSS tokens set the H3 size at 28 pixels on a
+   48-pixel line, where the Figma library's H3 style uses a 42-pixel line, so headings in the stories stand
+   taller than in the Figma drafts.
+
+## Opportunity screens in the chosen direction
+
+Every screen of the opportunities domain now follows "Site shell and the chosen direction" above.
+The home page and the opportunity list were already drawn that way and are unchanged; this section
+covers the rest: the dashboard, choosing a program, the three programs' create, view, manage and
+report pages, `/status`, and the four request addresses. Where this section and the older
+"Domain: opportunities" section disagree about how a screen looks (the status badge, the key facts
+list, the opportunity card, the card section, the inline-styled table, heading sizes), this section
+is the current one. What that section says about behaviour, states, who is offered what, dialogs,
+validation, test IDs and gaps still holds, except where this section says otherwise.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is
+seen by and the section the page belongs to:
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| Opportunity views | `default` a vendor, `signed-out` a visitor, `author` the public sector employee who wrote it, `awarded` an administrator, `loading` a visitor | Opportunities |
+| Dashboard, choosing a program, create, manage, complete report | the public sector employee or the administrator the story names | Dashboard |
+| `not-found` of any page | the person the refusal is about (a vendor, a visitor, or staff who are not administrators) | none |
+| `/status` and the request addresses | the requester the story names (a visitor where there is no session) | none |
+
+The viewer decides the header's navigation and account area, nothing else on the page.
+
+### The direction's opportunity components
+
+`design/catalogue/opportunity-kit.tsx`. All are this project's own compositions of design-system
+components (`Heading`, `Link`, `ButtonGroup`, `ProgressCircle`, `Text`) and tokens, built on
+`marketplace.tsx`'s `Label` and `look`, and laid out with `layout.tsx`'s `PageContainer`. None of them
+is a design-system component.
+
+- **Opportunity page** (`OpportunityPage`). The page container, the direction's style sheets, and
+  the page's regions in one column, `--layout-margin-large` apart (`medium` on a phone). It replaces
+  `PageContainer` with an outer `Stack` on every story of this domain.
+- **Opportunity head** (`OpportunityHead`). Rule 2 on a single opportunity: an optional small line
+  saying what the page is ("Manage a Sprint With Us opportunity", "Team With Us opportunity report"),
+  the program as a grey `Label` and the status as a coloured `Label`, the title as the H1 in the
+  design system's H3 size, then the facts in small text in the fixed order — "Closes" (or "Closed")
+  and the proposal deadline on their own line, then the value (named: Reward, Total maximum budget
+  or Maximum budget), the location and Remote OK — and the teaser in body text. A head shows only the
+  facts its page has; it never reorders them.
+- **Status label** (`StatusLabel`, `statusColour`). The `Label` coloured by the status's words:
+  grey for Draft and Completed, yellow while the opportunity waits on someone (Under review, any
+  evaluation stage, Processing), green for Open, Published and Awarded, red for Cancelled. It always
+  carries the status in words and is the only coloured thing on these screens (rule 3). It carries
+  `opportunity-status`; a status shown where the old design had no test ID uses `Label` with
+  `statusColour` so no test ID is added.
+- **Details** (`Details`). The facts beyond the head's, as a `<dl>` of term and value pairs in as
+  many columns as fit (each at least 200 pixels), terms in bold small text, values in small text.
+  It replaces the old key facts list and every "Label: value" line, including the Opportunity ID.
+- **Region** (`Region`) and **section title** (`SectionTitle`). A labelled `<section>` with an H2
+  in the design system's H4 size (or an H3 in bold body text), its items `medium` apart.
+- **Panel** (`Panel`). A bordered `<section>` or `<article>` with `--layout-padding-medium` inside
+  and an H2: one part of a long form, a program choice, a proposal in the report. It replaces the
+  old card section.
+- **Fieldset** (`Fieldset`). A repeated item of a form (a phase, a question, a resource, a panel
+  member): a token border, a legend in bold body text, its fields `medium` apart.
+- **Action bar** (`ActionBar`). The design system's `ButtonGroup` ("Opportunity actions") inside a
+  wrapper that carries `opportunity-actions`, because `ButtonGroup` passes no `data-*`. The wrapper is
+  always present; when nothing is offered it is empty and takes no space.
+- **Manage tabs** (`ManageTabs`). The manage page's tabs as links in a navigation landmark
+  ("Opportunity sections"), each `opportunity-tab-<key>` at `?tab=<key>`, in small text along a
+  rule, the current one marked by `aria-current="page"`, a bar and bold text, never colour alone —
+  the same marking as the header's navigation. They wrap onto further lines on a phone. Several
+  Sprint With Us and Team With Us tabs have addresses whose query value is not their test ID's
+  suffix (`?tab=evaluationPanel` is `opportunity-tab-evaluation-panel`; likewise `teamQuestions`,
+  `codeChallenge`, `teamScenario` and `resourceQuestions`). Those stories keep their addresses and
+  test IDs and write the same markup out by hand; the look and behaviour are the component's.
+- **Data table** (`DataTable`). A native table with a caption and column headers, in small text,
+  inside a focusable region labelled by its caption that scrolls sideways on a narrow screen. It is
+  the dashboard and the History tab.
+- **Actions** (`Actions`). A row of links or buttons that wraps, and on a phone stacks at full
+  width.
+- **Waiting** and **missing page** (`Waiting`, `MissingPage`). The loading status beside a spinner,
+  and the users domain's "Page not found" (`not-found-page`) in the direction's type.
+
+`design/catalogue/opportunity-view-page.tsx` is the opportunity view, one component for the three
+programs, with the stories' record text.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** The dashboard's table of opportunities follows directly after the H1
+   and the one action; the view puts the opportunity's head and facts before anything else.
+2. **Fixed order.** Every opportunity head shows program and status, title, closing date, value,
+   location and Remote OK, then the teaser. On the views all of these are present; the manage and
+   report pages show the labels and title in the head and the remaining facts in their Summary or
+   Opportunity section, in the same order.
+3. **Colour only for status.** Program labels are grey. Nothing else is coloured: not the tabs,
+   not the panels, not the dashboard's program column.
+4. **Programs.** Outside the home page a program appears as its label. Choosing a program shows the
+   three as equal panels, each with its maximum budget and its Create link; none is the primary
+   action, so the three links are secondary buttons.
+5. **Dense.** Facts, details, captions, tables and tabs are in small body text; the H1 is in the
+   design system's H3 size and section headings in its H4 size; regions are `large` apart, items
+   `medium`, a label and what it labels `small`. Each screen has one primary button at most: Start a
+   proposal on a vendor's view, Create an opportunity on the dashboard, Submit for review or Publish
+   on a form or a manage page, the confirm button inside a dialog.
+6. **Imagery.** None on these screens.
+7. **Phones.** Regions close to `medium`; the head's facts wrap onto two lines; details fall to one
+   column; actions stack at full width; tables scroll inside their region; the header and footer are
+   the shared phone versions.
+
+### The opportunity view
+
+The order is: the page's own messages (Sprint With Us), the head, the details (Remote work,
+Published, Created by and Last changed by where the viewer may see them, Opportunity ID), the one
+thing the viewer can do, the successful proponent when awarded, then the sections — Description,
+the program's own section (Skills; Phases and Skills; Resources), Scope (Sprint With Us), Key dates,
+Addenda, and Terms and Conditions (Team With Us).
+
+- **Status wording** follows the opportunity list: a vendor or a visitor sees "Open"; the author
+  and an administrator see the stage ("Published", "Awarded").
+- **What the viewer can do.** A vendor: the Watch checkbox with its sentence and status region,
+  and Start a proposal (primary). The author: Manage this opportunity (secondary). A visitor:
+  nothing. An administrator on an awarded opportunity: Watch.
+- **The successful proponent** (`awarded`). The name (`opportunity-successful-proponent`) to
+  everyone; the contact details (`opportunity-successful-proponent-contact`) and the score
+  (`opportunity-successful-proponent-score`) as two details beneath it, rendered only for a viewer
+  permitted to see proposal scores (R-1.27). The `awarded` story is therefore seen by an
+  administrator; a vendor or a visitor sees the same page without those two details.
+- **Key dates** are a details list, each date with its own test ID: `opportunity-assignment-date`,
+  `opportunity-start-date` and, on Team With Us, `opportunity-completion-date`. The Code With Us view
+  shows no completion date, as the contract records; it is read on the manage page. Sprint With Us
+  shows the assignment date only; its other dates are its phases'.
+- **The page's own messages** (Sprint With Us, `opportunity-page-messages`). A wrapper always
+  present above the head, empty when no notice applies, holding each notice as an `info`
+  `InlineAlert`. The stories show the notice for a visitor while the opportunity accepts proposals
+  (`signed-out`) and for an awarded opportunity (`awarded`). See gap 30 for their wording.
+- **Embedded service pages.** Sprint With Us embeds the scope page in a Scope section
+  (`opportunity-scope`); Team With Us embeds its terms and conditions page in a Terms and Conditions
+  section (`opportunity-terms`). Each renders the page's body as the service holds it; the stories
+  show a placeholder line.
+
+### The manage page
+
+The order is: the head ("Manage a … opportunity", program, status, title), the details (Opportunity
+ID), the action bar, the tabs, any page alert, and the current tab's section. The action bar's
+wrapper (`opportunity-actions`) is the contract's `offered_state_changes` on the Team With Us manage
+page: it holds exactly the changes of state the signed-in person is offered from the current state,
+and is empty when there are none. The History tab's section is `opportunity-history-section`: the
+contract's `note_control_offered` reads true if that section holds any control for adding a note,
+and it holds none on any program (R-1.33 v2). The Opportunity tab's date pickers in the `editing`
+stories are the contract's dates on the manage page (`opportunity-deadline-field`,
+`opportunity-assignment-date-field`, `opportunity-start-date-field`,
+`opportunity-completion-date-field`). The evaluator's Instructions and Evaluation tabs are the
+evaluation domain's, drawn in its stories (`opportunity-tab-instructions`,
+`opportunity-tab-evaluation`), and the contract binds them there.
+
+### Forms
+
+The create forms and the Opportunity tab in edit mode keep every field, rule, message and test ID of
+"Forms and validation" above. Each part of the form is a `Panel` (an H2 on a create page, an H3
+under the tab's H2 on the manage page); each repeated item a `Fieldset`. The submit row stays the
+design system's `ButtonGroup`; the group-level errors keep `Text color="danger"`, the design
+system's own error colour, which is status in the sense of rule 3.
+Each evaluation question (a Sprint With Us team question or a Team With Us resource question) is a
+`Fieldset` carrying `evaluation-question`, in list order: the contract's `evaluation_question_fields`
+for the question at a given place is the fields inside that fieldset — Question
+(`question-text-field`), Guideline (`question-guideline-field`), Response word limit
+(`question-word-limit-field`), Maximum score (`question-score-field`) and Minimum score
+(`question-minimum-score-field`) — and no position or order field. On the manage page the
+contract reads these "on the team questions tab while editing"; the design has no separate editing
+form on that tab, so they are bound in the Opportunity tab's form (`editing`), the only place the
+questions are edited (gap 33).
+
+### Dashboard, report, status and request addresses
+
+- **Dashboard.** The H1, Create an opportunity (primary), then the table of opportunities as a
+  `DataTable` with a grey program `Label` and a coloured `StatusLabel` in each row. The empty and
+  loading states keep their words.
+- **Complete report.** The head ("… opportunity report", program, status, title), then one
+  `<article>` (`opportunity-full-report`) holding the Opportunity, Addenda, History and Proposals
+  sections, each proposal a `Panel` article. Nothing is hidden or tabbed, so it reads and prints as
+  one document.
+- **`/status`** keeps its two test IDs on the page wrapper and the sentence.
+- **Request addresses** (`opportunity-watch-request`, `opportunity-counters`,
+  `opportunity-history-request`, `opportunity-status-request`). The response references keep their
+  structure and every test ID: a small "Response reference" line and the H1, then Request and Answer
+  regions whose pairs are `Details`.
+
+### The phone menu's landmark
+
+On a phone the open menu panel was a plain `div` after the banner, so its "Digital Marketplace"
+line and the account actions sat outside every landmark (axe `region` on the running app). The
+open panel is now one `<section aria-label="Menu">`, a labelled region holding the service's name,
+the Main navigation and the account actions; the Main and Account navigations stay inside it.
+`aria-controls` on the Menu button still points at it.
+
+### Test IDs added in this pass
+
+All bind elements in the stories above, and are filled in `spec/contract/surface.yaml`:
+
+| Page | Observation | Test ID |
+| --- | --- | --- |
+| cwu, swu, twu view | `assignment_date` | `opportunity-assignment-date` |
+| cwu, twu view | `start_date` | `opportunity-start-date` |
+| twu view | `completion_date` | `opportunity-completion-date` |
+| cwu, swu, twu view | `successful_proponent_contact_details` | `opportunity-successful-proponent-contact` |
+| cwu, swu, twu view | `successful_proponent_score` | `opportunity-successful-proponent-score` |
+| swu view | `scope_section` | `opportunity-scope` |
+| swu view | `page_messages` | `opportunity-page-messages` |
+| twu view | `terms_section` | `opportunity-terms` |
+| cwu, swu, twu edit | `proposal_deadline` | `opportunity-deadline-field` |
+| cwu, swu, twu edit | `assignment_date` | `opportunity-assignment-date-field` |
+| cwu, twu edit | `start_date` | `opportunity-start-date-field` |
+| cwu, twu edit | `completion_date` | `opportunity-completion-date-field` |
+| cwu, swu edit | `note_control_offered` | `opportunity-history-section` |
+| swu, twu edit | `instructions_tab` | `opportunity-tab-instructions` |
+| swu, twu edit | `evaluation_tab` | `opportunity-tab-evaluation` |
+| twu edit | `offered_state_changes` | `opportunity-actions` |
+| swu, twu create and edit | `evaluation_question_fields` | `evaluation-question` |
+
+Every test ID filled before this pass is kept, on an element that does what it did.
+
+### Gaps found in this pass
+
+29. **The awarded view shows two audiences.** R-1.27 separates the name, which everyone sees, from
+    the contact details and score, which only a reader permitted to see scores sees. One `awarded`
+    state can show only one of them; the story shows the permitted reader (an administrator).
+    Whether a separate state should show a vendor's view is for the spec, though nothing differs
+    but the two details' absence. The contact details' and score's wording and format are not
+    stated; the stories' values are test data.
+30. **The Sprint With Us view's own notices.** The contract names four cases in which the page
+    raises a notice above the opportunity, but no criterion gives their words. The stories' two
+    sentences ("Sign in as a vendor to submit a proposal to this opportunity." and "This
+    opportunity has been awarded.") are the design's own and need the spec's wording. The other two
+    cases (a vendor who has already proposed; a vendor whose organizations are not qualified) have
+    no state of their own on this page and no wording.
+31. **The embedded service pages.** The scope page and the Team With Us terms page are the content
+    domain's; the stories show a placeholder for their body, and what the section shows when the
+    page cannot be read is not stated beyond "empty".
+32. **The Code With Us view's completion date.** The earlier stories listed a completion date on
+    the Code With Us view; the contract records that the view shows none, so it has been removed
+    from that view and is read on the manage page.
+33. **Where evaluation questions are edited on the manage page.** The contract says the question
+    fields are read "on the team questions tab while editing" (and the resource questions tab). In
+    this design those tabs belong to the evaluation stage and show proponents' answers, and the
+    questions are edited in the Opportunity tab's form. The binding (`evaluation-question`) is the
+    same element either way; which tab carries the editor is for the spec to confirm.
+34. **Viewers chosen where a story named none.** Several manage stories (the Addenda and History
+    tabs, consensus, the loading states) did not say who is looking. They are drawn for an
+    administrator, the one viewer offered every action those states can show.
+
+## Proposal screens in the chosen direction
+
+Every screen of the proposals domain now follows "Site shell and the chosen direction" above. The
+Code With Us proposal form (`proposal-cwu-create`) was already drawn that way and is the reference:
+it is unchanged but for one attribute (see "Test IDs filled in this pass"). This section covers the
+rest: the Sprint With Us and Team With Us forms, the three programs' manage, evaluate and export pages,
+the vendor dashboard, `/proposals`, and the three request addresses. Where this section and the older
+"Domain: proposals" section disagree about how a screen looks (the status badge, the key facts list,
+the card section, the inline-styled tables, the plain stack of regions, heading sizes), this section is
+the current one. What that section says about behaviour, states, who is offered what, dialogs,
+validation and gaps still holds, except where this section says otherwise.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen
+by and the section the page belongs to. The viewer decides the header's navigation and account area,
+nothing else on the page.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| Create (all three programs) | a vendor | Opportunities |
+| Manage (`proposal-*-edit`) | the vendor who wrote the proposal | Dashboard |
+| Evaluate (`proposal-*-view`) | the opportunity's author (public sector staff), or an administrator where the story names one | Dashboard |
+| Export one | the vendor (their own copy) or staff (the staff copy, `anonymous`) | Dashboard |
+| Export all | staff | Dashboard |
+| Vendor dashboard | a vendor | Dashboard |
+| `not-found` of any page | the person the refusal is about (a visitor, staff, or another vendor) | none |
+| `/proposals` and the request addresses | the requester the story names | none |
+
+### The direction's proposal components
+
+`design/catalogue/proposal-kit.tsx`. All are this project's own compositions of design-system
+components (`Heading`, `Link`, `ButtonGroup`, `Form`, `Text`) and tokens, built on `marketplace.tsx`'s
+`Label` and on `opportunity-kit.tsx`. None of them is a design-system component. The proposal stories
+also use `opportunity-kit.tsx`'s `Region`, `Panel`, `Fieldset`, `Details`, `DataTable`, `Actions`,
+`PageTitle`, `Waiting` and `MissingPage` exactly as the opportunity screens do.
+
+- **Proposal page** (`ProposalPage`). `OpportunityPage` (the page container, the direction's style
+  sheets, the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **Proposal status** (`ProposalStatus`, `proposalColour`). The `Label` coloured by the proposal's status
+  in words: blue for Draft (as the Code With Us form's summary already marks a saved draft), green for
+  Submitted and Awarded, yellow while it waits on someone (Under review at any stage, Evaluated), grey
+  for Not awarded and Withdrawn, red for Disqualified. A team member's membership is a status in the
+  same sense: "Membership pending" yellow, "Active" green. The label always says the status in words.
+  It carries `proposal-status` wherever a proposal's status is shown, and
+  `proposal-pending-team-member` on a pending member.
+- **Proposal head** (`ProposalHead`). The small line saying what the page is ("Manage a Sprint With Us
+  proposal", "Team With Us proposal"), the program as a grey `Label` and the status as a coloured one,
+  then the H1 in the design system's H3 size: the opportunity's title on a manage page, the proponent as
+  this reader may see them on an evaluate page (`proposal-proponent-name`). The status moved out of the
+  key facts into the head and keeps its test ID.
+- **Action bar** (`ProposalActions`). The design system's `ButtonGroup` ("Proposal actions") in a
+  wrapper that carries `proposal-actions`, always present, empty when nothing is offered.
+- **Proposal tabs** (`ProposalTabs`). The manage and evaluate pages' tabs as links in a navigation
+  landmark ("Proposal sections"), each `proposal-tab-<key>` at `?tab=<query>`, in small text along a
+  rule, the current one marked by `aria-current="page"`, a bar and bold text, the same marking as the
+  header's navigation and the opportunity manage page's tabs. They wrap on a phone.
+- **Proposal form page** (`ProposalFormPage`, `CreateHead`, `FormPart`). The Code With Us form's layout,
+  shared: the H1 ("Create a … proposal") in the H2 size on a wide screen with the opportunity's title
+  beneath it, then the page's messages, the introduction, and one long form in numbered parts
+  ("1. Organization", "2. Team" …), each an H2 in the H3 size with its fields `large` apart. On a wide
+  screen a 320-pixel summary of the opportunity (`proposal-opportunity-summary`: program, the proposal's
+  status once it has one, title, closing date, budget) stays in view beside the form and holds the
+  actions stacked at full width, primary first: Submit proposal, Save draft, Cancel (on the manage
+  page's form, its save buttons and Cancel). On a narrow screen the summary is a compact card under the
+  head and the actions follow the form at full width. The switch is read in script, as the header's is,
+  so each action and its test ID appear once. A manage page's `editing` state uses the same layout,
+  with the manage head, its details and the tabs in place of the create head.
+- **Rows** (`pp-rows`, `pp-row`). A team's members while editing: one bordered row each, the name in
+  bold small text beside any membership label, the Remove button at the end, and the row's own error on
+  a line of its own. Rows wrap, so a 320-pixel screen stacks name and button.
+- **Select-and-add cluster** (`pp-cluster`). The team-member choice and its Add team member button on one
+  line where they fit, the choice taking the room; on a phone the button goes full width beneath.
+- **Group error** (`GroupError`). A problem that belongs to a group rather than a field, in the design
+  system's own danger text (`Text color="danger"`), linked from the error summary.
+- **Focused message** (`Focused`, `AlertTitle`). An alert that takes focus when it appears, and the
+  title markup an `InlineAlert` with content of its own needs (the site shell's gap 4).
+- **Catalogue note** (`CatalogueNote`). The small line saying which story holds the part of the page a
+  dialog or refusal story trims. A build does not render it.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** A create page names the opportunity under its H1 and keeps it in view in the
+   summary; a manage page's H1 is the opportunity's title.
+2. **Fixed order.** The summary gives program and status, title, closing date, then the value, in that
+   order. The stories carry only the facts the earlier stories gave (see gap 39).
+3. **Colour only for status.** The program labels are grey. The only coloured things are status labels
+   (a proposal's, a membership's) and the design system's own alert and error colours. Tabs, panels,
+   tables and scores are neutral.
+4. **Programs** appear as their labels.
+5. **Dense.** Facts, details, captions, tables, tabs, word counts and limits are in small body text; the
+   H1 in the H3 size (H2 on a wide create page, as on the Code With Us form); regions `large` apart,
+   items `medium`, a label and what it labels `small`. Each screen has one primary button at most: Submit
+   proposal on a form or a draft, the save-and-submit button while editing, the stage's score or Award on
+   an evaluate page, the confirm button inside a dialog.
+6. **Imagery.** None on these screens.
+7. **Phones.** Regions close to `medium`; the summary becomes a compact card and the actions follow the
+   form at full width; details fall to one column; team rows wrap; tables scroll inside their own
+   focusable region, as the opportunity dashboard's and History tab's do (gap 40); the header and footer
+   are the shared phone versions.
+
+### Forms: what changed with this pass
+
+The forms keep every field, rule, message and test ID of "Forms and validation" in the older section,
+with these changes, each forced by an accepted criterion or by the contract's own wording:
+
+- **One scrum master per phase, as a single choice** (R-2.19 v3; the surface's `phase_requirements`
+  note). Each phase's scrum master is now a design-system `RadioGroup` ("Scrum master for the prototype
+  phase", required) with one `Radio` per member, each `proposal-scrum-master`, after the phase's member
+  rows. The per-member checkboxes are gone, so two scrum masters can no longer be chosen, and the team
+  part's sentence says "choose one scrum master in each". In `proposal-swu-create.invalid` the former
+  "two scrum masters" problem is now "Implementation phase: choose a scrum master".
+- **Each phase says whether its team meets the phase's requirements** (R-2.19 v3: "the form shows which
+  phase is incomplete"). Every Sprint With Us phase fieldset (`proposal-phase-team`) holds one line
+  (`proposal-phase-requirements`): "This phase’s team meets its requirements." with the capabilities it
+  holds, or "This phase’s team is incomplete." with what is missing (a required capability not held, or
+  a member still pending). The opportunity-wide Capabilities part stays as it was.
+- **The team-member choice** (`proposal-team-member-choice`, R-2.18). Sprint With Us offers the chosen
+  organization's active members and, marked "(membership pending)", those whose invitation is
+  unanswered; Team With Us offers active members only. Neither offers a person already named.
+- **Cost messages in the contract's words.** A phase cost over its maximum reads "Please enter a Proposed
+  Cost less than or equal to 850,000." under the field; a total over the opportunity's maximum reads
+  "The proposed cost exceeds the maximum budget for this opportunity." under the total. Each phase's
+  cost field, and the total with its message, sits in a wrapper `proposal-cost`, so a test reads each
+  message with the field it stands against.
+- **Submit stays unavailable while a phase is incomplete or a cost is over budget** (the surface's
+  `team_member_choices`, `phase_requirements` and `cost_errors` notes). In
+  `proposal-swu-create.invalid` Submit proposal is disabled and described by the error summary, which
+  lists the problems as they stand.
+
+### Evaluate pages: what changed with this pass
+
+- **A stage's score is offered only at that stage** (R-2.28 v2). This replaces the older section's
+  rule that the stage buttons are always present, and resolves its gap 4. Each stage tab (Code
+  challenge and Team scenario; Resource questions and Challenge) holds its score button in a wrapper
+  `proposal-score-actions`, always present on that tab and empty when no score is offered. A stage the
+  opportunity has not reached offers no score, and the tab says "This proposal can be scored once the
+  opportunity has reached the team scenario." (or the code challenge, or the challenge). Screen in and
+  Screen out are not score actions and sit in their own group.
+- **The `wrong-stage` state** keeps the service's refusal ("The opportunity is not in the correct stage
+  of evaluation to perform that action.", `proposal-wrong-stage-error`) above the tab, but the tab now
+  offers no score. See gap 35.
+- **Rank** (R-2.31). Every Sprint With Us and Team With Us evaluate state that shows the Scores region
+  shows a Rank: `proposal-rank` holds "1st", "2nd" … for a fully evaluated proposal, and is empty,
+  beside the words "Not yet ranked", for one that holds no rank.
+
+### Other changes in this pass
+
+- **Status lives in the head.** The "Status" term and "Status:" lines are gone from every page; the
+  status is the head's coloured label and keeps `proposal-status`. Export-one shows it as a label
+  without a test ID, as before. Export-all keeps a Status detail in each proposal's panel, which has no
+  head of its own.
+- **The organization, once the form is closed,** is a Details item "Legal name" on the Sprint With Us
+  and Team With Us manage pages' Proposal tab (`proposal-organization`).
+- **Editing draws the whole form.** The manage pages' `editing` and `organization-locked` stories used
+  to trim all but the organization part; they now draw every part as the create page does, filled in,
+  with the manage head, details and tabs above, and the actions in the summary: Save changes and
+  submit (primary), Save changes, Cancel (`proposal-cancel-edit`). `organization-locked` keeps only
+  Save changes and Cancel, as before.
+- **The unqualified-organization notice** (`proposal-unqualified-organization-notice`) sits with the
+  page's other messages above the form, focused when it appears, rather than under the Organization
+  field.
+- **Phase ids.** The kit's `Fieldset` takes no `id`, so the ids the error summaries link to
+  (`proposal-prototype-team`, `proposal-implementation-team`) are on each phase's member list.
+- **Question numbers return** on the Sprint With Us manage page: its question list is an `op-list`
+  `<ol>`, which keeps its numbers (older gap L1, for that page).
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+- **Viewers where a story named none.** Evaluated and History stories that show Award are drawn for
+  the opportunity's author, as their comments say; R-2.33's example names an administrator, and only
+  `award-confirm` is drawn for one. Who may award is not otherwise stated (see the older "Who is offered
+  what").
+
+### Test IDs filled in this pass
+
+Every proposal page's `null` in `spec/contract/surface.yaml` is now filled, each with an identifier the
+stories put in the markup:
+
+| Page | Entry | Test ID |
+| --- | --- | --- |
+| cwu create | `field_errors_by_field` | `proposal-field-errors`: the error summary's list, each item linking to its field by id and carrying the message (the one attribute added to `proposal-cwu-create-page.tsx`) |
+| swu, twu create | `team_member_choices` | `proposal-team-member-choice` |
+| swu create | `phase_team_sections` | `proposal-phase-team` |
+| swu create | `phase_requirements` | `proposal-phase-requirements` |
+| swu create | `cost_errors` | `proposal-cost` |
+| swu, twu edit | `choose_organization` | `proposal-organization-field` |
+| swu edit | `add_phase_team_member`, `set_scrum_master` | `proposal-add-team-member`, `proposal-scrum-master` |
+| twu edit | `add_team_member_for_resource`, `set_hourly_rate` | `proposal-add-team-member`, `proposal-hourly-rate-field` |
+| swu, twu edit | `submission_refusal` | `proposal-submit-refused-message` |
+| swu, twu edit | `field_error` | `field-error` |
+| swu, twu edit | `organization` | `proposal-organization` (the Proposal tab's organization, once the form is closed) |
+| swu, twu view | `history_entries` | `proposal-history-table` |
+| swu, twu view | `rank` | `proposal-rank` |
+| swu, twu view | `offered_score_actions` | `proposal-score-actions` |
+
+Every test ID filled before this pass is kept, on an element that does what it did. This resolves the
+older section's gap L4.
+
+### Gaps found in this pass
+
+35. **The wrong-stage refusal on the page.** R-2.28 v2 says the page offers no score for a stage the
+    opportunity has not reached, so the screen cannot itself send the score the service refuses; yet
+    the surface keeps `wrong_stage_error` on both evaluate pages, and the `wrong-stage` state is kept.
+    The story shows the refusal as the page would report it if a score reached the service from it
+    anyway. Whether the page needs the observation, now that `proposal-evaluation-request` carries the
+    refusal, is for the contract.
+36. **Words the contract gives that no criterion does.** The cost messages ("Please enter a Proposed
+    Cost less than or equal to N.", "The proposed cost exceeds the maximum budget for this
+    opportunity.") and the pending marking come from the surface's notes, which describe the old
+    application. The stories use them; a criterion should own them.
+37. **Phase requirements' wording.** No criterion or note gives the words a phase uses to say it is
+    complete or incomplete; "This phase’s team meets its requirements." and "This phase’s team is
+    incomplete." are the design's own.
+38. **Scrum master with no choice made.** With a single required choice, the only scrum master problem
+    left is none chosen. The surface says the form "does not count the scrum master" and the service
+    refuses it on submission; the message "Choose a scrum master for the implementation phase." is the
+    design's own.
+39. **The summary's facts.** Rule 2's location and Remote OK are not in the Sprint With Us or Team With
+    Us proposal stories' test data, so those summaries show the program, title, closing date and budget
+    only.
+40. **Tables on phones.** Rule 7 turns rows into stacked cards; the dashboard, team, question and
+    history tables keep the opportunity screens' `DataTable`, which scrolls inside its own region
+    instead. A table that becomes stacked cards would be a new component for both domains at once.
+
+### Corrections after the build
+
+- **Scrum master names.** The older section's accessibility list said each scrum master radio carried
+  an `aria-label` "Scrum master: <name>, <phase> phase". No story ever drew that. The prose now says
+  what every Sprint With Us create and edit story draws: one required `RadioGroup` per phase labelled
+  "Scrum master for the <phase> phase", whose radios (`proposal-scrum-master`) are named by the person
+  alone. The components table no longer lists the scrum master under `Checkbox`.
+- **Code With Us proponent question on edit.** `proposal-cwu-edit.editing` now asks the create page's
+  question, the original site's, "Will you be submitting a proposal for this opportunity as an
+  Individual or Organization?", with "Individual" and "Organization". The test IDs
+  `proposal-proponent-individual` and `proposal-proponent-organization` are unchanged.
+- **Second street line.** On the Code With Us create page the second street line is "Street Address
+  line 2", not the original's repeated "Street Address" (WCAG 2.2 success criterion 2.4.6). Its test ID
+  `proposal-street-2-field` is unchanged.
+
+No page, state or test ID was added or changed by these corrections.
+
+## User screens in the chosen direction
+
+Every screen of the users domain now follows "Site shell and the chosen direction" above: sign-in and
+sign-up, completing a profile, signing out, the two notices, the user list and its export, the profile
+in all its sections (by identifier and as `/users/me`), and the three request addresses. Where this
+section and the older "Domain: users" section disagree about how a screen looks (the page container
+and outer stack, the status badge, the "Account type:" and "Status:" lines, the card style, the
+inline-styled table, the tertiary-link section navigation, heading sizes), this section is the
+current one. What that section says about behaviour, states, who is offered what, dialogs,
+validation, test IDs and gaps still holds, except where this section says otherwise. Every page keeps
+its states (`design/screens.yaml` is unchanged), every story keeps its words, and every test ID keeps
+its element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen
+by and the section the page belongs to. The viewer decides the header's navigation and account area,
+nothing else on the page. The viewers' addresses are the stories' own test data
+(`vendor1@example.com`, `gov@example.com`, `admin@example.com`), so a person on their own profile
+sees their own address in the header.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| Sign in, choose account type, both notices, signed out, `/users/me` `sign-in-required` | a visitor | none |
+| Complete your profile | the vendor who has just signed in for the first time | none |
+| Sign out `loading` and `failed` | the vendor still signed in (the session may still stand) | none |
+| User list, and a profile reached by identifier that an administrator is reading (including every `section-unavailable` state of `user-profile-*`) | an administrator | Users |
+| A profile reached by identifier that its owner is reading (`own`, `editing`, `invalid`, and the capabilities, notifications and legal sections) | the owner (a vendor, or for `editing` and `invalid` a public sector employee) | none |
+| `/users/me` and its sections | the person whose profile it is | none |
+| `not-found` | a public sector employee (user list), another vendor (profile), a visitor (notice) | none |
+| Request addresses | the requester the story names: an administrator, a public sector employee, the owner, another vendor, a visitor | none |
+
+A person's own profile is reached from the account menu (My Profile), not from the main navigation,
+so no main section is current on it.
+
+### The direction's user components
+
+`design/catalogue/user-kit.tsx` and `design/catalogue/user-profile-sections.tsx`. All are this
+project's own compositions of design-system components (`Checkbox`, `InlineAlert`, `Link`,
+`TextField`) and tokens, built on `marketplace.tsx`'s `Label` and `look` and on `opportunity-kit.tsx`,
+whose `PageTitle`, `Region`, `Panel`, `Details`, `DataTable`, `Actions`, `Waiting` and `MissingPage`
+these screens use exactly as the opportunity screens do. `AlertTitle` comes from `proposal-kit.tsx`.
+None of them is a design-system component. `marketplace.tsx`'s `statusOf` describes an opportunity's
+status and has no use here: no users screen shows an opportunity.
+
+- **User page** (`UserPage`). `OpportunityPage` (the page container, the direction's style sheets,
+  the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **Account status** (`AccountStatus`, `accountColour`). The `Label` coloured by the account's status
+  in words: green for Active, grey for Inactive. It is the only coloured thing on these screens apart
+  from the design system's own alerts and error text (rule 3), replaces the old circular status badge,
+  and carries `profile-status-badge` on a profile and `user-list-status-badge` in the list.
+- **Account facts** (`AccountFacts`). The account's type, its status (to an administrator only) and its
+  Account ID, as `Details`: the terms "Account type", "Status" and "Account ID" in bold small text over
+  their values. It replaces the "Account type: …", "Status: …" and "Account ID: …" lines and keeps
+  their test IDs on the values (`profile-account-type`, `profile-status-badge` on the label,
+  `profile-user-identifier`). A story shows only the facts it showed before.
+- **Profile sections** (`ProfileTabs`, `VENDOR_TABS`, `STAFF_TABS`). The profile's section links,
+  drawn as the opportunity manage page's tabs (`op-tabs`): links in a navigation landmark ("Profile
+  sections") in small text along a rule, the current one marked by `aria-current="page"`, a bar and
+  bold text, never colour alone. Profile links to the profile's own address, every other section to
+  `?tab=<key>`; each is `profile-tab-<key>`. They wrap on a phone. Which sections are listed is
+  unchanged ("Which sections a profile offers").
+- **Read-only details** (`ReadOnlyDetails`). The Details region: the "No profile picture has been
+  added." line where the story had it, then the read-only `TextField`s in as many columns as fit (each
+  at least 280 pixels, `medium` apart down and `large` across), then the region's action.
+- **Field grid** (`us-fields`). The same columns for the editable fields of the profile and
+  completion forms. On a 320-pixel screen it is one column.
+- **Group** (`Group`). A label and what it labels, `small` apart: the profile picture's label, its line
+  and its trigger; the terms links and the agreement box; the Administrator box and its hint or refusal.
+- **Choices** (`Choices`). The two kinds of account on the sign-in, sign-up and sign-in-required screens,
+  each a `Panel` (a bordered section with an H2 in the H4 size), side by side where each has at least
+  320 pixels and stacked at full width where it does not (rule 7). Each panel's button sits in `Actions`,
+  so it goes full width on a phone.
+- **Capability rows** (`us-rows`, `us-row`). One bordered row per capability: the checkbox and its "Show
+  description of …" toggle on one line where they fit, the description in small secondary text beneath
+  when shown. Rows wrap, so a 320-pixel screen stacks the box and the toggle.
+- **Save status** (`SaveStatus`). The `role="status"` region an immediate save reports into, present
+  before anything is saved so the outcome is announced. While it is empty it is positioned out of the
+  column, so it adds no gap, but it stays in the accessibility tree (`display: none` would take it out).
+- **Error summary** (`ErrorSummary`). The danger `InlineAlert` that takes focus when it appears, with its
+  title in the alert's own title markup (`AlertTitle`) and a list of links to the fields, each item
+  `field-error`. Before this pass the users stories gave the alert both `title` and content, so the
+  design system dropped the title (the shell's gap 4): "Your profile has 2 problems" and "Your changes
+  have 2 problems" were not rendered. They now are.
+- **User rows** (in `user-list.default`). On a wide screen the list is the opportunity screens'
+  `DataTable` with its caption and the four columns in their old order (Status, Account type, Name,
+  Administrator), each row `user-list-row`. Below the header's switch point each account is a stacked
+  card instead: the name as an H2 in bold body text linking to the profile, then the status label, the
+  account type and "Administrator: Yes/No" on one line of small text, under the same caption as a
+  `<p>` that labels the list. The switch is read in script, as the header's is, so each row and its
+  four test IDs appear once. This is rule 7 for this domain's one list, and resolves the proposals
+  section's gap 40 here: no table on these screens scrolls sideways any more.
+- **Export dialog body** (`us-dialog`). The dialog's content `medium` apart inside
+  `--layout-padding-large` (`medium` on a phone); its H2 in the H4 size.
+- **Toolbar** (`us-toolbar`). The list's search field and its Export contact list button on one line,
+  the button at the far end, wrapping beneath the field on a narrow screen.
+- **Shared section pages** (`user-profile-sections.tsx`). The capabilities, notifications and legal
+  sections, and the two profile sections a refused section shows instead (an administrator on a
+  vendor's profile; a public sector employee on their own), written once and used by both the
+  by-identifier and the `/users/me` stories with the address passed in.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** No users screen lists opportunities.
+2. **Fixed order.** Not applicable; no opportunity is shown.
+3. **Colour only for status.** The account's status label is the only colour of the domain's own; the
+   design system's alerts (success, info, warning, danger) and error text keep theirs. Account type,
+   the Administrator column, the section links, the panels and the capability rows are neutral.
+4. **Programs.** They appear only as the names of the three program terms links.
+5. **Dense.** H1 in the H3 size; region headings (Details, Permissions, Account status, Privacy policy,
+   Terms and conditions, Program terms, Edit your details, Request, Answer) in the H4 size; facts,
+   hints, captions, section links and capability descriptions in small text; regions `large` apart,
+   items `medium`, a label and what it labels `small`. Each screen has one primary button at most: Edit
+   profile on a profile someone may edit, Save changes while editing, Complete profile, Reactivate
+   account, Review and agree to the updated terms, Back to home or Try signing in again on a notice, the
+   confirm button inside a dialog. Deactivate stays secondary with `danger`. Sign-in and sign-up offer
+   two equal secondary choices and no primary, and the header's Sign In and Sign Up are tertiary and
+   secondary, so nothing competes.
+6. **Imagery.** None.
+7. **Phones.** Regions close to `medium`; the account facts, the read-only details and the form fields
+   fall to one column; the two account panels stack at full width; the user list becomes stacked cards;
+   page actions stack at full width; the header and footer are the shared phone versions.
+
+### Other changes in this pass
+
+- **Trimmed dialog stories say what they trim.** `deactivate-confirm`, `reactivate-confirm`,
+  `accept-terms-confirm`, `unsubscribe-confirm` and the export stories still draw only the part of the
+  page behind the dialog that they drew before; each story's comment names the story that draws the
+  page whole.
+- **Notice pages.** Each notice's test ID is on a region holding its H1 and sentences, `medium` apart,
+  as before; the actions follow in `Actions`.
+- **Response references** keep their structure and every test ID: the small "Response reference"
+  line and the H1, then Request and Answer regions whose pairs are `Details`. Where the test ID was on
+  the whole answer list (`user-list-request-accounts`, `user-list-request-refused`,
+  `user-account-refused`) it is on a wrapper around the `Details`; where it was on one value it is on
+  that value.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID on the users domain's pages in `spec/contract/surface.yaml` was already filled before this
+pass, and none is changed. Each is still put in the markup by these stories, on an element that does
+what the surface says. No test ID was added.
+
+### Gaps found in this pass
+
+41. **The completion page's header.** The vendor completing their profile has just signed in, so the
+    header shows them signed in, with Dashboard first in the navigation, before their profile is
+    complete. Whether the shell should offer its navigation to someone who has not yet agreed to the
+    terms (R-4.3, R-4.23) is not stated.
+42. **Sign-out failure's viewer.** R-4.17 says the person "may still be signed in". The story shows the
+    header signed in; if the service cannot tell, it cannot tell which header to show either. The
+    spec does not say.
+43. **An account status colour.** No criterion says how an account's status is distinguished; Active
+    green and Inactive grey are the design's own, following the direction's use of green for a thing
+    in good standing and grey for one that has stopped without fault.
+44. **The user list on a phone.** R-4.14 states the list's order and columns but nothing about a narrow
+    screen. The cards keep the columns' facts and the order of the rows; they put the name first
+    because it is the link a person is looking for.
+
+## Content screens in the chosen direction
+
+Every screen of the content domain now follows "Site shell and the chosen direction" above: the
+footer's placeholder page, the service level agreement link on the Code With Us learn-more screen,
+the list of pages, creating a page, the managing screen in all its states, the public page, and the
+request addresses. Where this section and the older "Domain: content" section disagree about how a
+screen looks (the page container and outer stack, the inline-styled table and badge, the key facts
+row, the placeholder frame, heading sizes, the footer's link list), this section is the current one.
+What that section says about behaviour, states, forms, validation, dialogs, test IDs and gaps still
+holds, except where this section says otherwise. Every page keeps its states (`design/screens.yaml`
+is unchanged), every story keeps its words, and every test ID filled before this pass keeps its
+element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen
+by and the section the page belongs to. The viewer decides the header's navigation and account area,
+nothing else on the page. The administrator and the vendor are `opportunity-kit.tsx`'s `ADMIN` and
+`VENDOR`; the visitor is `site.tsx`'s `VISITOR`.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| `content-footer` | a visitor (the footer is the same for everyone, R-7.19) | Home (its route is `/`) |
+| `content-service-level-agreement-link` | a visitor | none (the learn-more screens are not in the navigation) |
+| `content-list`, `content-create`, `content-edit`: every state but `not-found` | an administrator | Content |
+| `not-found` of the list, create and managing screens | a vendor, whose header offers no Content section (R-7.6) | none |
+| `content-view`, all three states | a visitor (R-7.1) | none |
+| `content-request` | `default` and `invalid` an administrator; `refused` a vendor, the first requester R-7.10 names; `not-found` a visitor | none |
+
+### The direction's content components
+
+`design/catalogue/content-kit.tsx`. All are this project's own compositions of design-system
+components (`Button`, `ButtonGroup`, `Heading`, `InlineAlert`, `Link`, `Text`, `TextArea`,
+`TextField`) and of `react-aria-components`' `Toolbar` and `FileTrigger`, styled only with tokens,
+built on `marketplace.tsx`'s `Label` and `look`, on `opportunity-kit.tsx` (`OpportunityPage`,
+`PageTitle`, `Region`, `Panel`, `Details`, `Waiting`, `MissingPage`, and its table classes) and on
+`proposal-kit.tsx`'s `AlertTitle`. None of them is a design-system component. `marketplace.tsx`'s
+`statusOf` describes an opportunity's status and has no use here: no content screen shows an
+opportunity.
+
+- **Content page** (`ContentPage`). `OpportunityPage` (the page container, the direction's style
+  sheets, the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **Title bar** (`TitleBar`). The list's H1 and its one action, Create page, on one line where they
+  fit; on a phone the link goes full width beneath the H1.
+- **Manage head** (`ManageHead`). "Manage a page" in small secondary text over the page's own title
+  as the H1, `small` apart: the opportunity and proposal heads' eyebrow line, without labels, because
+  a page has no program and no status.
+- **Page facts** (`PageFacts`). The managing screen's facts as `Details`, in as many columns as fit:
+  Public address (a link), Published, Published by, Last updated, Last updated by (R-7.27). A person
+  is a link to their profile; "System" is plain text. It replaces the old wrapping row of `<dl>` items.
+  The public page shows Published and Last updated the same way.
+- **Notice** (`Notice`) and **fixed-page warning** (`FixedPageWarning`). A success or warning
+  `InlineAlert` in a wrapper carrying its test ID, with its title in the alert's own title markup
+  (`AlertTitle`). Before this pass the content stories gave each alert both `title` and content, so
+  the design system dropped the title ("Gaps in the design system", 4): "The service needs this
+  page", "Page published", "Changes published", "Page removed", "This address is already in use"
+  and "Fix 2 fields to publish …" were not rendered. They now are.
+- **Page actions** (`PageActions`). The design system's `ButtonGroup` ("Page actions"): Edit page,
+  the screen's primary action, and Delete page (`secondary`, `danger`) for an ordinary page only.
+- **Current wording** (`CurrentWording`). A `Region` ("Current wording", H2 in the H4 size) holding
+  the read-only title and address side by side where each has 280 pixels, then the read-only body at
+  full width.
+- **Page form** (`PageForm`, `FieldPair`, `TitleField`, `AddressField`, `LockedAddressField`,
+  `BodyEditor`, `PublishHint`, `PublishProblems`, `PublishRow`, `DuplicateAddress`). The create form
+  and the managing screen's edit form, written once. The fields are `medium` apart; the title and the
+  address share a line where each has 280 pixels and stack on a phone; the body editor takes the
+  column. The address keeps its rule and its resulting public address `small` beneath it; the body
+  editor is the toolbar, the body and the formatting guide `small` apart; the reason Publish is
+  unavailable (text, or the danger list of problems) sits directly before the submit row; the submit
+  row is `ButtonGroup` with Cancel and the one primary button. The address-in-use refusal takes focus
+  when it appears, with a visible focus ring from the tokens. Every field, rule, message, ID and test
+  ID is as "Forms and validation" in the older section gives it.
+- **Page rows** (`PageRows`, `NeededExplained`). The list of pages (R-7.5). On a wide screen it is a
+  table in the opportunity screens' `DataTable` style (`op-table` in a focusable region labelled by its
+  caption), written out here because its caption carries the page count as markup (see "Test IDs").
+  Below the header's switch point each page is a stacked card instead: the title as an H2 in bold body
+  text linking to the managing screen, the public address as a small link beneath it, then "Needed by
+  the service", Created and Last updated on one line of small secondary text, under the same caption
+  as a `<p>` that labels the list. The switch is read in script, as the header's is, so each row and
+  its test IDs appear once; `content-list-table` is on the table or on the cards' list, and the title
+  links inside it are in title order either way. This is rule 7 for this domain's one list.
+- **"Needed by the service"** reads "Yes" as a grey `Label` and "No" as plain text, inside
+  `content-list-fixed`. Grey is the direction's neutral, used for program labels; it marks no status.
+  It replaces the users domain's old circular badge.
+- **Page article** (`PageArticle`) and **rendered body** (`RenderedBody`). The public page's
+  `<article>` (`content-page`), labelled by its H1, its regions `large` apart (`medium` on a phone);
+  and the element the formatted-text renderer writes the body into (`content-page-body`), its items
+  `medium` apart. A body's own headings start at H2 and take the design system's H4 size, as every
+  section heading in the direction does; paragraphs are body text.
+- **Request reference** (`RequestReference`). The users domain's response-reference shape: the small
+  "Response reference" line and the H1, then Request(s) and Answer `Region`s whose pairs are
+  `Details`, each test ID on its value.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** No content screen lists opportunities.
+2. **Fixed order.** Not applicable; no opportunity is shown.
+3. **Colour only for status.** Nothing on these screens is coloured by this domain. "Needed by the
+   service" is a grey label; the managing screen's facts, the list, the cards, the toolbar and the
+   article are neutral. The design system's own alerts (success, warning, danger), its error text and
+   its danger button keep their colours.
+4. **Programs.** Not shown, except as the name on the Code With Us learn-more placeholder.
+5. **Dense.** H1 in the H3 size; region headings (Current wording, Edit the page, What it costs,
+   How Code With Us works, Request, Answer) and a body's H2s in the H4 size; facts, the address rule,
+   the resulting address, the formatting guide link, the table, the cards' facts, the eyebrow lines
+   and the public page's address line in small text; regions `large` apart, items `medium`, a label
+   and what it labels `small`. Each screen has one primary button at most: Create page on the list,
+   Publish page on the create form, Edit page on the managing screen, Publish changes while editing,
+   Back to home on the missing page, the confirm button inside a dialog. Delete page is secondary with
+   `danger`; the formatting buttons are tertiary.
+6. **Imagery.** None. An image an administrator inserts into a body is the page's content, not the
+   direction's imagery.
+7. **Phones.** Regions close to `medium`; the facts fall to one column; the title and address fields
+   stack; the toolbar's buttons wrap; the list of pages becomes stacked cards; Create page goes full
+   width; the header and footer are the shared phone versions.
+
+### Other changes in this pass
+
+- **The footer is the shell's.** `content-footer.default` shows the shell's footer, the original
+  site's eight links with no heading and no copyright line ("Site header and footer"). The older
+  section's `FooterLinks` titled "About this service", its five links and the design system's default
+  contact block and copyright are replaced by it. The five links R-7.19 names keep their order among
+  the eight and their test IDs, and `site-footer` still wraps the footer, so `present_when_signed_out`
+  reads as before. The older section's accessibility line about the "About this service" caption no
+  longer holds; the footer remains the `contentinfo` landmark.
+- **The placeholder frame is a `Panel`.** The learn-more screen's placeholder was a bordered `section`
+  styled in the story; it is now the direction's `Panel`, the same border and padding from tokens.
+- **Trimmed dialog stories say what they trim.** `content-create.publish-confirm` names
+  `content-create.ready`; `content-edit.publish-confirm` names `content-edit.editing`;
+  `content-edit.delete-confirm` names `content-edit.default`.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID filled before this pass is kept, on an element that does what the surface says. One was
+added:
+
+| Page | Observation | Test ID |
+| --- | --- | --- |
+| `content-list` | `page_count` | `content-list-count`: the number of pages the list holds, alone in a `span` inside the list's caption, which reads "Every page, in order of title (5 pages)" |
+
+On `content-list.default` it reads 5 and on `content-list.deleted` 4, the number of rows each story
+shows. On the seeded installation it is the surface's twenty-two needed pages plus the seed's ordinary
+ones (see gap 45).
+
+### Gaps found in this pass
+
+45. **The page count's words and figure.** The surface's `page_count` needs something to read, and no
+    criterion says the list states how many pages it holds or in what words. "(5 pages)" in the
+    caption is the design's own. The figure a fresh installation shows still depends on the older
+    section's gap 2 (R-7.12's twenty-two pages against the rulings that give sixteen).
+46. **The not-found viewer.** R-7.6 names a vendor and a public sector employee, and the older section
+    adds an administrator at an address no page holds. One `not-found` state can show one header; the
+    stories show a vendor's. The page beneath is the same for all of them.
+47. **A long body on a wide screen.** The rule fixes one column 1100 pixels wide, so the public page's
+    body runs to that width. A narrower reading measure for long prose would need a width no token
+    carries; the design keeps the column and records it here rather than typing a size.
+
+## Organization screens in the chosen direction
+
+Every screen of the organizations domain now follows "Site shell and the chosen direction" above: the
+organization list, registering an organization, the management page in all its tabs and states, the two
+program-terms pages, a vendor's own organizations (by identifier and as `/users/me`), and the request
+addresses. Two request addresses had no screen before this pass and are added here:
+`affiliation-removal-request` and `organization-request`. Where this section and the older "Domain:
+organizations" section disagree about how a screen looks (the page container and outer stack, the
+circular status badge, the inline-styled tables, the card section, the plain row of section links,
+heading sizes, the "Organization ID:" line), this section is the current one. What that section says
+about behaviour, states, forms, validation, dialogs, who is offered what, test IDs and gaps still holds,
+except where this section says otherwise. Every page keeps its states, every story keeps its words, and
+every test ID filled before this pass keeps its element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen by
+and the section the page belongs to. The viewer decides the header's navigation and account area, nothing
+else on the page. The viewers are the users domain's (`user-kit.tsx`): Test Vendor One
+(`vendor1@example.com`) owns Northwind Digital Co-operative, Test Vendor Two (`vendor2@example.com`)
+administers it, and the administrator and the public sector employee are `admin@example.com` and
+`gov@example.com`. The visitor is `site.tsx`'s `VISITOR`; the invited person in the acceptance requests is
+`organization-kit.tsx`'s `INVITED_VENDOR` (`vendor.four@example.com`, the address those requests send).
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| `organization-list` | `default` a vendor; `administrator` an administrator; `signed-out` and `loading` a visitor; `refused` a public sector employee | Organizations |
+| `organization-create`: `default`, `invalid`, `ready` | the vendor registering | Organizations |
+| `organization-edit`: the owner's states (`default`, `editing`, `invalid`, `logo-*`, `team`, `invite-*`, `admin-rights-confirm`, `remove-member-confirm`, `swu-*`, `twu-qualification`, `changelog`, `loading`) | the owner | Organizations |
+| `organization-edit`: `org-admin` | the organization's administrator who is not its owner | Organizations |
+| `organization-edit`: `archive-confirm`, `team-administrator`, `change-owner`, `twu-administrator`, `service-areas-editing` | a service administrator | Organizations |
+| `not-found` of create and edit | a public sector employee, whom R-3.2 and R-3.3 both name | none |
+| Terms pages | `default` and `accepted` the owner; `administrator` an administrator | Organizations |
+| Memberships pages, every state but `section-unavailable` | the vendor whose organizations they are | none (reached from the account menu's My Organizations) |
+| `organization-user-memberships.section-unavailable` | an administrator | Users |
+| `organization-user-memberships-self.section-unavailable` | a public sector employee | none |
+| Request addresses | the requester the story names | none |
+
+The management page and the terms pages live under `/organizations`, so Organizations is current on them.
+
+### The direction's organization components
+
+`design/catalogue/organization-kit.tsx` and `design/catalogue/organization-memberships.tsx`. All are this
+project's own compositions of design-system components (`Button`, `ButtonGroup`, `Form`, `Heading`,
+`InlineAlert`, `Link`, `TextField`) and of `react-aria-components`' `FileTrigger`, styled only with tokens,
+built on `marketplace.tsx`'s `Label` and `look` and on `opportunity-kit.tsx` (`OpportunityPage`,
+`PageTitle`, `SectionTitle`, `Region`, `Panel`, `Details`, `DataTable`, `Actions`, `Waiting`,
+`MissingPage`), with `proposal-kit.tsx`'s `AlertTitle` and `user-kit.tsx`'s `ProfileTabs`. None of them is a
+design-system component. `marketplace.tsx`'s `statusOf` and `opportunity-kit.tsx`'s `OpportunityHead` and
+`StatusLabel` describe an opportunity and have no use here: no organization screen shows one.
+
+- **Organization page** (`OrganizationPage`). `OpportunityPage` (the page container, the direction's style
+  sheets, the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **Management head** (`OrganizationHead`, `ManagementTop`). The opportunity heads' shape: "Edit
+  Organization" in small secondary text, the qualified labels, the legal name as the H1 in the design
+  system's H3 size; then the Organization ID as a `Details` item (`organization-identifier` on its value),
+  replacing the "Organization ID:" line; then the tabs.
+- **Organization tabs** (`OrganizationTabs`). The five tabs drawn as the opportunity manage page's tabs
+  (`op-tabs`): links in a navigation landmark ("Organization sections") in small text along a rule, the
+  current one marked by `aria-current="page"`, a bar and bold text, never colour alone. Each is
+  `organization-tab-<key>` at `?tab=<key>`. They wrap on a phone.
+- **Labels** (`Membership`, `membershipColour`, and `Label` directly). The direction's `Label` replaces the
+  old circular badge everywhere. Owner, Administrator and Member are kinds of membership, not states, and
+  are grey, the direction's neutral; Pending is a state that waits on someone and is yellow, as a pending
+  team member is on the proposal screens. "Sprint With Us qualified" and "Team With Us qualified" are
+  green, a state in good standing. Each keeps its test ID (`organization-owner-badge`,
+  `organization-pending-badge`, `organization-swu-qualified-badge`, `organization-twu-qualified-badge`).
+- **Profile fields** (`ProfileDetails`, `OrganizationTab`, `ArchiveRegion`). The read-only profile: the
+  logo or "No logo has been added.", the legal name and website, then Address and Contact, each an H3 in
+  bold body text over its fields, in as many columns as fit (each at least 280 pixels, `medium` apart down
+  and `large` across). The Organization tab adds Edit organization (primary) for the owner and a service
+  administrator, or the sentence saying only the owner can change the details; Archive is its own region.
+- **Organization form** (`CreateForm`, `EditForm`). Every field, rule, message, ID and test ID of "Forms
+  and validation" in the older section, written once. Create keeps its three parts as `Panel`s
+  (Organization details, Address, Contact); edit puts Address and Contact under the tab's H2 as H3
+  regions. The fields sit in the same columns as the read-only profile. The reason the submit button is
+  unavailable sits directly before the submit row and is its `aria-describedby`: the sentence, or the
+  danger alert listing the problems (`field-error` on each item). The logo chooser is the files domain's,
+  and the refused logo's alert takes focus when it appears.
+- **Team rows** (`TeamTab`). On a wide screen the opportunity screens' `DataTable` with the team's caption
+  and four columns (Name, Membership, Capabilities, Actions). Below the header's switch point each person
+  is a stacked card instead: the name in bold body text, the membership label and "Capabilities: N" on one
+  line of small text, the row's commands beneath. The switch is read in script, as the header's is, so
+  each row and its test IDs appear once. Team capabilities follow as an H3 region.
+- **Organization rows** (`OrganizationRows`) and **pagination** (`Pagination`). The list as a `DataTable`
+  with one column (visitor, public sector staff) or five (vendor, administrator); on a phone each
+  organization is a stacked card, its name as an H2 in bold body text (a link where the viewer may open
+  it), then Owner, Team size and both qualification marks on one line of small text where R-3.21 shows
+  them. The pages are links in small text, the current one bold with `aria-current="page"`.
+- **Membership rows** (`organization-memberships.tsx`). The owned and the affiliated organizations, each a
+  `DataTable` on a wide screen and stacked cards on a phone; `membership-owned-table` and
+  `membership-affiliated-table` are on the table or on the cards' list. The page's head is the H1 and
+  the users domain's `ProfileTabs` with Organizations current.
+- **Changelog rows** (`ChangelogRows`). A `DataTable` (Date, Change, Member, Made by); on a phone a card per
+  entry, the change and the member first, the date and who made it beneath.
+- **Requirements** (`Requirements`). The requirement list, each item starting with a `Label`: "Met" green
+  or "Not met" yellow (it waits on the organization), always in words.
+- **Page alert** (`PageAlert`) and **dialog body** (`DialogBody`). An alert with content of its own and a
+  test ID on its wrapper, its title in the alert's title markup; and the two small dialogs' body,
+  `large` inside, `medium` on a phone, its title an H2 in the H4 size.
+- **Save status** (`SaveStatus`). The `role="status"` region the three immediate changes report into,
+  present before anything is saved, taking no room while empty.
+- **Terms page** (`TermsPage`). The organization's name in small secondary text over the H1, any line about
+  acceptance, the terms text in a `Panel` (`organization-terms-body`), then what the viewer may do.
+- **Response reference** (`ResponseReference`, `AnswerList`, `ORGANIZATION_REQUESTS`). The users domain's
+  shape: the small "Response reference" line and the H1, then Request and Answer regions whose pairs are
+  `Details`, each test ID on its value, or on the list inside it where the value is a list.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** No organization screen lists opportunities.
+2. **Fixed order.** Not applicable; no opportunity is shown.
+3. **Colour only for status.** The only colours of the domain's own are Pending (yellow), the qualified
+   labels and Met (green), and Not met (yellow). Owner, Administrator and Member are grey; tabs, panels,
+   tables, cards, the pagination and the qualification marks ("Yes"/"No") are neutral. The design
+   system's own alerts, error text and danger buttons keep their colours.
+4. **Programs.** They appear only as words: the qualification tabs, the terms pages and the labels.
+5. **Dense.** H1 in the H3 size; tab and region headings (Organization, Team members, Archive this
+   organization, Organizations you own, Terms and conditions, Request, Answer) in the H4 size; H3s in bold
+   body text; facts, captions, tables, cards' facts, tabs, pagination, file rules and eyebrow lines in
+   small text; regions `large` apart, items `medium`, a label and what it labels `small`. Each screen has
+   one primary button at most: Create organization on the vendor's list and the memberships page, Create
+   organization on a ready form, Edit organization on the Organization tab, Save changes while editing,
+   Add team members on the Team tab, Save service areas, Accept terms and conditions, the confirm button
+   inside a dialog. Archive is secondary with `danger`; row commands are tertiary.
+6. **Imagery.** None. A stored logo is the organization's content, not the direction's imagery.
+7. **Phones.** Regions close to `medium`; the profile's and the form's fields fall to one column; the
+   list, the team, the memberships and the changelog become stacked cards; single page actions go full
+   width; the tabs and pagination wrap; the header and footer are the shared phone versions.
+
+### Other changes in this pass
+
+- **Dialog stories draw the whole page.** The archive, administrator-rights, remove-member, invite and
+  change-owner stories, and the memberships pages' accept, decline and leave stories, used to trim the
+  page behind the dialog to the one control that opened it. They now draw the page whole (the
+  Organization tab, the Team members tab as the owner or the administrator sees it, the memberships
+  page), so the picture is the screen a person sees. Each story's comment names the story that draws the
+  same page without the dialog.
+- **Invitation alerts sit in the whole Team tab.** `invite-refused`, `invite-invalid-type` and
+  `invite-unregistered` showed only the alert and Add team members. The alert is now the first item of the
+  full Team members tab.
+- **Titles the design system dropped are rendered.** The create and edit forms' problem lists ("Fix 2
+  fields to …"), the refused-invitations alert ("2 invitations were not sent") and the refused logo's alert
+  gave `InlineAlert` both a title and content, so the design system rendered no title (the site shell's
+  gap 4). They now carry their titles in the alert's own title markup.
+- **The section-unavailable states** use the users domain's shared sections (`VendorProfileForAdministrator`,
+  `PublicSectorOwnProfile`), so they are the same screen the users domain draws for its own refused
+  sections.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### The two new request addresses
+
+Both are response references, read by the adapter as names for parts of the request and the answer, as
+the domain's other request addresses are.
+
+**`affiliation-removal-request`** — states `default` and `sole-owner`, both asked by a service
+administrator (R-3.11's example names one).
+
+- `default`: an administrator ends an ordinary member's membership; it is accepted, and the membership
+  becomes inactive rather than erased (R-3.10). The answer shows the outcome
+  (`affiliation-removal-request-accepted`) and no refusal.
+- `sole-owner`: the same request for the only owner of an organization with two further active members.
+  It is refused (`affiliation-removal-request-refusal-status`) with the surface's message "Unable to remove
+  membership. This is the sole owner for this organization." as the one item of the ordered list
+  `affiliation-removal-request-refusal-messages`, and nothing changes (R-3.11).
+- The request itself is `affiliation-removal-request-end`. These four test IDs were already filled in the
+  surface; this pass is the first to put them in a story.
+
+**`organization-request`** — states `default`, `invalid` and `refused`. Every state lists the three
+requests the surface names, each carrying its action's test ID, then says which was sent and by whom.
+
+- `default`: a vendor who has accepted the terms registers an organization; it is accepted ("Accepted: 201
+  Created", the surface's own figure), the answer carries the new identifier, and the organization read
+  afresh is active with the legal name sent (R-3.2, R-3.22, R-3.23).
+- `invalid`: the same registration with a contact email of "not-an-email" (R-3.22's own example); refused,
+  filed under the field's name, with one message, and nothing created.
+- `refused`: an organization administrator who is not the owner sends a profile change; refused as not
+  permitted, filed under "permissions", and the organization read afresh is unchanged: still active, its
+  legal name as before (R-3.18). The story says an archive request from the same person is refused the
+  same way.
+
+### Test IDs in this pass
+
+Every test ID filled before this pass is kept, on an element that does what the surface says. The ten
+`null`s on `organization-request` are now filled, each with an identifier the stories put in the markup:
+
+| Entry | Test ID | Where |
+| --- | --- | --- |
+| `register_by_request` | `organization-request-register` | the Register request's value, every state |
+| `change_profile_by_request` | `organization-request-change-profile` | the profile-change request's value, every state |
+| `archive_by_request` | `organization-request-archive` | the Archive request's value, every state |
+| `request_accepted` | `organization-request-accepted` | the Outcome in `default` |
+| `refusal_status` | `organization-request-refusal-status` | the Outcome in `invalid` and `refused` |
+| `refusal_reason` | `organization-request-refusal-reason` | "Filed under" in `invalid` (`contactEmail`) and `refused` (`permissions`) |
+| `refusal_messages` | `organization-request-refusal-messages` | the ordered list of messages in `invalid` and `refused` |
+| `organization_identifier` | `organization-request-organization-id` | the new identifier in `default` |
+| `stored_active` | `organization-request-stored-active` | "Active, read afresh" in `default` and `refused` |
+| `stored_legal_name` | `organization-request-stored-legal-name` | "Legal name, read afresh" in `default` and `refused` |
+
+A field that is empty or absent for an answer (a refusal's fields on an accepted request, the identifier
+on a refused one) is left out of that state, which the adapter reads as empty, as the domain's other
+request addresses do.
+
+### Gaps found in this pass
+
+48. **Request methods.** The surface names the operations of `affiliation-removal-request` and
+    `organization-request` (end a membership; register, change the profile, archive) and their address,
+    not the HTTP methods. The stories write DELETE, POST, PUT and DELETE as the design's reading; the
+    build states the real ones.
+49. **Refusal status numbers.** `organization-request`'s `refusal_status` is "the status code of a refused
+    request", but no criterion gives a number for R-3.2's, R-3.18's or R-3.22's refusals, nor for R-3.11's.
+    The stories use the domain's words ("Refused: not permitted", "Refused: invalid request"), as the
+    older section's gap 18 does; only the accepted 201 is the surface's own.
+50. **Messages no criterion words.** The message for an invalid contact email and the permission message
+    on `organization-request` are placeholders. The field's name in the answer is written as the service's
+    own (`contactEmail`), which the surface describes ("a field's name") but does not spell.
+51. **States with no criterion.** The surface's `refusal_reason` names `notFound` for an organization that
+    does not exist, and says a registration may be sent "with no session at all". No criterion turns on
+    either, so neither has a state; each would have the `refused` story's shape.
+52. **Legal observations on the memberships page.** `organization-user-memberships` (by identifier) lists
+    `app_terms_link`, `accepted_on_notice`, `terms_updated_warning`, `program_terms_links` and
+    `accept_updated_terms_modal`, whose test IDs (`legal-*`) are on the profile's Legal section in the users
+    domain's stories, not on the Organizations section; `organization-user-memberships-self` does not list
+    them. They are kept as filled. Whether they belong on this page is for the contract.
+53. **Colours of membership and qualification.** No criterion says how Pending, Met, Not met or a qualified
+    organization is distinguished. Yellow for what waits on someone, green for good standing and grey for
+    kinds of membership are the design's own, following the direction's use of the same colours.
+54. **Test data that does not agree with itself.** `invite-open` invites `vendor4@example.com` while Test
+    Vendor Four is already a member in the Team tab now drawn behind the dialog, and the acceptance
+    requests send `vendor.four@example.com`. The words are the stories' own and are kept; a build's
+    fixtures should not copy the clash.
+55. **Viewers chosen where a story named none.** The changelog is drawn for the owner (who made its two
+    latest changes), the list's `loading` for a visitor, the list's `refused` for a public sector employee
+    (R-3.20's refusal; the older section's gap 1 still stands), and both `not-found` states for a public
+    sector employee. The page beneath is the same for any of the viewers each criterion names.
+56. **Lists on a phone.** No criterion says anything about a narrow screen. The cards keep the columns'
+    facts and the order of the rows, and put the name first because it is what a person is looking for.
+
+## Notification screens in the chosen direction
+
+Every screen of the notifications domain now follows "Site shell and the chosen direction" above: the
+unsubscribe landing, the new-opportunity email control on the list of opportunities, the terms broadcast
+on the terms page's managing screen, the email reference, and the four mail-catcher addresses. Where this
+section and the older "Domain: notifications" section disagree about how a screen looks (the page
+container and outer stack, the card section, the placeholder frame, the key facts list, the plain row of
+profile section links, heading sizes, the trimmed copy of the list around the control), this section is
+the current one. What that section says about behaviour, states, decisions, immediate saves, who is
+offered what, accessibility, test IDs and gaps still holds, except where this section says otherwise.
+Every page keeps its states (`design/screens.yaml` is unchanged), every story keeps this domain's words,
+and every test ID keeps its element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen by
+and the section the page belongs to. The viewer decides the header's navigation and account area, nothing
+else on the page.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| `notification-unsubscribe-landing`: `default`, `loading`, `unsubscribed` | Test Vendor One (`user-kit.tsx`'s `VENDOR_ONE`, `vendor1@example.com`, the address the stories name) | none (the person's own profile, reached from the account menu or the email) |
+| `notification-unsubscribe-landing`: `sign-in-required` | a visitor | none |
+| `notification-optin-opportunity-list`: `default`, `subscribed` | Test Vendor One, signed in | Opportunities |
+| `notification-optin-opportunity-list`: `signed-out` | a visitor | Opportunities |
+| `notification-terms-broadcast`, all four states | an administrator (`opportunity-kit.tsx`'s `ADMIN`, as on the content screens) | Content |
+| `notification-email-reference`: `default`, `loading` | an administrator | none (the address is not in the navigation) |
+| `notification-email-reference`: `not-found` | Test Vendor One (the page beneath is the same for a visitor or a public sector employee) | none |
+| `caught-message`, `caught-message-list`, `mail-delivery-fault`, `mail-delivery-delay` | a visitor (the catcher's requests carry no session) | none |
+
+### The direction's notification components
+
+`design/catalogue/notification-kit.tsx`. All are this project's own compositions of design-system
+components (`Button`, `Checkbox`, `Link`) and tokens, built on `opportunity-kit.tsx` (`OpportunityPage`,
+`PageTitle`, `SectionTitle`, `Region`, `Panel`, `Details`, `Actions`, `Waiting`, `MissingPage`), on
+`user-kit.tsx` (`ProfileTabs`, `VENDOR_TABS`, `UserPage`, `Choices`) and on `content-kit.tsx` (`ContentPage`,
+`ManageHead`, `PageFacts`, `FixedPageWarning`, `PageActions`, `CurrentWording`). None of them is a
+design-system component. `marketplace.tsx`'s `Label` and `statusOf` are used only through the opportunity
+list, which this domain draws on unchanged: no screen of this domain's own shows a status, so nothing of its
+own is coloured.
+
+- **Notification page** (`NotificationPage`). `OpportunityPage` (the page container, the direction's
+  style sheets, the regions `large` apart, `medium` on a phone) with this kit's style sheet. It replaces
+  `PageContainer` and the outer `Stack` on every story of this domain.
+- **New-opportunity email control** (`OptInControl`). The direction's `Panel`: a bordered `section`
+  (`notification-optin-control`) with the H2 "New opportunity emails" in the H4 size, then the state
+  sentence (`notification-optin-state`) and the one secondary `Button` (`notification-optin-toggle`) on
+  one line where they fit, then the `role="status"` region its immediate save reports into. The status
+  region is present before anything is saved and takes no room while empty. On a phone the button goes
+  full width beneath the sentence. It replaces the old card section and its row of heading, sentence and
+  button.
+- **The list's slot** (`OpportunityListPage`'s `notice`). The opportunity list (`opportunity-list-page.tsx`)
+  gained one optional property, `notice`, rendered first in the results column, before the first group.
+  The opportunities domain's own stories do not pass it, so they render exactly as before; this domain's
+  stories pass the control. This is how the control is drawn inside the redesigned list rather than
+  beside a trimmed copy of it.
+- **Unsubscribe settings** (`UnsubscribeSettings`). The users domain's notifications section in the
+  direction (`user-profile-sections.tsx`'s `NotificationsPage`): the H1 "Notifications", the profile
+  section links (`ProfileTabs`, Notifications current), the address sentence
+  (`notifications-email-address`), the scope sentence this domain adds (R-6.16), the checkbox, and the
+  status region. It is written here rather than reusing `NotificationsPage`, because that component has
+  neither the scope sentence nor a cleared checkbox, and both are this domain's states.
+- **Terms broadcast page** (`TermsBroadcastPage`). The content domain's managing screen for a page the
+  service needs, drawn whole as `content-edit · fixed` draws it — the head ("Manage a page" over the H1
+  "Terms and conditions"), the page facts, the fixed-page warning, Edit page (the screen's one primary
+  action) and the current wording — followed by this domain's `Region` "Notify vendors of updated terms":
+  the outcome alert first when there is one, the two sentences, and the secondary button in `Actions`. It
+  replaces the placeholder frame that stood for the content domain's part of the page.
+- **Reference contents and groups** (`ReferenceContents`, `ReferenceGroup`). The contents as a `nav`
+  `Region` whose links are in small text, `small` apart; each event a labelled `section` with its H2 in the
+  H4 size (`email-reference-group-title` on a `span` inside it); each message an `article` under a rule,
+  its H3 (the recipient) in bold body text, its subject and summary as `Details`
+  (`email-reference-subject`, and `email-reference-summary` only where a summary is written), and its body
+  in the email preview frame.
+- **Email preview frame** (`.nt-preview`). Unchanged in what it is — a `div role="group"` named "Email
+  body: <subject>" (`email-reference-body`) with a `--surface-color-border-medium` border — now with
+  `--layout-padding-medium` inside and its lines `small` apart, the message's title in bold body text and
+  its footer link in small secondary text. On a phone its text takes the small size.
+- **Catcher reference** (`CatcherReference`). The response-reference shape the users, content and
+  organizations domains use: the small line "Response reference: this address is the mail catcher's, not
+  the service's", the H1, then Request (or Requests) and Answer `Region`s whose pairs are `Details`. It
+  carries no test IDs (gap 14 of the older section still stands).
+
+### How the seven rules apply here
+
+1. **Opportunities first.** The control sits in the results column at the head of the results, after the
+   search and the filters and directly before the first group, so the opportunities and the way to find
+   them still lead. It appears once, wherever the first group is (R-6.21's note).
+2. **Fixed order.** The list's rows are the opportunities domain's, unchanged.
+3. **Colour only for status.** Nothing on these screens is coloured by this domain. The control's panel,
+   the reference's frames and the response references are neutral. The design system's own alerts (info,
+   success, warning, danger) and its dialogs keep their colours, and the list's status labels are the
+   opportunities domain's.
+4. **Programs.** They appear only as the list's filter and labels, and as words in the sample emails.
+5. **Dense.** H1 in the H3 size; region headings (New opportunity emails, Notify vendors of updated terms,
+   Events that send email, each event, Request, Answer) in the H4 size; each message's recipient in bold
+   body text; details, contents links, status messages and eyebrow lines in small text; regions `large`
+   apart, items `medium`, a label and what it labels `small`. Each screen has one primary button at most:
+   Edit page on the terms page, Unsubscribe or Notify vendors inside a dialog, Back to home on the missing
+   page. The control on the list and Notify vendors of updated terms are secondary; sign-in offers two
+   equal secondary choices.
+6. **Imagery.** None. The service's logo heads every real message (R-6.3) but is not in the preview frame
+   (older section's gap 9).
+7. **Phones.** Regions close to `medium`; the list is the opportunities domain's phone layout, with the
+   control under the filters and before the results, its button full width; the details fall to one
+   column; the sign-in panels stack; actions stack at full width; the header and footer are the shared
+   phone versions. The control is present and usable at 320 pixels and 400% zoom (R-6.27).
+
+### Other changes in this pass
+
+- **The list around the control is the real list.** The opt-in stories used to draw a trimmed copy of an
+  older list (the H1 "Opportunities", filters labelled "Program" and "Status", one card). They now draw
+  `OpportunityListPage` whole, as the opportunities domain's `default` and `signed-out` stories do, so the
+  list's words are that domain's ("Welcome to the Digital Marketplace", "Filter Opportunities", "Open
+  Opportunities"); the control's words are unchanged. The `signed-out` story is that list for a visitor,
+  with nothing in the control's place.
+- **Dialog stories draw the whole page.** The unsubscribe question and the notify-vendors question are
+  drawn over the full settings page and the full managing screen; each story's comment names the story
+  that draws the same page without the dialog.
+- **Status messages are small text.** The unsubscribe and opt-in announcements are in small secondary text
+  inside their `role="status"` regions, as the users and organizations domains' immediate saves report.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID on this domain's pages in `spec/contract/surface.yaml` was already filled before this pass,
+and none is changed. Each is still put in the markup by these stories, on an element that does what the
+surface says: `notification-optin-control` is the control's `Panel`, `notification-optin-state` its
+sentence, `notification-optin-toggle` its button; `notify-vendors-*` and `unsubscribe-*` are the dialogs'
+and the buttons' as before; `email-reference-page` is the page's region wrapper, now `OpportunityPage`'s.
+The four mail-catcher entries stay `null` (older section's gap 14). No test ID was added.
+
+### Gaps found in this pass
+
+57. **The opportunity list's own stories do not show the control.** R-6.21 offers the control to every
+    signed-in person on the list, but the opportunities domain's `default` (a vendor) and `staff` stories,
+    which are the reference and are kept as they are, do not pass it. The build takes the control from this
+    domain's stories: for a signed-in vendor or public sector employee it sits before the Open group, and
+    for staff with unpublished opportunities before the Unpublished group. What the control shows while
+    the list's opportunities are loading is not stated; the slot renders it before the loading status, since
+    the person's choice is known from their account, not from the list.
+58. **"At the top of the first group."** R-6.21's note places the control at the top of the first group. It
+    is drawn at the head of the results, immediately before the first group, as its own labelled panel
+    rather than inside the group's section, so the group (`opportunity-group-open`,
+    `opportunity-group-unpublished`) holds only its heading, its count and its opportunities. A reader
+    meets it in the same place either way.
+59. **The terms page's title and facts.** R-7.12 says a page the service needs is created titled with its
+    own address; the stories show "Terms and conditions" (the surface's title) as an administrator has
+    since titled it. Its published and changed dates and the administrator who changed it are test data.
+60. **Viewers chosen where a criterion names none.** The landing's `loading` state shows the header signed
+    in although the account's record has not yet arrived (as the users domain's `loading` does); the
+    reference page's refusal is drawn for a vendor. The four mail-catcher addresses are not screens of the
+    service at all and have no shell; they are drawn in a visitor's shell only so every story in the
+    catalogue is put together the same way.
+61. **Two drawings of the same settings page.** The users domain's `user-profile-self-notifications`
+    stories have no scope sentence and their dialog does not name the signed-in person; this domain's
+    landing has both (R-6.16, R-6.7). The older section's note that the two should match still stands; the
+    users domain's stories are not this stage's to change.
+
+## File screens in the chosen direction
+
+Every story of the files domain now follows "Site shell and the chosen direction" above: the attachment
+control on the Code With Us manage page and on the opportunity's own page, the profile picture picker, Insert
+image in the body editor and the published image, and the four service addresses' response references. Where
+this section and the older "Domain: files" section disagree about how a story looks (the page container and
+outer stack, the inline-styled card section and rows, the plain row of tab links, heading sizes, the
+`Stack as="dl"` response references), this section is the current one. What that section says about
+behaviour, states, forms, validation, the four service addresses, who sees what, accessibility, test IDs and
+gaps still holds, except where this section says otherwise. Every page keeps its states
+(`design/screens.yaml` is unchanged), every story keeps its words, and every test ID keeps its element.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen by and
+the section the page belongs to. The viewer decides the header's navigation and account area, nothing else.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| `file-attachment-control`: `default`, `empty`, `new-attachment`, `invalid`, `too-large` | an administrator (`opportunity-kit.tsx`'s `ADMIN`), as on the opportunities domain's manage stories | Dashboard |
+| `file-attachment-control`: `public-view` | a vendor (`opportunity-kit.tsx`'s `VENDOR`), to whom the opportunity is Open | Opportunities |
+| `file-image-picker`, all four states | Test Vendor One (`user-kit.tsx`'s `VENDOR_ONE`), on their own profile | none (reached from the account menu) |
+| `file-embedded-image`: `default`, `uploading`, `inserted`, `failed` | an administrator | Content |
+| `file-embedded-image`: `published` | a visitor | none |
+| `file-upload`: every state but `signed-out` | a signed-in vendor | none |
+| `file-upload`: `signed-out`; `file-download`: `default` | a visitor | none |
+| `file-description`: `default` and `refused`; `file-download`: `refused`; `file-attach-by-identifier`, both states | a vendor | none |
+| `file-description` and `file-download`: `not-found` | an administrator (R-8.12) | none |
+
+### The direction's file components
+
+`design/catalogue/file-kit.tsx`. All are this project's own compositions of design-system components
+(`Button`, `InlineAlert`, `Link`, `ProgressCircle`, `Text`, `TextArea`, `TextField`) and of
+`react-aria-components`' `FileTrigger` and `Toolbar`, styled only with tokens, built on `opportunity-kit.tsx`
+(`OpportunityHead`, `ManageTabs`, `PageTitle`, `SectionTitle`, `Region`, `Details`, `Actions`), on
+`content-kit.tsx` (`ContentPage`, `ManageHead`, `PageArticle`, `RenderedBody`), on `user-kit.tsx`
+(`ProfileTabs`, `VENDOR_TABS`) and on `proposal-kit.tsx`'s `AlertTitle`, with `marketplace.tsx`'s `Label`
+reached through `OpportunityHead` and its `look` for the published body's H2. None of them is a design-system
+component. `marketplace.tsx`'s `statusOf` has no use here, and `opportunity-kit.tsx`'s `StatusLabel` is used
+only through `OpportunityHead`: no control of this domain shows a status of its own.
+
+- **File page** (`FilePage`). `ContentPage` (the opportunity page frame: the page container, the direction's
+  style sheets, the regions `large` apart, `medium` on a phone; and the content kit's styles, which the
+  published article needs) with this kit's style sheet. It replaces `PageContainer` and the outer `Stack` on
+  every story of this domain.
+- **Trimmed line** (`Trimmed`). The line in small secondary text that says whose design a trimmed part of the
+  host page is. It is a catalogue note; a build does not render it.
+- **Manage frame** (`ManageFrame`). The Code With Us manage page around the attachment control, drawn as the
+  opportunities domain draws it: the head ("Manage a Code With Us opportunity", the grey program label, the
+  status label "Published", the title as the H1 in the H3 size), the manage tabs with Opportunity current,
+  and the Opportunity region (H2 in the H4 size), whose earlier parts are trimmed. It replaces the old plain
+  row of tab links and the full-size H1.
+- **Attachment control** (`AttachmentControl`). The form's last part as the direction's panel (`op-panel`:
+  a token border, `--layout-padding-medium` inside, items `medium` apart) headed "Attachments" (H3 in bold
+  body text), as on `opportunity-cwu-edit · editing`. Inside, in order: who can read an attachment, the rows
+  or "No attachments have been added.", the stated rule in small secondary text, and Add attachment in
+  `Actions`, so it goes full width on a phone. It replaces the old card section, whose inner padding was
+  `large`.
+- **Attachment rows** (`StoredRow`, `NewRow`). A list with no markers whose rows are `small` apart, each a
+  bordered row (`--surface-color-border-default`, `--layout-padding-small` by `--layout-padding-medium`,
+  `--layout-border-radius-medium`) with its parts `small` apart. A stored row holds the read-only name, then
+  the download link and Remove on one line that wraps. A new row holds the line naming the chosen file in
+  small text, then the name field and the resulting name, or the size refusal, then Remove. These are the
+  older section's attachment list, drawn at the direction's density and with the same border as the other
+  domains' bordered rows.
+- **Public attachments** (`PublicAttachments`). The H3 "Attachments" and the download links under it, `small`
+  apart, at the end of the opportunity view's Description region.
+- **Profile frame** (`ProfileFrame`). The H1 "User Profile" and the profile's section links (`ProfileTabs`,
+  Profile current); the story puts the users domain's "Edit your details" region under it, holding the form
+  whose other fields are trimmed. It replaces the old frame of an H1 and a bare form.
+- **Picture group** (`PictureGroup`, `StoredPicture`). A `role="group"` labelled "Profile picture
+  (optional)": the label in the design system's label type, the stored picture or the sentence standing in for
+  it, any status line or refusal, the stated rule, then the trigger, `small` apart and kept at their own
+  width. The picture is a plain `<img>` at its stored size and never wider than its column (older section's
+  gap 11).
+- **Edit frame** (`EditFrame`) and **image editor** (`ImageEditor`, `Uploading`). The managing screen's head
+  ("Manage a page" over the H1) and its "Edit the page" region; inside, the content domain's body editor
+  with this domain's rule under the toolbar and a slot between the rule and the body for the upload's
+  status line or refusal, `small` apart. Insert image is unavailable while an upload runs. The content
+  domain's own `BodyEditor` has neither the rule nor the slot, so the editor is written here with the same
+  toolbar, field and guide link.
+- **Refusal** (`Refusal`). A danger `InlineAlert` with `role="alert"` in a wrapper carrying its test ID, its
+  title in the alert's own title markup (`AlertTitle`). Where the older section says the refusal takes focus
+  (the rejected picture), the wrapper takes it when it appears, with a visible focus ring from the tokens.
+- **Response reference** (`Reference`). The users, content and organizations domains' shape: the small
+  "Response reference: this address answers with data (or the file), not a page" line and the H1, then
+  Request and Answer `Region`s whose pairs are `Details`. A test ID on a whole request or answer
+  (`file-upload-request`, `file-upload-stored`, `file-refused`, `file-attach-accepted` and the rest) is on a
+  wrapper around its `Details`; one on a single part (`file-upload-stored-id`, `file-description-name`,
+  `file-download-filename`, `file-attach-identifiers` and the rest) is on that value, and
+  `file-upload-size-limit` stays on the figure inside the message.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** No screen of this domain lists opportunities. The public view keeps the
+   opportunity's head before anything else.
+2. **Fixed order.** The heads show the program and status labels and the title in the fixed order; the
+   remaining facts are the opportunities domain's and are trimmed, as before.
+3. **Colour only for status.** Nothing on these screens is coloured by this domain. The only colour is the
+   opportunity's status label in the two opportunity frames, which is the opportunities domain's. Rows,
+   panels, the picture group, the toolbar and the references are neutral; the design system's danger alert
+   keeps its colour.
+4. **Programs.** Only as the grey Code With Us label in the opportunity frames.
+5. **Dense.** H1 in the H3 size; region headings (Opportunity, Description, Edit your details, Edit the page,
+   Request, Answer) and a body's H2 in the H4 size; Attachments in bold body text; the stated rules, the
+   chosen-file line, the resulting name, the status lines, the trimmed lines, the guide link and every detail
+   in small text; regions `large` apart, items `medium`, a label and what it labels `small`, attachment rows
+   `small`. Each screen has one primary button at most: Save changes on the profile form. The attachment
+   control's frame and the editor's frame trim their host form's submit row, so they show none; Add
+   attachment, the picture trigger and Remove are secondary, Insert image tertiary.
+6. **Imagery.** None. A profile picture and an inserted image are the person's content, not the direction's
+   imagery.
+7. **Phones.** Regions close to `medium`; the manage tabs and the profile links wrap; a stored row's link and
+   Remove wrap onto two lines; Add attachment goes full width; the toolbar's buttons wrap; the details fall to
+   one column; the picture never exceeds the column; the header and footer are the shared phone versions.
+
+### Other changes in this pass
+
+- **Titles the design system dropped are rendered.** The too-large attachment, the rejected picture and the
+  refused inserted image gave `InlineAlert` both a title and content, so the design system rendered no title
+  (the site shell's gap 4): "site-survey.pdf is too large to attach", "portrait.gif cannot be used as a
+  profile picture" and "harbour-survey.png could not be inserted" were not shown. They now are.
+- **Focus moves where the older section says it does.** The rejected picture's wrapper was focusable but
+  nothing focused it, and the refused name field was not focused; both stories now move focus when they
+  render, as "Forms and validation" in the older section describes.
+- **Frames stay trimmed.** The host forms around the three controls are still trimmed, each with the line
+  saying whose design the trimmed part is, now in the direction's frame. Drawing each host form whole would
+  copy the opportunities and users domains' forms into this domain's stories, and a change there would leave
+  two drawings of one form. The stories named in those lines draw them whole.
+- **Status lines are small text.** "harbour.png is ready…", "…was inserted at the cursor" and "Uploading…"
+  are in small secondary text inside their `role="status"` regions, as the other domains' status lines are.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID on this domain's seven pages in `spec/contract/surface.yaml` was already filled before this
+pass, and none is changed. Each is still put in the markup by these stories, on an element that does what
+the surface says. The stories still carry the extra IDs the older section lists (`file-upload-stored`,
+`file-upload-refused-no-file`, `file-description-answer`, `embedded-image-error`). No test ID was added. The
+opportunity frames now carry the opportunities domain's tab IDs (`opportunity-tab-*`), on the same tabs those
+IDs name there.
+
+### Gaps found in this pass
+
+62. **The host stories still draw the older controls.** `opportunity-cwu-edit · editing` (the opportunities
+    domain's, kept as the reference) still says "The accepted file types and size limit are shown when you
+    choose a file" and has no stated rule or list, and `user-profile-self · editing` still offers
+    `acceptedFileTypes={["image/*"]}` with no stated rule. The older section's gap 8 stands: a build takes
+    the attachment control and the picker from this domain's stories, and those two stories should adopt
+    them. They are not this stage's to change.
+63. **Two test addresses for a vendor.** The opportunity frames use `opportunity-kit.tsx`'s vendor
+    (`vendor.one@example.test`) and the profile frames `user-kit.tsx`'s (`vendor1@example.com`), each to
+    match the domain whose page the control sits on. They are test data and the header is the only place
+    they show; a build's fixtures should use one.
+64. **Statuses in the frames.** The manage frame shows "Published" and the public view "Open" for the same
+    opportunity: the stage an administrator sees and the word a vendor sees (the opportunity list's status
+    wording). No criterion of this domain turns on the status; the words are the opportunities domain's.
+65. **Viewers chosen where a criterion names none.** R-8.1 says only "a signed-in person" uploads; the
+    upload references are drawn for a vendor. The description's `default` ("a person who may read the
+    file") is drawn for a vendor. The four service addresses answer with data, so the header in their
+    references shows only who is asking.
+66. **Remove on a phone.** Rule 7 says actions stack at full width on a phone. Remove is a small secondary
+    button inside a row, not a page action, so it keeps its own width and wraps beneath the download link;
+    whether row commands should go full width is not stated.
+
+### Spacing correction: no paragraph inside a wrapper
+
+The stacks this domain uses (`.op-panel`, `.fl-row`, `.fl-group`, `.fl-editor`) set the margin of their
+direct children to `--layout-margin-none` and nothing deeper. Four stated lines sat in a `<div>` that carried
+their id and test ID, so the `<p>` inside kept the browser's paragraph margin on top of the stack's gap: the
+attachment control's rule (`attachment-size-limit`), the picture group's rule and the editor's rule (both
+`image-file-rule`, ids `image-file-rule` and `embedded-image-rule`), and a new row's resulting name
+(`attachment-resulting-name`). Each is now the `<p className="op-note">` itself, carrying the id, the test ID
+and the `aria-describedby` target directly, so the gaps around it are exactly the container's token: `medium`
+in the panel, `small` in a row, the group and the editor. The two status lines ("harbour.png is ready…" in
+`file-image-picker · chosen`, "…was inserted at the cursor" in `file-embedded-image · inserted`) had the same
+wrapper and are now a `<p role="status">`. The rule for a build: an element that carries an id, a test ID or a
+role for a single paragraph is that paragraph, not a `<div>` around it. No test ID moved to a different
+meaning; each is on the element that shows the text the surface names.
+
+## Evaluation screens in the chosen direction
+
+Every story of the evaluation domain now follows "Site shell and the chosen direction" above: the
+dashboard's Evaluations section, the panel, instructions, evaluation and consensus tabs of the manage
+page, the four scoring forms of each program, and the request addresses' response references. Where
+this section and the older "Domain: evaluation" section disagree about how a screen looks (the page
+container and outer stack, the inline-styled status badge, the inline-styled tables, the plain row of tab
+links, the inline-styled fieldsets and response block, the `Stack as="dl"` references, heading sizes),
+this section is the current one. What that section says about behaviour, who is offered what, dialogs,
+validation, accessibility, test IDs and gaps still holds, except where this section says otherwise.
+
+Every page keeps its states, every story keeps its words, and every test ID that was filled keeps its
+element. Two things were added because the contract now asks for them, not because the direction did:
+the panel tab opens read-only with an Edit button (a new `editing` state), and the evaluator's
+submission naming its proponents has a response reference of its own
+(`evaluation-individual-submission-request-swu`). Both are described below.
+
+### How the stories are built
+
+The Sprint With Us and Team With Us versions of each page were two copies of one design that differed
+only in their words. They are now drawn once. `design/catalogue/evaluation-pages.tsx` holds one
+component per page (`Dashboard`, `PanelTab`, `InstructionsTab`, `IndividualListTab`,
+`ConsensusListTab`, `IndividualCreate`, `IndividualEdit`, `ConsensusCreate`, `ConsensusEdit`, and the
+references `IndividualRequest`, `SubmissionRequest`, `ConsensusRequest`, `PanelRequest`), each taking
+the state it draws. `design/catalogue/evaluation-kit.tsx` holds the program data: `SWU` and `TWU` carry
+the program's name, the question words ("team questions" / "resource questions"), the address segment,
+how many proponents are carried forward ("four" / "three"), the next stage ("code challenge" / "challenge"),
+the manage page's stage tabs, and the stories' record text (questions, responses, each evaluator's
+scores and comments, the agreed ones). The record text is the earlier stories', moved, not rewritten.
+Each story file is a few lines: its comment, its meta, and one render of a page with a program and a
+state. A build reads the page components as it would read the earlier stories.
+
+### Shell and viewer
+
+Every story renders inside `SitePage` (`design/catalogue/site.tsx`) with the person the state is seen by
+and the section the page belongs to. The viewer decides the header's navigation and account area,
+nothing else on the page. The addresses are test data.
+
+| Pages | Seen by | Current section |
+| --- | --- | --- |
+| Dashboard, every state | an evaluator (`EVALUATOR`, a public sector employee on three panels) | Dashboard |
+| Panel tab: `default`, `editing`, `invalid`, `too-few`, `refused`, `locked`, `loading` | the opportunity's owner (`opportunity-kit.tsx`'s `STAFF`) | Dashboard |
+| Instructions and Evaluation tabs; the individual forms | an evaluator (`EVALUATOR`) | Dashboard |
+| Consensus tab: `default`, `ready`, `submit-confirm`, `submitted`, `loading`; the consensus forms | the chair, who also evaluates (`EVALUATOR`) | Dashboard |
+| Consensus tab: `finalize-confirm`, `not-all-submitted`, `no-screenable` | an administrator (`ADMIN`) | Dashboard |
+| Consensus tab: `withheld` | the owner, not on the panel (`STAFF`) | Dashboard |
+| `evaluation-consensus-create-*`: `chair-only` | an evaluator who is not the chair (`EVALUATOR_TWO`) | Dashboard |
+| `not-found` of the panel tab | a panel member (`EVALUATOR`), as R-5.18 says | none |
+| `not-found` of the instructions, evaluation and individual create pages; of the consensus forms | the owner, who is not an evaluator (`STAFF`) | none |
+| `not-found` of the consensus tab | an evaluator who is not the chair (`EVALUATOR_TWO`) | none |
+| `not-found` of the individual edit pages | a public sector employee with no connection to the opportunity (`UNRELATED_STAFF`), as R-5.11 says | none |
+| Request addresses | the requester the story names: an evaluator, the chair, an evaluator who is not the chair, or the owner | none |
+
+### The direction's evaluation components
+
+`design/catalogue/evaluation-kit.tsx`. These are this project's own components, not the design
+system's. Each is a composition of design-system components (`Heading`, `Link`, `ButtonGroup`,
+`InlineAlert`, `Text`) and tokens, built on `marketplace.tsx`'s `Label` and on `opportunity-kit.tsx`
+(`OpportunityPage`, `OpportunityHead`, `Details`, `ActionBar`, `Region`, `Panel`, `PageTitle`,
+`SectionTitle`, `Actions`, `DataTable`, `StatusLabel`, `Waiting`, `MissingPage`). `marketplace.tsx`'s
+`statusOf` has no use here: no evaluation screen shows an opportunity's status as the public sees it,
+only its stage, so the head's status goes through `StatusLabel` as on the opportunities domain's manage
+pages. They replace every inline-styled piece the older section lists (the status badge, the data table,
+the repeated-item group, the key facts list and the response block).
+
+- **Evaluation page** (`EvaluationPage`, `EvaluationMissing`, `EvaluationLoading`). The shell with its
+  viewer and section, `OpportunityPage` (the page container, the direction's style sheets, the regions
+  `large` apart, `medium` on a phone), and this kit's style sheet. They replace `PageContainer` and the
+  outer `Stack` on every story of this domain. The missing page is the users domain's, in the
+  direction's type. A loading page shows its H1 at once and `Waiting` under it.
+- **Manage frame** (`ManageFrame`). The opportunities domain's manage page around one of this domain's
+  tabs: the head ("Manage a … opportunity", the grey program label, the coloured status label, the title
+  as the H1 in the H3 size), the Opportunity ID as a detail, the action bar (`opportunity-actions`,
+  always present, empty when nothing is offered), the tabs, any page alert, then the tab's region (H2
+  in the H4 size). The tabs are written out in `ManageTabs`' markup because several tabs' query values
+  are not their test IDs' suffixes; which tabs each viewer gets is `TABS` (evaluator, chair, the owner
+  of a published opportunity) or the program's `stageTabs` (the owner and an administrator from closing).
+- **Evaluation status** (`EvaluationStatus`, `evaluationColour`). The `Label` coloured by an evaluation's
+  or a consensus's state in words: grey for Not started, blue for a draft (as a draft proposal is
+  marked), green for Submitted. Whether a draft is complete is in its words ("Draft: complete",
+  "Draft: incomplete"), never in its colour alone. It carries `evaluation-status` or
+  `evaluation-consensus-status`.
+- **Scoring head** (`ScoringHead`). The head of a scoring form, in the order of `ProposalHead`: what the
+  page is ("Evaluate a Sprint With Us proponent", "Team With Us consensus"), the program label and the
+  evaluation's status label, the proponent's anonymous name as the H1 (`proposal-proponent-name`), then
+  the opportunity's title and "Proponent 2 of 3" as small facts on their own line. The status moved out
+  of a "Status:" line into the head and keeps its test ID, as the proposals domain moved its own.
+- **Rows** (`Rows`). The direction's rows for this domain's lists: the evaluator's proponents, the
+  consensus list, the panel's members, and each question's evaluators' scores. A caption in small text
+  names the list, which is a `ul` labelled by it. Where the list is at least 560 pixels wide each row is
+  one bordered line whose cells sit in aligned columns under a header line; narrower, each row is a
+  stacked card whose cells are labelled by their column's name. The switch follows the width of the
+  list (a container query), as the opportunity rows' does. The header line is hidden from assistive
+  technology, because every cell carries its column's name in text that is visually hidden in the column
+  layout, so a screen reader hears "Your evaluation Draft: complete" whichever way it is drawn. The row's
+  first cell (a proponent, a person) needs no name; an action link names itself. This replaces the
+  inline-styled tables, which scrolled sideways on a phone (rule 7; see the proposals section's gap 40,
+  which this resolves for this domain).
+- **Question box** (`QuestionBox`, `QuestionText`, `QuestionWorth`). One question of a scoring form: the
+  opportunity kit's fieldset look (`op-fieldset`, a token border, `--layout-padding-medium` inside, a
+  legend in bold body text), with the id `question-<n>` the error summaries link to; its contents
+  `medium` apart. A read-only question (a submitted evaluation, the chair-only view) is the opportunity
+  kit's `Panel` with an H2 "Question 1" in the H4 size, because nothing in it is a field.
+- **Response** (`Response`). The proponent's words, set apart by a `--layout-border-width-medium` rule
+  at their start in `--surface-color-border-medium` and `--layout-padding-small` inside, with a small
+  "Proponent 2's response" line above. The older section says why the design system's `Callout` does
+  not fit.
+- **Panel scores** (`PanelScores`). Each question's "Evaluators' scores for question 1" as `Rows`
+  (Evaluator, Score, Comment; the comment column twice the width of the others), with
+  `evaluation-panel-member-score` and `evaluation-panel-member-notes` on each value.
+- **Panel member row** (the `ev-member` fieldset in `PanelTab`). While the panel is edited, one bordered
+  fieldset per member, legend "Evaluator 1" in bold small text; inside, on one line that wraps, the
+  person's name in bold small text with their email address after it in secondary text, the Chair
+  checkbox and Remove; the row's own problem on a line beneath, in the design system's danger text.
+- **Select-and-add cluster** (`ev-cluster`). The person to add and Add an evaluator on one line where they
+  fit, the choice taking the room (at least 240 pixels before it wraps); on a phone the button goes full
+  width beneath. It is the proposals domain's cluster for team members, drawn in this kit's style sheet.
+- **Alerts** (`ErrorSummary`, `Refusal`, `Notice`, `Focused`, `GroupError`). An error summary is a
+  danger `InlineAlert` that takes focus, its title in the alert's own title markup (the site shell's
+  gap 4: the earlier stories gave the alert a `title` and content, so the title was never shown; it now
+  is), then the sentence on what happened, then one `field-error` link per problem. A refusal is a danger
+  alert with `role="alert"` that takes focus; a notice an `info` alert. Their wrappers carry the test IDs,
+  because `InlineAlert` passes no `data-*`.
+- **Response reference** (`Reference`, `Ordered`). The other domains' shape in the direction: the small
+  "Response reference: this address answers with data, not a page" line and the H1, then the Request (or
+  Requests) and Answer regions whose pairs are `Details`. A test ID on a whole part is on its value; an
+  ordered answer is an `op-list` `<ol>` carrying the test ID, one item per question or member.
+
+The tokens this kit writes are `--layout-margin-{none,xsmall,small,medium,hair}`,
+`--layout-padding-{none,small,medium,large}`, `--layout-border-width-{small,medium}`,
+`--layout-border-radius-medium`, `--surface-color-border-{default,medium,active}`,
+`--typography-{regular,bold}-small-body`, `--typography-regular-body` and
+`--typography-color-{primary,secondary}`. No colour, size or radius value is written. The two pixel
+values in the style sheet are layout thresholds no token carries: the 560-pixel container width at which
+rows become columns, and the 240-pixel minimum of the add choice before it wraps (the proposals domain's
+figure). The visually hidden text uses the same one-pixel clip as `marketplace.tsx`'s `Hidden`.
+
+### How the seven rules apply here
+
+1. **Opportunities first.** On the dashboard the two lists of opportunities follow the H1, the one action
+   and the section links, as on the opportunities domain's dashboard. Every tab puts the opportunity's
+   head before anything else; every scoring form names the opportunity under the proponent's name.
+2. **Fixed order.** The manage heads show program and status, then the title; the remaining facts are
+   the opportunities domain's Summary tab's, not repeated here. The dashboard rows show title, program
+   and status as the opportunity dashboard does.
+3. **Colour only for status.** Program labels are grey. The only coloured things are the opportunity's
+   stage label, an evaluation's or consensus's status label, and the design system's own alert and
+   danger colours. Rows, question boxes, the response rule, panel rows and the references are neutral.
+4. **Programs** appear as their labels.
+5. **Dense.** H1 in the H3 size; region headings and read-only questions in the H4 size; the
+   instructions' headings and legends in bold body text, the panel rows' legends in bold small text;
+   captions, facts, details, row cells, the worth line, the response label and catalogue notes in small
+   text. Regions `large` apart, items `medium`, a label and what it labels `small`. Each screen has one
+   primary button at most: Save evaluation panel while editing, Submit scores for consensus, Submit final
+   consensus scores, Finalize consensus scores in the action bar for the owner and an administrator,
+   Save and go to next proponent on a scoring form, and a dialog's confirm. The panel's Edit evaluation
+   panel is secondary: it sits beside the opportunity's own Edit and Cancel opportunity, and opening a
+   form is not the page's main action.
+6. **Imagery.** None.
+7. **Phones.** Regions close to `medium`; every list's rows become stacked cards; the manage tabs wrap;
+   details fall to one column; the panel row's name, Chair and Remove wrap; the add cluster's button and
+   the page actions go full width; the dashboard's tables scroll inside their region, as the
+   opportunity dashboard's do on the same page; the header and footer are the shared phone versions.
+
+### The panel tab opens read-only
+
+The surface now says the tab opens read-only and that Edit makes the panel changeable, offered only at
+the stages the panel may change (the note on `evaluation-panel-swu`'s `start_editing`). So:
+
+- **`default`** is now the panel as it stands: the two introductory sentences, the members as rows with
+  their roles ("Evaluator and chair", "Evaluator"), and Edit evaluation panel (`evaluation-panel-edit`).
+- **`editing`** (new) is what `default` used to show: the form.
+- **`locked`** is the same rows with the notice and no Edit.
+- `invalid`, `too-few` and `refused` are the form as before, now drawn whole under the frame instead of
+  trimmed.
+
+The form changed in one way, again because the surface says so: `add_panel_member` "takes the person to
+seat, chosen from the list of public sector accounts the tab offers, each shown as their name followed
+by their email address in brackets", and "a newly seated member is an evaluator and not the chair". The
+earlier design added an empty row with a person `Select` in it. Now a person is chosen in "Public sector
+employee to add" (`evaluation-panel-member-choice`, every option "Name (email)") and added with Add an
+evaluator (`evaluation-panel-add-member`, the same element kind as before: the button that adds). Each
+row shows the person it holds, by name and email address, rather than a `Select`, so the per-row
+`evaluation-panel-member-field` extra ID is gone. The checks on save are unchanged: a person named twice
+is shown on the second row in the words the `invalid` story always had ("Test Evaluator One is already
+on the panel. Choose a different person."), a refused member on their row, too few members after the
+rows, no chair on the Chair field. The Chair field keeps its options in the same "Name (email)" form.
+Editing adds Cancel (`evaluation-panel-cancel`), so a person who opened the form can return to the
+read-only panel without saving.
+
+### The submission naming its proponents
+
+`evaluation-individual-submission-request-swu` (states `default` and `refused`) is the request the
+evaluator's "Submit scores for consensus" sends, written out so a test can name fewer than every
+proponent (R-5.25, R-5.27; the surface's note). Its reference shows the PUT to the opportunity, tagged
+`submitIndividualQuestionEvaluations`, with `{ note, proposals }` as `spec/contract/openapi.yaml` gives
+it. `default`: two of three proponents named and accepted, no refusal messages, and the opportunity's
+status, read afresh, moved to consensus once every evaluator's scores for the two named are in.
+`refused`: a named proponent's draft is incomplete, R-5.25's message is the only refusal, nothing is
+submitted, and the status stays at individual evaluation. Both states show the status in words and as
+the service's code (`EVAL_QUESTIONS_INDIVIDUAL`, `EVAL_QUESTIONS_CONSENSUS`), which the surface names.
+
+### Other changes in this pass
+
+- **Frames are drawn, not trimmed.** Stories that said "the status and tabs are as in the default story
+  and are trimmed here" now draw the manage frame, because it is one shared component and the picture is
+  more use to a reviewer with it. The same goes for the scoring forms' invalid states, which now show the
+  opportunity line, back link, responses and evaluators' scores. The duplicate refusals and the empty
+  dashboard keep their catalogue notes. `submit-confirm` now shows the `ready` page behind its dialog.
+- **Who sees the action bar.** The panel tab on a published opportunity now shows the opportunities
+  domain's action bar as its Addenda tab does (Edit, Cancel opportunity). The administrator's consensus
+  states show Edit, Finalize consensus scores and Cancel opportunity, as the opportunities domain's
+  `consensus` story does; the owner's `withheld` and `locked` show Finalize consensus scores alone, as
+  before. An evaluator's and the chair's tabs show the bar empty.
+- **The consensus tab for an administrator** now draws the stage tabs (Proposals, Team questions … ),
+  which the earlier `finalize-confirm` trimmed.
+- **The dashboard's section links** are the manage tabs' markup with no current item, in-page links to
+  the two regions' headings.
+- **Every story offers the three widths** (Desktop 1440, Phone 390, Narrow phone 320) in Storybook's
+  viewport menu, as the site shell section asks.
+
+### Test IDs in this pass
+
+Every test ID filled before this pass is kept, on an element that does what the surface says. Filled in
+this pass, each put in the markup by the stories above:
+
+| Page | Entry | Test ID |
+| --- | --- | --- |
+| panel-swu, panel-twu | `start_editing` | `evaluation-panel-edit` (Edit evaluation panel, `default`) |
+| individual-submission-request-swu | `submit_scores_for_consensus_naming` | `evaluation-submission-request-submit` |
+| individual-submission-request-swu | `request_accepted` | `evaluation-submission-request-accepted` ("Yes: …" or "No") |
+| individual-submission-request-swu | `refusal_messages` | `evaluation-submission-request-refusal-messages` (an `ol`, empty when accepted) |
+| individual-submission-request-swu | `stored_status` | `evaluation-submission-request-status` |
+
+Extra IDs the stories carry for the adapter, not named in the surface: `evaluation-panel-member-choice`
+(the person to add) and `evaluation-panel-cancel` (Cancel while editing) are new;
+`evaluation-panel-member-field` is gone with the per-row `Select`. `evaluation-individual-table` and
+`evaluation-consensus-table` are now on the rows' `ul`, and `evaluation-proponent-row` and
+`evaluation-panel-member-row` on each row's `li` (the editing form's fieldsets keep the latter).
+`evaluation-status` and `evaluation-consensus-status` are on the status label, in a row or in a scoring
+form's head.
+
+### Gaps found in this pass
+
+67. **What the panel tab shows after a save.** The surface's note says saving "publishes a new version of
+    the opportunity (the screen confirms 'Opportunity Changes Published')". No criterion gives that
+    confirmation or says whether the tab returns to read-only after it, so there is no `saved` state; the
+    words would be the opportunities domain's.
+68. **Duplicates through the add choice.** With a person chosen from a list and added, the form could
+    simply not offer anyone already seated, as the proposals domain's team-member choice does, and then
+    a duplicate could not be composed on the screen. The surface keeps `duplicate_member_error`, so the
+    choice still offers everyone and the duplicate is refused on save, as before. Whether the choice
+    should leave out people already seated is for the spec.
+69. **"Not offered" against "disabled".** R-5.25 v3 says that until every evaluation is complete
+    "submission is not offered". The surface's `submit_disabled_until_complete` observes the submit
+    button's disabled state, so the button is shown disabled and described, as before. If "not offered"
+    means absent, the surface's observation and the criterion disagree.
+70. **The submission reference's outcome.** Whether the seeded starting point
+    (`swuSubmissionNamesTwoOfThree`) moves to consensus after the named submission depends on what the
+    other evaluators have already submitted, which the seed, not the criteria, decides. The `default`
+    story shows the move happening and says on what condition; the record text is illustrative.
+71. **Program wording in the submission reference.** The surface gives this address for Sprint With Us
+    only. Team With Us takes the same tag on its own opportunity address (`openapi.yaml`), but there is no
+    Team With Us page to draw it on.
+72. **Tables on the dashboard.** The dashboard is shared with the opportunities domain, whose own list
+    there is a `DataTable` that scrolls on a phone. The Evaluations list keeps the same table so the one
+    page does not show two kinds of list. Turning both into rows is the opportunities domain's change to
+    make first.
+73. **Who may open the panel tab's Edit.** R-5.16 says when the panel may change; R-5.18 who opens the
+    tab. Neither says whether an administrator and the owner are both offered Edit; the stories show the
+    owner.

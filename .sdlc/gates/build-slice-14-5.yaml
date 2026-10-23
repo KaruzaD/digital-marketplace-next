@@ -1,0 +1,27 @@
+gate: G3
+verdict: return
+by: runner:verify
+held_by: runner
+rationale: Slice 14 does not yet do what 1 of its criteria say. Each condition
+  is the criterion and what the running application did.
+conditions:
+  - 'R-8.31, in the case "removing an attachment from a proposal withdraws the
+    read path the file held through that proposal": Error:
+    proposal-cwu-create.add_attachment — "R-8.31 removed from a proposal.pdf"
+    was offered on
+    http://localhost:4400/opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create
+    and after 30 s its row carries neither a "Download R-8.31 removed from a
+    proposal.pdf" link nor an alert that it could not be attached (no row naming
+    it) — at tests/acceptance/files/R-8.31.spec.ts:130 — its last steps:
+    …n({opportunityId}) at
+    /opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create
+    → proposalCwuCreate.chooseProponentOrganization({organization}) at
+    /opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create
+    → proposalCwuCreate.addAttachment({file, content}) at
+    /opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create
+    threw "proposal-cwu-create.add_attachment — \"R-8.31 removed from a
+    proposal.pdf\" was offered on
+    http://localhost:4400/opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create
+    and aft…" — the page as it failed: .sdlc/evidence/slice-14/R-8.31.png,
+    .sdlc/evidence/slice-14/R-8.31.txt'
+at: 2026-10-18T03:12:58.973Z

@@ -1,0 +1,20 @@
+gate: G3
+verdict: return
+by: runner:verify
+held_by: runner
+rationale: Slice 8 does not yet do what 1 of its criteria say. Each condition is
+  the criterion and what the running application did.
+conditions:
+  - 'R-1.38, in the case "the opportunity list groups closed opportunities apart
+    from open and unpublished ones": Error: expect(received).toContain(expected)
+    // indexOf — Expected substring: "Seeded closed Sprint With Us opportunity"
+    — Received string:    "Code With Us — at
+    tests/acceptance/opportunities/R-1.38.spec.ts:93 — its last steps:
+    scheduledTransitionTrigger.runPendingTransitions() at /status →
+    signIn(persona administrator) at /dashboard → opportunityList.open() at
+    /opportunities → opportunityList.closedGroup() at /opportunities read "Code
+    With Us Code With Us opportunities pay a fixed price for meeting acceptance
+    criteria. Learn More about Code With Us Team With Us Team With Us
+    opportunitie…" — the page as it failed: .sdlc/evidence/slice-8/R-1.38.png,
+    .sdlc/evidence/slice-8/R-1.38.txt'
+at: 2026-10-17T23:51:09.561Z

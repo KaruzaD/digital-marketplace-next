@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-11-9 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-11-9</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 18:27</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 11 (A vendor can register and look after an organization) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I changed no code in this revision.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I changed no code in this revision. I couldn&#39;t find a defect in the application that the R-4.14 evidence points to, and I didn&#39;t want to make a change I couldn&#39;t tie to the failure.</p>
+<p><strong>What the evidence shows.</strong> The test read &quot;Zinnia Quillfeather&quot; as a vendor&#39;s name on <code>/users/me</code>. It then signed in as the administrator, opened <code>/users</code>, and waited 5 seconds for something that never became true. When it failed, the page was fully loaded: the screenshot and outline show all 160 or so accounts, every row carrying its status badge, account type, name link and administrator Yes/No. The order is right: active before inactive, public sector employees before vendors, then by name. &quot;Active · Vendor · Zinnia Quillfeather · No&quot; is there, and the seeded deactivated vendor, Ellis Placeholder, is last as &quot;Inactive&quot;. All the <code>user-list-*</code> test IDs from the contract are on the right elements.</p>
+<p><strong>What doesn&#39;t fit.</strong> Comparing the list with the seed shows two vendors renamed during the run:</p>
+<ul><li>Account …0201 (the <code>vendor</code> persona, seeded as Alex Placeholder) now reads &quot;Aldous Quillfeather&quot;. The outline&#39;s link confirms the id.</li><li>Finley Placeholder (…0206, the <code>file-uploader</code> persona) is missing, so it must be the account now called &quot;Zinnia Quillfeather&quot;.</li></ul>
+<p>So the account the test read as Zinnia is not account 0201. The test would naturally sign in as the <code>vendor</code> persona, which is 0201. If it then looked up that account&#39;s row expecting &quot;Zinnia&quot;, it got &quot;Aldous&quot; and timed out. That fits either of two explanations, and I couldn&#39;t settle on one:</p>
+<ul><li><strong>Concurrent renames.</strong> Other acceptance tests give shared personas made-up &quot;… Quillfeather&quot; names and ran alongside this one, possibly including slice 11&#39;s new ones. A test renaming 0201 while this one ran would break it, and the application can&#39;t prevent that.</li><li><strong>The sign-in landed on the wrong person.</strong> The vendor sign-in could have reused an earlier sandbox identity-provider session for test-vendor-6. I found no sign of that in the code:</li><li>Accounts are looked up by exact <code>idpId</code> (<code>backend/src/users/prisma-account.store.ts:73</code>).</li><li><code>/users/me</code> shows the account from a freshly fetched session.</li><li>Saving the profile writes to the signed-in person&#39;s own id.</li><li>Sign-out and refused sign-ins both end the identity provider&#39;s session.</li><li>The list query is a single <code>findMany</code> with nothing slow behind it.</li></ul>
+<p>I didn&#39;t add <code>prompt=login</code> to the sign-in request to force a fresh identity-provider login every time. It would change sign-in for every criterion, and nothing shows it&#39;s the cause.</p>
+<p><strong>Checks.</strong> <code>npm --prefix app run check</code> passes: typechecks plus every unit-test package (16, 862 and 621 tests). The error lines in its output come from tests that deliberately exercise failure paths. Installing dependencies to run it only added <code>node_modules</code> under <code>app/</code>.</p>
+<p><strong>Not mine to change.</strong> If the cause is tests renaming shared personas at the same time, the fix belongs to the acceptance suite or the seed, not <code>app/</code>: give R-4.14 a vendor nobody else renames, or run tests that rename shared personas one at a time. If a re-run shows R-4.14 failing again with the vendor&#39;s own row reading a different name than its <code>/users/me</code> page did, the sign-in path is worth checking next.</p>
+<p><strong>Slice 11.</strong> I left everything else from slice 11 as it was. That covers the public organization list, registering an organization with its logo, the organization tab at <code>/organizations/:orgId/edit</code> with edit and archive for owners and administrators, the archive notice, the list of organizations a vendor may act for, and the image rules R-8.13, R-8.21, R-8.28 and R-8.30.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-18 18:35.</p>
+<div class="body"><p>Slice 11 asks whether a vendor can register and look after an organization. Verify recorded a current pass for build-slice-11-9 against tree a293aef: all 13 claimed criteria (R-8.13, R-8.21, R-8.28, R-8.30, R-3.1, R-3.2, R-3.3, R-3.18, R-3.19, R-3.20, R-3.21, R-3.22, R-3.24) were exercised and met. The diff only restyles slice 11&#39;s own screens to the approved design: the organization list (a table on a wide screen, cards on a phone), registering an organization, and the management page&#39;s head and Organization tab. Shared pieces move into organization-kit.tsx. Behaviour is unchanged: test IDs are the same, the owner and qualification columns still show only where R-3.21 allows, the logo still sits above the name (R-8.28), and Edit and Archive are still offered only where the viewer may change the organization (R-3.18). The team, qualification and changelog tabs belong to slices 12 and 13 and keep their bodies. New unit tests cover the phone card layout, the page head, the regions inside the tab and the three registration panels. There is no secret or personal data in the code and no protected path is touched. The page&#39;s R-4.14 investigation is outside this slice&#39;s claims and doesn&#39;t affect the ruling. It points at the acceptance suite or seed records renaming shared personas, not at app/. A stale or failing verify result, or a restyle that changed behaviour a claimed criterion relies on, would change the ruling.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

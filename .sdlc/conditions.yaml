@@ -3373,3 +3373,292 @@ conditions:
         docs/decisions/0064-an-individual-submission-covers-the-proposals-it-names.md.
       by: agent:reviewer
       at: 2026-10-04T17:41:46.399Z
+  - ref: design-files-3#1
+    text: "In design/catalogue/file-kit.tsx, remove the doubled spacing around the
+      stated rules: the <p className=\"op-note\"> inside the wrapper divs for
+      attachment-size-limit (AttachmentControl), image-file-rule (PictureGroup)
+      and embedded-image-rule (ImageEditor) keeps the browser's paragraph margin
+      on top of the stack gap, because the kits zero only direct children.
+      Either put the id and data-testid on the <p> itself and drop the wrapper,
+      or zero the nested paragraph's margin with var(--layout-margin-none). Keep
+      every test ID on an element that does what surface.yaml says."
+    from: design-files-3
+    family: design-files
+    gate: G-DESIGN
+    stage: design
+    by: agent:ux-reviewer
+    at: 2026-10-17T23:01:05.470Z
+    closed:
+      outcome: met
+      why: in design/catalogue/file-kit.tsx the wrapper divs are gone, and the id,
+        data-testid and aria-describedby target now sit on <p
+        className="op-note"> for attachment-size-limit (AttachmentControl, line
+        142), image-file-rule (PictureGroup, line 243) and embedded-image-rule
+        (ImageEditor, line 309)
+      by: agent:ux-reviewer
+      at: 2026-10-17T23:06:51.966Z
+  - ref: design-files-3#2
+    text: Apply the same fix to the attachment-resulting-name wrapper (<div
+      id="attachment-new-1-result"><p className="op-note">) in
+      design/catalogue/file-attachment-control.new-attachment.stories.tsx, and
+      to any other story in this domain that wraps a paragraph this way inside
+      .op-panel, .fl-row, .fl-group or .fl-editor.
+    from: design-files-3
+    family: design-files
+    gate: G-DESIGN
+    stage: design
+    by: agent:ux-reviewer
+    at: 2026-10-17T23:01:05.470Z
+    closed:
+      outcome: met
+      why: attachment-resulting-name (id attachment-new-1-result) is now the <p>
+        itself in file-attachment-control.new-attachment.stories.tsx, and the
+        two <div role="status"> wrappers in file-image-picker.chosen and
+        file-embedded-image.inserted are now <p role="status"
+        className="op-note">
+      by: agent:ux-reviewer
+      at: 2026-10-17T23:06:52.010Z
+  - ref: design-files-3#3
+    text: Re-render and check that, in file-attachment-control default/too-large,
+      file-image-picker default/rejected and file-embedded-image default, the
+      gaps around each stated rule equal the container's own token gap (medium
+      in the panel, small in the row, group and editor).
+    from: design-files-3
+    family: design-files
+    gate: G-DESIGN
+    stage: design
+    by: agent:ux-reviewer
+    at: 2026-10-17T23:01:05.470Z
+    closed:
+      outcome: met
+      why: in the re-rendered screenshots of file-attachment-control default and
+        too-large, file-image-picker default and rejected, and
+        file-embedded-image default, the gap around each stated rule is the
+        container's own token (medium in the panel, small in the row, group and
+        editor), and design/report.json shows 0 violations
+      by: agent:ux-reviewer
+      at: 2026-10-17T23:06:52.054Z
+  - ref: build-slice-8-12#2
+    text: "app/frontend/src/screens/opportunity-list.tsx: once the adapter answer is
+      approved, start the Closed Opportunities group collapsed again as the
+      approved design says (remove defaultOpen from its Disclosure), withdraw
+      docs/decisions/0071-the-closed-opportunities-group-starts-open.md, and put
+      the unit tests in app/frontend/tests/finding-opportunities.test.tsx back
+      to opening the closed group before reading its rows."
+    from: build-slice-8-12
+    family: build-slice-8
+    gate: G3
+    stage: build
+    by: agent:reviewer
+    at: 2026-10-18T00:30:29.524Z
+    closed:
+      outcome: met
+      why: app/frontend/src/screens/opportunity-list.tsx renders the Closed
+        Opportunities Disclosure without defaultOpen, so it starts collapsed
+        like Unpublished.
+        docs/decisions/0071-the-closed-opportunities-group-starts-open.md is
+        withdrawn. app/frontend/tests/finding-opportunities.test.tsx opens the
+        closed group with openGroup (aria-expanded false to true) before reading
+        its rows, and checks that the button hides and shows them again.
+      by: agent:reviewer
+      at: 2026-10-18T00:43:27.438Z
+  - ref: bind-adapter-new-94#1
+    text: "opportunityCwuView.reward() in tests/adapters/new/index.ts returns '' on
+      the restyled Code With Us view. Its head draws the reward as one list
+      item: the word 'Reward', a space, then the figure (the page verify
+      captured for R-1.21 on build-slice-7-11 shows the line 'Reward $5,000'),
+      with no colon and no definition term. Neither definitionOf(/^reward$/i)
+      nor labelledValue(['Reward']) matches that line. After the existing term
+      lookup, add a fallback that takes the figure from a head line matching
+      /^reward\\s+(.+)$/i, so the build at localhost:4300 still reads the same
+      way. No test ID is needed."
+    from: bind-adapter-new-94
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:tech-lead
+    at: 2026-10-18T01:45:57.633Z
+    closed:
+      outcome: met
+      why: opportunityCwuView.reward() in tests/adapters/new/index.ts now tries
+        definitionOf(/^reward$/i), then labelledValue(['Reward']), then
+        cwuHeadReward(), which takes the figure from a head line matching
+        /^reward\s+(.+)$/i ('Reward $5,000' gives '$5,000'); see the reward
+        member and cwuHeadReward in the diff.
+      by: agent:reviewer
+      at: 2026-10-18T01:49:10.353Z
+  - ref: bind-adapter-new-94#2
+    text: "opportunityCwuView.status() in tests/adapters/new/index.ts can return a
+      term label as the status. On the restyled view verify captured for R-1.21,
+      the program and status labels read together as the one line 'Code With Us
+      Draft', which the anchored CWU_STATUS_SHOWN pattern does not match.
+      Opportunity ID is drawn as a term ('Opportunity ID') with the id below it,
+      not as 'Opportunity ID: <id>', so cwuHeadLines() runs on to the
+      Description heading and takes in the 'Published' term label, which
+      CWU_STATUS_SHOWN accepts. On a draft, status() can then answer
+      'Published'. Bound the head at the title heading (the lines above the
+      level-1 heading), or at the first line that is a definition term, rather
+      than at 'Opportunity ID:'. Take the status as a trailing status word on a
+      line that begins with the program name ('Code With Us Draft' gives
+      'Draft') as well as a line that is just a status word. Never take a dt's
+      text as the status."
+    from: bind-adapter-new-94
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:tech-lead
+    at: 2026-10-18T01:45:57.633Z
+    closed:
+      outcome: met
+      why: cwuHeadLines() in tests/adapters/new/index.ts now ends the head at the
+        first line equal to a dt's text (termLabels()), at an 'Opportunity ID:'
+        line, or at the Description heading, whichever comes first.
+        cwuHeadStatus() skips any line that is a term label and accepts either a
+        bare status word or a 'Code With Us <status>' line, read as the status
+        word; status() tries the 'Status' term first and falls back to
+        cwuHeadStatus().
+      by: agent:reviewer
+      at: 2026-10-18T01:49:10.403Z
+  - ref: bind-adapter-new-97#1
+    text: "R-2.13: the proposal-cwu-create submit binding
+      (tests/adapters/new/index.ts:10353) only matches 'Submit proposal' or
+      'Save changes and submit', but the create page's form button now reads
+      'Submit'. Make the pattern also accept the bare 'Submit' on the create
+      form, without loosening it so far that it matches unrelated buttons. Check
+      the terms-dialog confirm (around line 10403) and the actions-row check at
+      line 10703 against the page as walked too, and update them if they
+      changed."
+    from: bind-adapter-new-97
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:reviewer
+    at: 2026-10-18T03:00:41.403Z
+    closed:
+      outcome: met
+      why: the proposal-cwu-create submit pattern now accepts a button named exactly
+        'Submit' as well as 'Submit proposal' and 'Save changes and submit', in
+        tests/adapters/new/index.ts (ask() in the submit flow); the
+        proposal-cwu-edit submit_proposal check accepts '^submit( proposal)?$'
+        inside 'Proposal actions'; the terms-dialog confirm already accepted
+        'Submit Proposal'
+      by: agent:reviewer
+      at: 2026-10-18T03:06:51.874Z
+  - ref: bind-adapter-new-97#2
+    text: The create-page address field patterns
+      (tests/adapters/new/index.ts:6728-6738, /^\s*province or state/i and
+      /^\s*postal code/i) do not match the labels now drawn, 'Province /
+      State(required)' and 'Postal / ZIP Code(required)'. Accept those labels,
+      as well as the old ones, for every alias mapped there.
+    from: bind-adapter-new-97
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:reviewer
+    at: 2026-10-18T03:00:41.403Z
+    closed:
+      outcome: met
+      why: PROVINCE_LABEL (/^\s*province\s*(or|\/)\s*state/i) and POSTAL_LABEL
+        (/^\s*postal\s*(code|\/\s*zip)/i) replace the old patterns for every
+        alias in ORG_FIELDS and in PROPOSAL_FIELDS, in
+        tests/adapters/new/index.ts
+      by: agent:reviewer
+      at: 2026-10-18T03:06:51.921Z
+  - ref: bind-adapter-new-97#3
+    text: The default-organization step in the proponent flow waits for the
+      organization chooser to read 'Select an item', but on the create page it
+      starts out reading 'Organization'. Detect an empty chooser by its current
+      form, so that a test naming no organization still gets one picked.
+    from: bind-adapter-new-97
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:reviewer
+    at: 2026-10-18T03:00:41.403Z
+    closed:
+      outcome: met
+      why: completeProposal treats the organization chooser as empty when it reads
+        'Select an item', 'Organization' or nothing (CHOOSER_EMPTY), so a test
+        naming no organization gets the first one offered, in
+        tests/adapters/new/index.ts
+      by: agent:reviewer
+      at: 2026-10-18T03:06:51.965Z
+  - ref: bind-adapter-new-97#4
+    text: The optional second address line is now labelled just 'Street Address',
+      the same label as the first line. Make sure the street-address bindings
+      choose the first and second fields by position, not by label alone, so
+      neither fills the other.
+    from: bind-adapter-new-97
+    family: bind-adapter-new
+    gate: G3
+    stage: bind-adapter
+    by: agent:reviewer
+    at: 2026-10-18T03:00:41.403Z
+    closed:
+      outcome: met
+      why: street line one and line two are filled by position (nth 0 and nth 1) among
+        the textboxes matching STREET_ANY, through streetLine() in the proposal
+        field fill loop, in tests/adapters/new/index.ts
+      by: agent:reviewer
+      at: 2026-10-18T03:06:52.007Z
+  - ref: build-slice-14-6#2
+    text: Withdraw the stored-row change to app/frontend/src/app/attachments.tsx
+      (StoredNewRow and the host === 'proposal' branch in NewAttachmentRow) and
+      decision record 0073, or supersede 0073 with a record saying why. The
+      adapter finds a row by list item and file name, not by
+      attachment-existing-row or attachment-new-row, so the change does not
+      address the R-8.31 failure. It also stops a stored file being renamed on
+      proposal forms. Keep it only if a proposal criterion or a catalogue story
+      for the proposal forms asks for it, and cite that criterion or story in
+      the record.
+    from: build-slice-14-6
+    family: build-slice-14
+    gate: G3
+    stage: build
+    by: agent:tech-lead
+    at: 2026-10-18T03:32:04.150Z
+    closed:
+      outcome: met
+      why: StoredNewRow and the host === "proposal" branch are removed from
+        app/frontend/src/app/attachments.tsx, docs/decisions/0073 no longer
+        exists on the branch, and
+        app/frontend/tests/proposal-attachments.test.tsx asserts that a stored
+        file on the proposal create form keeps its rename field
+        (attachment-name-field) and its download link.
+      by: agent:tech-lead
+      at: 2026-10-18T04:24:57.875Z
+  - ref: build-slice-10-6#1
+    text: "R-1.9, in the cases \"Sprint With Us: a draft whose dates are missing is
+      accepted, its proposal deadline, assignment date and start date are set to
+      fourteen days from the day of saving, and its completion date is left
+      emp…\", \"Sprint With Us: a draft whose dates are invalid is accepted, its
+      proposal deadline, assignment date and start date are set to fourteen days
+      from the day of saving, and its completion date is left emp…\", \"Team
+      With Us: a draft whose dates are missing is accepted, its proposal
+      deadline, assignment date and start date are set to fourteen days from the
+      day of saving, and its completion date is left empty\" and \"Team With Us:
+      a draft whose dates are invalid is accepted, its proposal deadline,
+      assignment date and start date are set to fourteen days from the day of
+      saving, and its completion date is left empty\": Error: assignment date
+      should be set — Received: \"\" — at
+      tests/acceptance/opportunities/R-1.9.spec.ts:52 — on the draft's manage
+      page the opportunity-assignment-date-field held no date while the proposal
+      deadline field held 2026-11-01, and the Summary tab no longer lists an
+      assignment date; a draft saved with missing or invalid dates must hold,
+      and show, an assignment date and start date fourteen days from the day of
+      saving."
+    from: build-slice-10-6
+    family: build-slice-10
+    gate: G3
+    stage: build
+    by: agent:reviewer
+    at: 2026-10-18T08:44:31.033Z
+    closed:
+      outcome: met
+      why: summaryDetails in app/frontend/src/screens/opportunity-other-manage.tsx
+        lists Assignment date after the proposal deadline (and Start date for
+        Team With Us) on the draft's Summary tab, covered by the new case in
+        app/frontend/tests/other-program-drafts.test.tsx; R-1.9 passes in the
+        verify result for tree 407d7d3.
+      by: agent:reviewer
+      at: 2026-10-18T09:09:47.223Z

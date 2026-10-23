@@ -1,0 +1,18 @@
+gate: G3
+verdict: return
+by: runner:verify
+held_by: runner
+rationale: This build breaks 1 criterion that passed when an earlier slice was
+  approved. Each condition is the criterion and what the running application
+  did.
+conditions:
+  - "R-4.14 (passed when slice 4 was approved), in the case \"an administrator
+    can browse everyone registered with the service, showing each person's
+    status, account kind, name and whether they are an administrator\": Error:
+    Timeout 5000ms exceeded while waiting on the predicate — at
+    tests/acceptance/users/R-4.14.spec.ts:61 — its last steps:
+    userProfileSelf.open() at /users/me → userProfileSelf.nameField() at
+    /users/me read \"Zinnia Quillfeather\" → signIn(persona administrator) at
+    /dashboard → userList.open() at /users — the page as it failed:
+    .sdlc/evidence/slice-18/R-4.14.png, .sdlc/evidence/slice-18/R-4.14.txt"
+at: 2026-10-18T23:56:15.538Z

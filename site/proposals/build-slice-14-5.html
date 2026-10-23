@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-14-5 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-14-5</h1>
+<p class="lede">G3 · <span class="chip return">return</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 03:08</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 14 (A vendor can propose on a Code With Us opportunity) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> The application build-slice-14-4 carried is proposed again unchanged, because the ruling on it asked nothing of the build.</p>
+<p>The application build-slice-14-4 carried is proposed again unchanged, because the ruling on it asked nothing of the build.</p>
+<p>Each of its 3 conditions went to another stage:</p>
+<ul><li>to bind-adapter: R-2.12: proposalCwuEdit.status() read &quot;&quot; from a &#39;Status&#39; term in the details list on /opportunities/code-with-us/:opportunityId/proposals/:proposalId/edit; the page no longer has a Status term and shows the status as the label beside the program in the page head (&#39;Code With Us Draft&#39; in the outline), the element carrying test ID proposal-status, which is what the contract surface binds proposal-cwu-edit status to; read it from there.</li><li>to bind-adapter: R-2.15: in the case &#39;a draft submitted after the deadline&#39;, proposalCwuEdit.status() read &quot;&quot; for the same reason: the manage page shows &#39;Draft&#39; as the head&#39;s status label carrying test ID proposal-status, not as a &#39;Status&#39; term in the details list; bind status to proposal-status as the contract surface says.</li><li>to bind-adapter: R-8.22, R-8.31, R-1.35, R-1.36, R-2.2, R-2.3, R-2.4, R-2.13, R-2.23: proposal-cwu-create.choose_proponent_individual and choose_proponent_organization were reported unbound because chooseProponent looks for a radio named exactly &#39;An individual&#39; / &#39;An organization&#39; under &#39;Who is submitting this proposal?&#39;; the create page now offers the radios labelled &#39;Individual&#39; and &#39;Organization&#39; under &#39;Will you be submitting a proposal for this opportunity as an Individual or Organization?&#39; (the manage page&#39;s edit form keeps &#39;An individual&#39; / &#39;An organization&#39;), and both carry the test IDs proposal-proponent-individual and proposal-proponent-organization that the contract surface binds these members to; locate them by those test IDs, or by a label that accepts both wordings.</li></ul>
+<p>No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip return">return</span> by runner:verify (the runner, automatically) on 2026-10-18 03:12.</p>
+<div class="body"><p>Slice 14 does not yet do what 1 of its criteria say. Each condition is the criterion and what the running application did.</p></div>
+<h3>Conditions</h3><ol class="conditions"><li>R-8.31, in the case &quot;removing an attachment from a proposal withdraws the read path the file held through that proposal&quot;: Error: proposal-cwu-create.add_attachment — &quot;R-8.31 removed from a proposal.pdf&quot; was offered on <a href="http://localhost:4400/opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create">http://localhost:4400/opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create</a> and after 30 s its row carries neither a &quot;Download R-8.31 removed from a proposal.pdf&quot; link nor an alert that it could not be attached (no row naming it) — at tests/acceptance/files/R-8.31.spec.ts:130 — its last steps: …n({opportunityId}) at /opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create → proposalCwuCreate.chooseProponentOrganization({organization}) at /opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create → proposalCwuCreate.addAttachment({file, content}) at /opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create threw &quot;proposal-cwu-create.add_attachment — \&quot;R-8.31 removed from a proposal.pdf\&quot; was offered on <a href="http://localhost:4400/opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create">http://localhost:4400/opportunities/code-with-us/ec2d1e1c-85a7-4b1d-8866-5ce2d9c28167/proposals/create</a> and aft…&quot; — the page as it failed: .sdlc/evidence/slice-14/R-8.31.png, .sdlc/evidence/slice-14/R-8.31.txt</li></ol>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

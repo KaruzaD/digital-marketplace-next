@@ -1,6 +1,7 @@
 import { Fragment, ReactNode, createElement } from "react";
 import { Link } from "@bcgov/design-system-react-components";
 import { Stack } from "../../app/page-layout";
+import { look } from "../../app/marketplace";
 import { Block, Inline, parseFormattedText } from "./parse";
 
 /**
@@ -51,9 +52,11 @@ function renderInline(nodes: readonly Inline[], keyPrefix: string): ReactNode[] 
 function renderBlock(block: Block, key: string): ReactNode {
   switch (block.kind) {
     case "heading":
+      // A body's H2s take the direction's section size (the design system's H4), and deeper
+      // headings bold body text, as every section heading in the direction does.
       return createElement(
         `h${block.level}`,
-        { key },
+        { key, style: block.level === 2 ? look.section : look.title },
         renderInline(block.children, key),
       );
     case "paragraph":

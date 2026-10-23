@@ -1,0 +1,23 @@
+gate: G3
+verdict: return
+by: runner:verify
+held_by: runner
+rationale: This build breaks 1 criterion that passed when an earlier slice was
+  approved. Each condition is the criterion and what the running application
+  did.
+conditions:
+  - "R-3.28 (passed when slice 13 was approved), in the case \"only an
+    administrator may set which service areas an organization is approved for,
+    not the organization's own owner\": Error: the organization does not stand
+    approved for exactly FULL_STACK_DEVELOPER and AGILE_COACH — at
+    tests/acceptance/organizations/R-3.28.spec.ts:75 — its last steps:
+    organizationEdit.editServiceAreas() at
+    /organizations/c3164a16-1401-4a9c-b1bc-40bed531d1bb/edit?tab=twu-qualificat\
+    ion → organizationEdit.saveServiceAreas({serviceAreas}) at
+    /organizations/c3164a16-1401-4a9c-b1bc-40bed531d1bb/edit?tab=twu-qualificat\
+    ion → signIn(persona administrator) at /dashboard →
+    organizationEdit.open({orgId}) at
+    /organizations/c3164a16-1401-4a9c-b1bc-40bed531d1bb/edit — the page as it
+    failed: .sdlc/evidence/slice-11/R-3.28.png,
+    .sdlc/evidence/slice-11/R-3.28.txt"
+at: 2026-10-18T17:29:42.374Z

@@ -1,0 +1,15 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  Question: does this adapter bind every surface action and observation on new, and nothing else — specifically, does it answer the R-7.19 revision request from build-slice-1-8? Ruling: approve. The only change is siteFooter() in tests/adapters/new/index.ts taking .first() instead of .last() of `getByRole('contentinfo').or(<parent of the ownership line>)`. Playwright resolves an .or() union in document order, and an ancestor precedes its descendants, so when the ownership line sits in its own block inside the contentinfo landmark the first match is the landmark, the whole footer, which is what the reviewer asked for. Where there is no landmark it still falls back to the block around the ownership line. The change is navigation/locator only, carries no assertion or pass/fail logic, leaves bindings.yaml and everything under tests/acceptance untouched, and the runner-owned tsc check on bf291d383a passed with no diagnostics under adapters/new/, which covers the type check the author could not run. The author's live check reports one matched element containing all five R-7.19 link labels and /content/about for the About link. What would change the ruling: a verify run of slice 1 in which R-7.19 still reads only the ownership line or an empty About link, or the footer locator resolving to more than one element.
+conditions: []
+cost: 0.26209140000000003
+turns: 1
+session: "8f3d25ad-f54a-4685-b715-94cd6876b3d6"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-17T20:04:27.544Z

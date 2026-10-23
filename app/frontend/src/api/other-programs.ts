@@ -482,7 +482,15 @@ export async function fetchOtherProgramOpportunity(program: OtherProgram, id: st
 /** Someone who may sit on an evaluation panel. */
 export interface PanelCandidate {
   readonly id: string;
+  /** Their name, as the create form's choices show them. */
   readonly label: string;
+  /** Their email address, which the panel tab shows after the name; empty when it is not known. */
+  readonly email: string;
+}
+
+/** A candidate as the panel tab offers them: "Name (email)" (evaluation-panel-swu, add_panel_member). */
+export function candidateChoiceLabel(candidate: Pick<PanelCandidate, "label" | "email">): string {
+  return candidate.email ? `${candidate.label} (${candidate.email})` : candidate.label;
 }
 
 /**
@@ -495,7 +503,7 @@ export async function fetchPanelCandidates(): Promise<PanelCandidate[]> {
     const { data, response } = await api.GET("/api/sessions/{id}", { params: { path: { id: "current" } } });
     const candidates = response.ok ? (data as { panelCandidates?: unknown } | undefined)?.panelCandidates : null;
     return list(candidates).flatMap((candidate) =>
-      typeof candidate.id === "string" ? [{ id: candidate.id, label: text(candidate.name) || candidate.id }] : [],
+      typeof candidate.id === "string" ? [{ id: candidate.id, label: text(candidate.name) || candidate.id, email: text(candidate.email) }] : [],
     );
   } catch {
     return [];

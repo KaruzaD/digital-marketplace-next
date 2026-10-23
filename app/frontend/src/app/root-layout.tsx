@@ -3,9 +3,11 @@ import { Outlet, useRouterState } from "@tanstack/react-router";
 import { openBeforeProfileCompletion, PROFILE_COMPLETION } from "@rules/sign-in";
 import { needsProfileCompletion } from "@rules/users";
 import { leaveRefusedSignIn, useSession } from "../auth/session";
-import { SiteHeader } from "./site-header";
+import { SiteHeader, sectionOf } from "./site-header";
+import { SITE_CSS } from "./site-styles";
 import { SiteFooter } from "./site-footer";
 import { PageContainer } from "./page-layout";
+import { OpportunityStyles } from "./opportunity-kit";
 import { useGoTo } from "./go-to";
 import { LOADING_SHOWN_AFTER_MS } from "./loading";
 
@@ -79,10 +81,25 @@ export function RootLayout() {
     return () => clearTimeout(timer);
   }, [address]);
 
+  // On the home page the header's Sign In and Sign Up are the page's own (surface.yaml, home).
+  const home = sectionOf(address) === "home";
   return (
     <>
-      <SiteHeader />
-      <main id="main">
+      <style>{SITE_CSS}</style>
+      {/* The direction's components and the opportunity kit, once for every screen, so a piece one
+          screen shares with another (the attachment control, the history table) is drawn the same
+          on both. Every rule in it is scoped to the kit's own classes. */}
+      <OpportunityStyles />
+      <a className="site-skip" href="#main">
+        Skip to main content
+      </a>
+      <SiteHeader
+        current={sectionOf(address)}
+        pathname={address}
+        signInTestId={home ? "home-sign-in" : undefined}
+        signUpTestId={home ? "home-sign-up" : undefined}
+      />
+      <main id="main" tabIndex={-1}>
         {/* The one column every screen sits in, the width of the banner (design/catalogue/layout.tsx). */}
         <PageContainer>
           <Outlet />

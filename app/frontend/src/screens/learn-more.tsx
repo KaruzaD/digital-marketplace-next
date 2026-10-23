@@ -1,5 +1,6 @@
-import { Heading, Link, Text } from "@bcgov/design-system-react-components";
-import { Stack } from "../app/page-layout";
+import { Link } from "@bcgov/design-system-react-components";
+import { ContentPage } from "../app/content-kit";
+import { PageTitle, Panel, Region } from "../app/opportunity-kit";
 import { useScreenTitle } from "../app/screen-title";
 
 /**
@@ -37,35 +38,28 @@ export function isProgramSlug(value: string): value is ProgramSlug {
   return Object.prototype.hasOwnProperty.call(PROGRAMS, value);
 }
 
+// As the `content-service-level-agreement-link` story draws it: the H1, the program's own
+// account in a panel, then the cost and the link as a region.
 export function LearnMoreScreen({ program }: { readonly program: ProgramSlug }) {
   const details = PROGRAMS[program];
   useScreenTitle(details.name);
   return (
-    <Stack gap="large">
-      <Heading level={1}>{details.name}</Heading>
-      <Stack as="section" gap="medium" aria-labelledby="learn-more-what-heading">
-        <Heading level={2} id="learn-more-what-heading">
-          How {details.name} works
-        </Heading>
-        <Text elementType="p">{details.what}</Text>
-        <Text elementType="p">{details.who}</Text>
-      </Stack>
-      <Stack as="section" gap="medium" aria-labelledby="learn-more-cost-heading">
-        <Heading level={2} id="learn-more-cost-heading">
-          What it costs
-        </Heading>
-        <Text elementType="p">{details.cost}</Text>
-        <Text elementType="p">
+    <ContentPage>
+      <PageTitle>{details.name}</PageTitle>
+      <Panel id="learn-more-what-heading" title={`How ${details.name} works`}>
+        <p className="op-text">{details.what}</p>
+        <p className="op-text">{details.who}</p>
+      </Panel>
+      <Region id="learn-more-cost-heading" title="What it costs">
+        <p className="op-text">{details.cost}</p>
+        <p className="op-text">
           What the service commits to, and what it asks of you, is set out in the{" "}
-          <Link
-            href="/content/service-level-agreement"
-            data-testid="service-level-agreement-link"
-          >
+          <Link href="/content/service-level-agreement" data-testid="service-level-agreement-link">
             service level agreement
           </Link>
           .
-        </Text>
-      </Stack>
-    </Stack>
+        </p>
+      </Region>
+    </ContentPage>
   );
 }

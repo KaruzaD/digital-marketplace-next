@@ -245,6 +245,113 @@ describe("the owner and administrators at consensus (R-5.12, R-5.14, R-1.41, R-5
   });
 });
 
+describe("the consensus screens in the chosen direction (decision record 0084)", () => {
+  const panelScores = [scoreSet(P1, "Proponent 1", evaluator, "SUBMITTED", [4, 3.5]), scoreSet(P1, "Proponent 1", chair, "SUBMITTED", [5, 4])];
+
+  it("draws the tab's proponents as the kit's rows, each status a coloured label, and the submit button in the page actions", async () => {
+    serve(chair, (method, path) => {
+      if (method === "GET" && path === OPPORTUNITY) return json(200, sprint());
+      if (method === "GET" && path === LIST) return json(200, [scoreSet(P1, "Proponent 1", chair, "SUBMITTED", [4, 4])]);
+      return null;
+    });
+    renderAt(`${MANAGE}?tab=consensus`);
+    const rows = await screen.findAllByTestId("evaluation-proponent-row");
+    expect(rows.map((row) => row.tagName)).toEqual(["LI", "LI"]);
+    const list = screen.getByTestId("evaluation-consensus-table");
+    expect(list.tagName).toBe("UL");
+    expect(document.getElementById(list.getAttribute("aria-labelledby")!)!.textContent).toBe("Agreed scores, by anonymous proponent name");
+    const labels = screen.getAllByTestId("evaluation-consensus-status");
+    expect(labels.map((label) => label.className)).toEqual(["dm-label dm-label-green", "dm-label dm-label-grey"]);
+    expect(rows[0]!.textContent).toContain("Consensus: Submitted");
+    expect(screen.getByTestId("evaluation-submit-consensus").closest(".op-actions")).not.toBeNull();
+    expect(document.querySelector("table")).toBeNull();
+  });
+
+  it("puts the withheld explanation in the kit's notice", async () => {
+    serve(owner, (method, path) => (method === "GET" && path === OPPORTUNITY ? json(200, sprint({ proponents: undefined })) : null));
+    renderAt(`${MANAGE}?tab=consensus`);
+    const withheld = await screen.findByTestId("evaluation-consensus-withheld-message");
+    expect(withheld.className).toBe("ev-alert");
+    expect(withheld.textContent).toContain("The agreed scores are not shown to you yet");
+  });
+
+  it("moves focus to a refusal to finalise, and again after a second refusal", async () => {
+    serve(administrator, (method, path) => {
+      if (method === "GET" && path === OPPORTUNITY) return json(200, sprint());
+      if (method === "GET" && path === LIST) return json(200, []);
+      if (method === "PUT" && path === OPPORTUNITY) return json(400, { errors: [NOT_ALL_CONSENSUSES_SUBMITTED] });
+      return null;
+    });
+    renderAt(MANAGE);
+    fireEvent.click(await screen.findByTestId("finalize-consensus-button"));
+    fireEvent.click(await screen.findByTestId("evaluation-finalize-confirm"));
+    const first = await screen.findByTestId("advance-refused-message");
+    await waitFor(() => expect(document.activeElement).toBe(first));
+    (document.activeElement as HTMLElement).blur();
+    fireEvent.click(screen.getByTestId("finalize-consensus-button"));
+    fireEvent.click(await screen.findByTestId("evaluation-finalize-confirm"));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("advance-refused-message")));
+    expect(screen.getAllByTestId("advance-refused-message")).toHaveLength(1);
+  });
+
+  it("draws the chair's form with the scoring head, question boxes, the response, and the evaluators' scores as rows", async () => {
+    serve(chair, (method, path) => {
+      if (method === "GET" && path === OPPORTUNITY) return json(200, sprint());
+      if (method === "GET" && path === `/api/proposal/sprint-with-us/${P1}/team-questions/evaluations`) return json(200, panelScores);
+      if (method === "GET" && path === LIST) return json(200, []);
+      return null;
+    });
+    renderAt(`${CONSENSUS_OF(P1)}/create`);
+    const name = await screen.findByTestId("proposal-proponent-name");
+    expect(name.closest("h1")).not.toBeNull();
+    expect(document.querySelector(".op-eyebrow")!.textContent).toBe("Agree a Sprint With Us consensus");
+    expect([...document.querySelectorAll(".op-facts li")].map((fact) => fact.textContent)).toEqual([
+      "Seeded closed Sprint With Us opportunity",
+      "Proponent 1 of 2",
+    ]);
+    const box = document.getElementById("question-1")!;
+    expect(box.tagName).toBe("FIELDSET");
+    expect(within(box).getByTestId("evaluation-question-response").textContent).toContain("Proponent 1's answer to question 1.");
+    const scores = within(box).getAllByTestId("evaluation-panel-member-score");
+    expect(scores.map((score) => score.closest("li") !== null)).toEqual([true, true]);
+    expect(within(box).getByText("Evaluators' scores for question 1")).toBeTruthy();
+  });
+
+  it("puts the edit page's status in the head and leaves the response off, as the story does", async () => {
+    serve(chair, (method, path) => {
+      if (method === "GET" && path === OPPORTUNITY) return json(200, sprint());
+      if (method === "GET" && path === `/api/proposal/sprint-with-us/${P1}/team-questions/evaluations`) return json(200, panelScores);
+      if (method === "GET" && path === LIST) return json(200, [scoreSet(P1, "Proponent 1", chair, "DRAFT", [4, 4])]);
+      if (method === "GET" && path === `/api/proposal/sprint-with-us/${P1}/team-questions/consensus/${chair.id}`) {
+        return json(200, scoreSet(P1, "Proponent 1", chair, "DRAFT", [4, 4]));
+      }
+      return null;
+    });
+    renderAt(`${CONSENSUS_OF(P1)}/${chair.id}/edit`);
+    const status = await screen.findByTestId("evaluation-consensus-status");
+    expect(status.textContent).toBe("Draft: complete");
+    expect(status.className).toBe("dm-label dm-label-blue");
+    expect(status.closest(".op-head")).not.toBeNull();
+    expect(screen.queryByTestId("evaluation-question-response")).toBeNull();
+    expect(screen.getAllByTestId("evaluation-panel-member-score")).toHaveLength(4);
+  });
+
+  it("shows a panel member who is not the chair one panel per question, under an H2", async () => {
+    serve(evaluator, (method, path) => {
+      if (method === "GET" && path === OPPORTUNITY) return json(200, sprint());
+      if (method === "GET" && path === `/api/proposal/sprint-with-us/${P1}/team-questions/evaluations`) return json(200, panelScores);
+      if (method === "GET" && path === LIST) return json(200, []);
+      return null;
+    });
+    renderAt(`${CONSENSUS_OF(P1)}/create`);
+    expect((await screen.findByTestId("evaluation-chair-only-message")).className).toBe("ev-alert");
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(
+      expect.arrayContaining(["Question 1", "Question 2"]),
+    );
+    expect(document.querySelector("fieldset")).toBeNull();
+  });
+});
+
 describe("one proponent's consensus (R-5.28, R-5.29, R-5.30)", () => {
   const panelScores = [scoreSet(P1, "Proponent 1", evaluator, "SUBMITTED", [4, 3.5]), scoreSet(P1, "Proponent 1", chair, "SUBMITTED", [5, 4])];
 

@@ -1,0 +1,17 @@
+gate: G3
+verdict: approve
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  The question is whether bind-adapter-new-95 carries out the two instructions bind-adapter-new-94 left owed and stays an adapter. It does both, so I approve. The diff touches only tests/adapters/new/index.ts, and every change is a read or a locator: it finds lines on the page and pulls values out of them, with no assertion and nothing that decides whether a test passes. Nothing under tests/acceptance changed. reward() keeps the 'Reward' term lookup first and the labelled-value lookup second, then adds the /^reward\s+(.+)$/i head-line fallback in the order instruction #1 asked for, so the build at localhost:4300 still answers from its term. status() now cuts the head off at the first line whose text is a term label (a dt in the main region), at an 'Opportunity ID:' line, or at the Description heading, whichever comes first. It skips any line that is a term label, so a dt's text can never be taken as the status, and it reads a 'Code With Us <status>' line as its trailing status word, which is everything instruction #2 asked for. The members that now take the place of cwuViewTerm do the same onCwuView check followed by definitionOf, which cwuViewTerm itself does, so the current build behaves as before. The runner's typecheck on this revision passed with no diagnostics under adapters/new/, which covers the author not being able to run tsc. Neither member was re-run against the live build. A verify run on the restyled view showing status() or reward() still answering wrongly would change this ruling.
+conditions:
+  - "condition-met bind-adapter-new-94#1: opportunityCwuView.reward() in tests/adapters/new/index.ts now tries definitionOf(/^reward$/i), then labelledValue(['Reward']), then cwuHeadReward(), which takes the figure from a head line matching /^reward\\s+(.+)$/i ('Reward $5,000' gives '$5,000'); see the reward member and cwuHeadReward in the diff."
+  - "condition-met bind-adapter-new-94#2: cwuHeadLines() in tests/adapters/new/index.ts now ends the head at the first line equal to a dt's text (termLabels()), at an 'Opportunity ID:' line, or at the Description heading, whichever comes first. cwuHeadStatus() skips any line that is a term label and accepts either a bare status word or a 'Code With Us <status>' line, read as the status word; status() tries the 'Status' term first and falls back to cwuHeadStatus()."
+cost: 0.3279954
+turns: 2
+session: "9c9b4f23-e9c7-41d1-a263-a43a057443d4"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T01:49:10.314Z

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-11-7 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-11-7</h1>
+<p class="lede">G3 · <span class="chip return">return</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-18 16:56</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr><tr><th scope="row">worked by</th><td>claude claude-opus-5-5 (2.1.300 (Claude Code))</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 11 (A vendor can register and look after an organization) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> I restyled slice 11&#39;s screens to the approved design catalogue: the organization list, the registration form, and the management page&#39;s head and Organization tab.</p>
+<p><strong>Worked by:</strong> claude claude-opus-5-5 (2.1.300 (Claude Code))</p>
+<p>I restyled slice 11&#39;s screens to the approved design catalogue: the organization list, the registration form, and the management page&#39;s head and Organization tab. The criteria themselves (R-3.1, R-3.2, R-3.3, R-3.18 to R-3.22, R-3.24 and the four image rules) were built in earlier rounds and work the same as before. No test ID, wording or behaviour changed. <code>npm --prefix app run check</code> passes: typechecking plus all unit tests in the three packages, including 621 frontend tests.</p>
+<p><strong>What changed</strong></p>
+<ul><li><strong>One shared organization kit.</strong> I added <code>app/frontend/src/app/organization-kit.tsx</code>, written once and used by every screen here. It reuses the page frame, headings, tables and labels that earlier restyles already put in <code>app/frontend/src/app</code>. It holds:</li><li>the page frame with its own style sheet;</li><li>the management page&#39;s head: the small &quot;Edit Organization&quot; line above the title, green &quot;qualified&quot; labels, the legal name as the main heading, the Organization ID shown as a labelled detail, and the tabs as a navigation landmark called &quot;Organization sections&quot;;</li><li>a grid that lays out form fields in as many columns as fit;</li><li>the read-only profile fields, the stored logo, the archive section and the dialog text;</li><li>the list&#39;s rows and page links.</li><li><strong>Organization list.</strong> On a wide screen it is a table. On a phone each organization becomes a card with its name as a heading and the owner, team size and both qualification marks on one line beneath. The page decides which to draw in script, as the site header does, so each test ID appears once. Logos still show above the name (R-8.28). The loading, refused and failed states use the new page frame.</li><li><strong>Registration form.</strong> It is now three bordered panels (Organization details, Address, Contact), with the fields in columns. The problem list&#39;s title sits in the alert&#39;s own title markup. The reason the Create button is waiting sits directly before the buttons, and the button is described by it.</li><li><strong>Organization tab.</strong> The read-only view has Address and Contact as level-3 sections in the same columns. The edit form lies under an &quot;Edit organization&quot; heading with the same two sections. The logo chooser is still the shared picture picker from slice 3. Loading uses the design&#39;s own loading indicator.</li></ul>
+<p><strong>Where I kept the earlier rulings instead of the catalogue</strong> Four things were settled by decision records 0048 and 0049 in earlier rounds, and I left them as ruled:</p>
+<ul><li>The read-only profile stays as plain text in a description list rather than read-only text boxes, because a box&#39;s value is not part of what the tab reads as. It now sits in the form&#39;s columns.</li><li>&quot;Archive this organization&quot; stays inside the Organization tab&#39;s section. It has a level-3 heading drawn at the size the stories give section headings.</li><li>The submit buttons stay available while the form is invalid.</li><li>On a vendor&#39;s list, a row they don&#39;t own or administer stays a single cell across the table, with no blank cells.</li></ul>
+<p>The new decision record <code>docs/decisions/0079-…</code> explains each of these.</p>
+<p><strong>Tests added</strong> Four new unit tests in <code>app/frontend/tests/organizations.test.tsx</code> cover:</p>
+<ul><li>the phone layout of the list: cards, the name heading, which rows carry details, and no table;</li><li>the management head: the small line, both labels, the identifier as a labelled value, and the five tabs in order;</li><li>Address, Contact and Archive as level-3 sections inside the Organization tab, with &quot;Not entered&quot; for an empty field;</li><li>the three registration panels and the reason the Create button points to.</li></ul>
+<p><strong>Not done here, and what the next slice will find</strong></p>
+<ul><li><code>organization-acting-for-list</code> is a reference page for <code>GET /api/ownedOrganizations</code>, not a screen, so there was nothing to restyle.</li><li>The bodies of the Team members, qualification and Changelog tabs belong to slices 12 and 13. They now sit under the restyled head but keep their old layout.</li><li>The catalogue&#39;s team rows, changelog rows, requirement list and membership labels are not in the app&#39;s organization kit yet. The restyles of slices 12 and 13 should add them there.</li><li>The profile&#39;s Organizations section has not been restyled either.</li></ul>
+<p>I changed nothing outside <code>app/</code> and <code>docs/decisions/</code>.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip return">return</span> by runner:verify (the runner, automatically) on 2026-10-18 17:29.</p>
+<div class="body"><p>This build breaks 1 criterion that passed when an earlier slice was approved. Each condition is the criterion and what the running application did.</p></div>
+<h3>Conditions</h3><ol class="conditions"><li>R-3.28 (passed when slice 13 was approved), in the case &quot;only an administrator may set which service areas an organization is approved for, not the organization&#39;s own owner&quot;: Error: the organization does not stand approved for exactly FULL_STACK_DEVELOPER and AGILE_COACH — at tests/acceptance/organizations/R-3.28.spec.ts:75 — its last steps: organizationEdit.editServiceAreas() at /organizations/c3164a16-1401-4a9c-b1bc-40bed531d1bb/edit?tab=twu-qualification → organizationEdit.saveServiceAreas({serviceAreas}) at /organizations/c3164a16-1401-4a9c-b1bc-40bed531d1bb/edit?tab=twu-qualification → signIn(persona administrator) at /dashboard → organizationEdit.open({orgId}) at /organizations/c3164a16-1401-4a9c-b1bc-40bed531d1bb/edit — the page as it failed: .sdlc/evidence/slice-11/R-3.28.png, .sdlc/evidence/slice-11/R-3.28.txt</li></ol>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

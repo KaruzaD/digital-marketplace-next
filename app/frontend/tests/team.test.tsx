@@ -666,3 +666,100 @@ describe("the memberships once an answer is confirmed", () => {
     expect(membershipsAfter(listed, "b", "accept").map((m) => m.membershipStatus)).toEqual(["ACTIVE", "ACTIVE"]);
   });
 });
+
+// ------------------------------------------------------------------------ the chosen direction
+
+/** Makes the window read as a phone's, below the header's switch point. */
+function asPhone() {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+}
+
+describe("the team screens follow the chosen direction (decision record 0080)", () => {
+  it("names a membership in words, grey for a kind of membership and yellow while it waits", async () => {
+    const { membershipColour } = await import("../src/app/organization-kit");
+    const { membershipWords } = await import("../src/screens/organization-team");
+    expect(membershipWords({ membershipType: "OWNER", membershipStatus: "ACTIVE" })).toBe("Owner");
+    expect(membershipWords({ membershipType: "ADMIN", membershipStatus: "ACTIVE" })).toBe("Administrator");
+    expect(membershipWords({ membershipType: "MEMBER", membershipStatus: "PENDING" })).toBe("Pending");
+    expect(["Owner", "Administrator", "Member"].map(membershipColour)).toEqual(["grey", "grey", "grey"]);
+    expect(membershipColour("Pending")).toBe("yellow");
+  });
+
+  it("draws the tab as a region under its H2, with the labels in place of the old badge", async () => {
+    serveOrganization(organization(), team);
+    resetSessionForTests({ status: "signed-in", account: owner }, fakeIdentity());
+    renderAt(`/organizations/${ORG_ID}/edit?tab=team`);
+    await screen.findAllByTestId("organization-team-member-row");
+    expect(screen.getByRole("region", { name: "Team members" }).tagName).toBe("SECTION");
+    expect(screen.getByTestId("organization-owner-badge").className).toContain("dm-label-grey");
+    expect(screen.getByTestId("organization-pending-badge").className).toContain("dm-label-yellow");
+    expect(screen.getByRole("heading", { level: 3, name: "Team capabilities" })).toBeTruthy();
+  });
+
+  it("announces withdrawn administrator rights in the status region", async () => {
+    serveOrganization(organization(), team, () => json(200, member("a-admin", "u-admin", "Charlie Placeholder", "MEMBER", "ACTIVE")));
+    resetSessionForTests({ status: "signed-in", account: owner }, fakeIdentity());
+    renderAt(`/organizations/${ORG_ID}/edit?tab=team`);
+    await screen.findAllByTestId("organization-team-member-row");
+    const status = screen.getAllByRole("status").find((region) => region.classList.contains("og-saved")) as HTMLElement;
+    expect(status.textContent).toBe("");
+    fireEvent.click(within(rows()[1] as HTMLElement).getByTestId("organization-member-admin-toggle"));
+    await waitFor(() => expect(status.textContent).toBe("Administrator rights removed from Charlie Placeholder."));
+  });
+
+  it("draws the team on a phone as one card per person, the membership and capabilities on one line", async () => {
+    asPhone();
+    serveOrganization(organization(), team);
+    resetSessionForTests({ status: "signed-in", account: owner }, fakeIdentity());
+    renderAt(`/organizations/${ORG_ID}/edit?tab=team`);
+    const cards = await screen.findAllByTestId("organization-team-member-row");
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(cards.map((card) => card.tagName)).toEqual(["LI", "LI", "LI", "LI"]);
+    expect(cards[0]?.querySelector(".og-card-name")?.textContent).toBe("Blake Placeholder (you)");
+    expect(within(cards[0] as HTMLElement).getByText("Capabilities: 2")).toBeTruthy();
+    expect(within(cards[2] as HTMLElement).getByTestId("organization-member-remove-button")).toBeTruthy();
+  });
+
+  it("draws the changelog on a phone as one card per entry, the change and the member first", async () => {
+    asPhone();
+    serveOrganization(
+      organization({
+        changelog: [
+          {
+            id: "e1",
+            event: "ADMIN_STATUS_GRANTED",
+            createdAt: "2026-09-10T09:40:00.000Z",
+            member: { id: "u-member", name: "Dana Placeholder" },
+            createdBy: { id: OWNER_ID, name: "Blake Placeholder" },
+          },
+        ],
+      }),
+      team,
+    );
+    resetSessionForTests({ status: "signed-in", account: owner }, fakeIdentity());
+    renderAt(`/organizations/${ORG_ID}/edit?tab=changelog`);
+    const [entry] = await screen.findAllByTestId("organization-changelog-entry");
+    expect(entry?.tagName).toBe("LI");
+    expect(entry?.querySelector(".og-card-name")?.textContent).toBe("Admin Rights Given: Dana Placeholder");
+    expect(entry?.textContent).toContain("Made by Blake Placeholder");
+  });
+
+  it("draws one's own organizations on a phone as cards, each list keeping its test ID", async () => {
+    asPhone();
+    serve(() => json(200, [own("m-owned", "OWNER", "ACTIVE", "Northwind"), own("m-pending", "MEMBER", "PENDING", "Tidewater")]));
+    resetSessionForTests({ status: "signed-in", account: owner }, fakeIdentity());
+    renderAt("/users/me?tab=organizations");
+    const affiliated = await screen.findByTestId("membership-affiliated-table");
+    expect(affiliated.tagName).toBe("UL");
+    expect(screen.getByTestId("membership-owned-table").tagName).toBe("UL");
+    expect(screen.getByTestId("membership-team-member-count").textContent).toBe("2");
+    expect(within(affiliated).getByTestId("organization-pending-badge").className).toContain("dm-label-yellow");
+    expect(within(affiliated).getByTestId("membership-approve-button")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Organizations you own" })).toBeTruthy();
+  });
+});

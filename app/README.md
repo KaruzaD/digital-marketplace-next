@@ -103,15 +103,20 @@ version. The states and permitted changes of all three programs, and who may do 
 `backend/src/rules/opportunities.ts`; the service's answers and refusals are decision record 0029.
 Submitting for review emails every administrator, publishing emails everyone with new-opportunity
 notices on, each in batches of `MAILER_BATCH_SIZE` (50) blind copies, and both confirm to the
-author.
+author. These screens and the attachment control are drawn from the opportunity kit, whose style
+sheet the root layout places once for every screen (decision record 0071).
 
 ## Finding and following opportunities
 
 Anybody browses at `/opportunities` ("Browse opportunities" on the home page). The list reads all
 three programs and shows what the service lets the person read — published opportunities, and to
 staff their own unpublished ones and to administrators every one — grouped into unpublished, open
-and closed, narrowed by program, state, remote work and words in the title or location. The rules
-for that are `backend/src/rules/opportunity-list.ts`, shared by the screen and the service.
+and closed, narrowed by program, state (staff only), remote work and words in the title or
+location. Closed and Unpublished start closed and open from the button in their heading; staff see
+each opportunity's stage, everyone else whether it is open (decision record 0070). The rules
+for that are `backend/src/rules/opportunity-list.ts`, shared by the screen and the service. The
+opportunity screens' shared pieces are `frontend/src/app/opportunity-kit.tsx`, the catalogue's
+kit, drawn once.
 
 A signed-in person watches an opportunity they did not create from its card or its page
 (`/api/subscribers/<program>`), and turns the new-opportunity emails on or off from the control at
@@ -307,8 +312,16 @@ grant or withdrawal of rights and every transfer of ownership is kept in `affili
 shown on the Changelog tab (`?tab=changelog`), read from the organization's own record. The
 service is `backend/src/organizations/team.service.ts`, the rules the team section of
 `backend/src/rules/organizations.ts`, the screens `frontend/src/screens/organization-team.tsx`;
-the answers and refusals are decision record 0050. The qualification tabs and the program terms
-pages arrive in slice 13.
+the answers and refusals are decision record 0050.
+
+The Sprint With Us and Team With Us qualification tabs (`?tab=swu-qualification`,
+`?tab=twu-qualification`) list each program's requirements as the service reports them met, and
+link to the terms pages at `/organizations/<id>/sprint-with-us-terms-and-conditions` and
+`…/team-with-us-terms-and-conditions`. On those pages the owner accepts the terms once. A service
+administrator alone edits the approved service areas on the Team With Us tab. The screens are
+`frontend/src/screens/organization-qualification.tsx` and `organization-terms.tsx`, drawn from the
+kit's `Requirements` and `TermsPage`. The answers and refusals are decision record 0053, and the
+look is 0081.
 
 ## The first administrator
 

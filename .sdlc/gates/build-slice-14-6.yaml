@@ -1,0 +1,17 @@
+gate: G3
+verdict: return
+by: agent:tech-lead
+held_by: agent
+rationale: |2-
+  Does slice 14 do what its criteria say? Not yet: R-8.31's proposal case fails, and the evidence shows the fault is in the adapter rather than in the application. I return the proposal, with the adapter fix addressed to bind-adapter. The adapter's add-attachment step (tests/adapters/new/index.ts:5567, addAttachmentFile) looks for the row as a list item inside attachmentRegion(), which is regionNamed(page, /^attachments$/i) at line 9442. That needs a region, or a region's heading, named exactly 'Attachments'. The Code With Us proposal form names that part '3. Attachments' (proposal-cwu-form.tsx:690), as the approved catalogue draws it (design/catalogue/proposal-cwu-create-page.tsx:418, proposal-cwu-edit.editing.stories.tsx:114). The region therefore resolves to nothing and the step reports 'no row naming it', even though the screenshot shows the row and its download link. This also explains why the opportunity case of R-8.31, whose part is plain 'Attachments', passes. This is the case runner:verify raised (spec 7.1): the adapter is wrong, so another build cannot fix it. The build's own diagnosis was that the row's test ID was the problem, but the adapter never reads test IDs. So the stored-row change and decision record 0073 rest on a cause the evidence does not show, and they also take away renaming on proposal forms. The ruling changes to approve once bind-adapter matches the numbered part heading, R-8.31's proposal case passes on a current verify result, and the build carries no change the evidence does not justify.
+conditions:
+  - "addressed-to bind-adapter: attachmentRegion() in tests/adapters/new/index.ts (line 9442, regionNamed(page, /^attachments$/i)) only finds a region or heading named exactly 'Attachments'. The Code With Us proposal create and edit forms draw that part as a section named '3. Attachments', which is the approved design (design/catalogue/proposal-cwu-create-page.tsx:418 and proposal-cwu-edit.editing.stories.tsx:114). As a result, proposal-cwu-create.add_attachment in R-8.31's case 'removing an attachment from a proposal withdraws the read path the file held through that proposal' finds no row and fails with 'no row naming it', although the page shows the row with its 'Download R-8.31 removed from a proposal.pdf' link. Make the region lookup accept the numbered part title (for example /^(\\d+\\.\\s*)?attachments$/i) for every proposal form's add_attachment and remove step."
+  - "Withdraw the stored-row change to app/frontend/src/app/attachments.tsx (StoredNewRow and the host === 'proposal' branch in NewAttachmentRow) and decision record 0073, or supersede 0073 with a record saying why. The adapter finds a row by list item and file name, not by attachment-existing-row or attachment-new-row, so the change does not address the R-8.31 failure. It also stops a stored file being renamed on proposal forms. Keep it only if a proposal criterion or a catalogue story for the proposal forms asks for it, and cite that criterion or story in the record."
+cost: 0.9415553999999999
+turns: 8
+session: "03254490-67b9-45ae-b1df-5be8192595be"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T03:32:03.746Z

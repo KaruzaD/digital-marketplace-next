@@ -1,48 +1,43 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AlertDialog, Button, ButtonGroup, Heading, Modal, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { AlertDialog, Button, Modal } from "@bcgov/design-system-react-components";
+import { ActionBar, OpportunityHead, OpportunityPage, STAFF } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // opportunity-twu-edit · delete-confirm — the author asked to confirm deleting their draft (R-1.28, R-1.53)
-const meta: Meta = { title: "opportunities/opportunity-twu-edit/delete-confirm" };
+const meta: Meta = { title: "opportunities/opportunity-twu-edit/delete-confirm", parameters: { viewport: { options: WIDTHS } } };
 export default meta;
-
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
 
 export const DeleteConfirm: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Manage a Team With Us opportunity</Text>
-          <Heading level={1}>Data platform team</Heading>
-        </Stack>
-        <Text elementType="p">Status: <span style={badge} data-testid="opportunity-status">Draft</span></Text>
-        <ButtonGroup ariaLabel="Opportunity actions">
+    <SitePage viewer={STAFF} current="dashboard">
+      <OpportunityPage>
+        <OpportunityHead
+          eyebrow="Manage a Team With Us opportunity"
+          program="team-with-us"
+          status="Draft"
+          title="Data platform team"
+        />
+        <ActionBar>
           <Button variant="secondary" data-testid="opportunity-edit-button">Edit</Button>
           <Button variant="primary" data-testid="opportunity-submit-for-review">Submit for review</Button>
           <Button variant="secondary" danger data-testid="opportunity-delete-button">Delete</Button>
-        </ButtonGroup>
-      </Stack>
-      <Modal isOpen isDismissable>
-        <AlertDialog
-          variant="destructive"
-          title="Delete this opportunity?"
-          data-testid="opportunity-delete-dialog"
-          buttons={
-            <>
-              <Button variant="secondary" data-testid="opportunity-dialog-cancel">Cancel</Button>
-              <Button variant="primary" danger data-testid="opportunity-delete-confirm">Delete opportunity</Button>
-            </>
-          }
-        >
-          <Text elementType="p">The opportunity and everything entered in it will be removed. This cannot be undone.</Text>
-        </AlertDialog>
-      </Modal>
-    </PageContainer>
+        </ActionBar>
+        <Modal isOpen isDismissable>
+          <AlertDialog
+            variant="destructive"
+            title="Delete this opportunity?"
+            data-testid="opportunity-delete-dialog"
+            buttons={
+              <>
+                <Button variant="secondary" data-testid="opportunity-dialog-cancel">Cancel</Button>
+                <Button variant="primary" danger data-testid="opportunity-delete-confirm">Delete opportunity</Button>
+              </>
+            }
+          >
+            <p className="op-text">The opportunity and everything entered in it will be removed. This cannot be undone.</p>
+          </AlertDialog>
+        </Modal>
+      </OpportunityPage>
+    </SitePage>
   ),
 };

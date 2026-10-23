@@ -1,53 +1,61 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, ButtonGroup, Heading, InlineAlert, Link, Text } from "@bcgov/design-system-react-components";
-import { PageContainer, Stack } from "./layout";
+import { Button, InlineAlert, Link } from "@bcgov/design-system-react-components";
+import { ADMIN, ActionBar, Details, OpportunityHead, OpportunityPage, Region } from "./opportunity-kit";
+import { SitePage, WIDTHS } from "./site";
 
 // opportunity-swu-edit · team-scenario-refused — starting the team scenario was refused because a proponent in the
 // code challenge is neither scored nor disqualified (R-1.42)
-const meta: Meta = { title: "opportunities/opportunity-swu-edit/team-scenario-refused" };
+const meta: Meta = {
+  title: "opportunities/opportunity-swu-edit/team-scenario-refused",
+  parameters: { viewport: { options: WIDTHS } },
+};
 export default meta;
 
-const term = { fontWeight: "var(--typography-font-weights-bold)" } as const;
-const badge = {
-  display: "inline-block",
-  paddingInline: "var(--layout-padding-small)",
-  border: "var(--layout-border-width-small) solid var(--surface-color-border-medium)",
-  borderRadius: "var(--layout-border-radius-circular)",
-} as const;
 const base = "/opportunities/sprint-with-us/7c1e2d40-5b1a-4c2e-9d3f-000000000201/edit";
+
+// The tabs' addresses use the service's tab names (?tab=teamQuestions), which differ from their test IDs' suffixes, so
+// they are written in ManageTabs' markup here rather than with ManageTabs.
+const tabs = [
+  { tab: "summary", testId: "opportunity-tab-summary", label: "Summary" },
+  { tab: "opportunity", testId: "opportunity-tab-opportunity", label: "Opportunity" },
+  { tab: "addenda", testId: "opportunity-tab-addenda", label: "Addenda" },
+  { tab: "history", testId: "opportunity-tab-history", label: "History" },
+  { tab: "proposals", testId: "opportunity-tab-proposals", label: "Proposals" },
+  { tab: "teamQuestions", testId: "opportunity-tab-team-questions", label: "Team questions" },
+  { tab: "codeChallenge", testId: "opportunity-tab-code-challenge", label: "Code challenge" },
+  { tab: "teamScenario", testId: "opportunity-tab-team-scenario", label: "Team scenario" },
+  { tab: "evaluationPanel", testId: "opportunity-tab-evaluation-panel", label: "Evaluation panel" },
+  { tab: "consensus", testId: "opportunity-tab-consensus", label: "Consensus" },
+];
 
 export const TeamScenarioRefused: StoryObj = {
   render: () => (
-    <PageContainer>
-      <Stack gap="large">
-        <Stack gap="small">
-          <Text elementType="p" size="small" color="secondary">Manage a Sprint With Us opportunity</Text>
-          <Heading level={1}>Modernize the licence renewal service</Heading>
-        </Stack>
-        <Stack direction="row" align="center" gap="medium">
-          <Text elementType="p">Status: <span style={badge} data-testid="opportunity-status">Code challenge</span></Text>
-          <Text elementType="p" size="small" color="secondary">
-            Opportunity ID: <span data-testid="opportunity-identifier">7c1e2d40-5b1a-4c2e-9d3f-000000000201</span>
-          </Text>
-        </Stack>
-        <ButtonGroup ariaLabel="Opportunity actions">
+    <SitePage viewer={ADMIN} current="dashboard">
+      <OpportunityPage>
+        <OpportunityHead
+          eyebrow="Manage a Sprint With Us opportunity"
+          program="sprint-with-us"
+          status="Code challenge"
+          title="Modernize the licence renewal service"
+        />
+        <Details
+          items={[{ term: "Opportunity ID", value: "7c1e2d40-5b1a-4c2e-9d3f-000000000201", testId: "opportunity-identifier" }]}
+        />
+        <ActionBar>
           <Button variant="secondary" data-testid="opportunity-edit-button">Edit</Button>
           <Button variant="primary" data-testid="start-team-scenario-button">Start team scenario</Button>
           <Button variant="secondary" danger data-testid="opportunity-cancel-button">Cancel opportunity</Button>
-        </ButtonGroup>
-        <nav aria-label="Opportunity sections">
-          <Stack as="ul" direction="row" gap="medium">
-            <li><Link href={`${base}?tab=summary`} aria-current="page" data-testid="opportunity-tab-summary">Summary</Link></li>
-            <li><Link href={`${base}?tab=opportunity`} data-testid="opportunity-tab-opportunity">Opportunity</Link></li>
-            <li><Link href={`${base}?tab=addenda`} data-testid="opportunity-tab-addenda">Addenda</Link></li>
-            <li><Link href={`${base}?tab=history`} data-testid="opportunity-tab-history">History</Link></li>
-            <li><Link href={`${base}?tab=proposals`} data-testid="opportunity-tab-proposals">Proposals</Link></li>
-            <li><Link href={`${base}?tab=teamQuestions`} data-testid="opportunity-tab-team-questions">Team questions</Link></li>
-            <li><Link href={`${base}?tab=codeChallenge`} data-testid="opportunity-tab-code-challenge">Code challenge</Link></li>
-            <li><Link href={`${base}?tab=teamScenario`} data-testid="opportunity-tab-team-scenario">Team scenario</Link></li>
-            <li><Link href={`${base}?tab=evaluationPanel`} data-testid="opportunity-tab-evaluation-panel">Evaluation panel</Link></li>
-            <li><Link href={`${base}?tab=consensus`} data-testid="opportunity-tab-consensus">Consensus</Link></li>
-          </Stack>
+        </ActionBar>
+        <nav className="op-tabs" aria-label="Opportunity sections">
+          <ul>
+            {tabs.map((t) => (
+              <li key={t.tab}>
+                <Link href={`${base}?tab=${t.tab}`} aria-current={t.tab === "summary" ? "page" : undefined} data-testid={t.testId}>
+                  {t.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </nav>
         <div tabIndex={-1} data-testid="advance-refused-message">
           <InlineAlert
@@ -57,24 +65,19 @@ export const TeamScenarioRefused: StoryObj = {
             role="alert"
           />
         </div>
-        <Stack as="section" gap="medium" aria-labelledby="tab-heading">
-          <Heading level={2} id="tab-heading">Summary</Heading>
-          <Text elementType="p">
+        <Region id="tab-heading" title="Summary">
+          <p className="op-text">
             The team scenario can start once every proponent in the code challenge has been scored or disqualified and at least
             one remains screened in.
-          </Text>
-          <Stack as="dl" direction="row" gap="medium">
-            <Stack gap="small">
-              <dt style={term}>Created by</dt>
-              <dd data-testid="opportunity-created-by">Test Public Servant</dd>
-            </Stack>
-            <Stack gap="small">
-              <dt style={term}>Last changed by</dt>
-              <dd data-testid="opportunity-last-changed-by">Test Administrator</dd>
-            </Stack>
-          </Stack>
-        </Stack>
-      </Stack>
-    </PageContainer>
+          </p>
+          <Details
+            items={[
+              { term: "Created by", value: "Test Public Servant", testId: "opportunity-created-by" },
+              { term: "Last changed by", value: "Test Administrator", testId: "opportunity-last-changed-by" },
+            ]}
+          />
+        </Region>
+      </OpportunityPage>
+    </SitePage>
   ),
 };

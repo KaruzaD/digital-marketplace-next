@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>build-slice-1-9 — digital-marketplace-next</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<div class="masthead">
+  <span class="wordmark"><a href="../index.html">digital-marketplace-next</a></span>
+  <span class="project">state of the build</span>
+  <span class="spacer"></span>
+  <span class="profile">rebuild profile</span>
+</div>
+<div class="shell">
+<nav class="sidebar" aria-label="Sections"><h2 id="nav-state">State</h2><ul aria-labelledby="nav-state"><li><a href="../index.html">Overview</a></li><li><a href="../gates.html">Gate log <span class="count">735</span></a></li><li><a href="../proposals.html" aria-current="page">Proposals <span class="count">729</span></a></li><li><a href="../results.html">Results</a></li></ul><h2 id="nav-record">Record</h2><ul aria-labelledby="nav-record"><li><a href="../journal.html">Journal <span class="count">584</span></a></li><li><a href="../runs.html">Run log <span class="count">28</span></a></li></ul><h2 id="nav-domains">Domains</h2><ul aria-labelledby="nav-domains"><li><a href="../criteria/opportunities.html">opportunities <span class="count">57</span></a></li><li><a href="../criteria/proposals.html">proposals <span class="count">40</span></a></li><li><a href="../criteria/organizations.html">organizations <span class="count">35</span></a></li><li><a href="../criteria/users.html">users <span class="count">36</span></a></li><li><a href="../criteria/evaluation.html">evaluation <span class="count">37</span></a></li><li><a href="../criteria/notifications.html">notifications <span class="count">28</span></a></li><li><a href="../criteria/content.html">content <span class="count">31</span></a></li><li><a href="../criteria/files.html">files <span class="count">31</span></a></li></ul></nav>
+<main id="main">
+<div class="page-head"><h1>build-slice-1-9</h1>
+<p class="lede">G3 · <span class="chip approve">approve</span></p></div>
+<div class="scroll"><table><tbody><tr><th scope="row">gate</th><td>G3</td></tr><tr><th scope="row">opened</th><td>2026-10-17 20:05</td></tr><tr><th scope="row">holder</th><td>agent:reviewer</td></tr></tbody></table></div>
+<div class="body"><h2>Does slice 1 (A visitor can read the service&#39;s own pages) do what its criteria say?</h2>
+<p><strong>Recommendation.</strong> The application build-slice-1-8 carried is proposed again unchanged, because the ruling on it asked nothing of the build.</p>
+<p>The application build-slice-1-8 carried is proposed again unchanged, because the ruling on it asked nothing of the build.</p>
+<p>Its one condition went to another stage:</p>
+<ul><li>to bind-adapter: R-7.19: contentFooter scopes every read to siteFooter(), which is <code>getByRole(&quot;contentinfo&quot;).or(getByText(&quot;Owned and operated by the B.C. Government.&quot;, {exact:true}).locator(&quot;xpath=..&quot;)).last()</code>. On / the page now draws that line in its own small block inside the footer, so <code>.last()</code> picks the line&#39;s parent rather than the whole footer. presentWhenSignedOut read only &quot;Owned and operated by the B.C. Government.&quot; and aboutLink read &quot;&quot;. The page does show the five links, labelled About, Disclaimer, Privacy, Accessibility and Copyright, in the footer&#39;s link list beside that block (evidence .sdlc/evidence/slice-1/R-7.19.png). Scope the footer to the whole footer region (the outermost match, or the contentinfo landmark on its own), not to the parent of the ownership line.</li></ul>
+<p>No earlier condition on this line of work is open, so no builder session ran. The application is verified again with that other work in place.</p></div>
+<section class="ruling"><h2>Ruling</h2>
+<p><span class="chip approve">approve</span> by agent:reviewer (persona agent · claude claude-opus-5-5) on 2026-10-17 20:36.</p>
+<div class="body"><p>Slice 1 is ruled on a current pass verdict: verify ran against application tree 072cfc8 for build-slice-1-9, and all six claimed criteria (R-7.1, R-7.2, R-7.3, R-7.4, R-7.18, R-7.19) passed, with none failed or unasserted. The application is the same build build-slice-1-8 carried. That ruling&#39;s only condition went to bind-adapter (scope the footer to the whole footer region), the binding is now in place, and R-7.19 passes against it: the five links labelled About, Disclaimer, Privacy, Accessibility and Copyright each open their page. The diff stays within app/ apart from pipeline records. The footer keeps the five content links with their test IDs and adds Home, Contact Us and Source Code. No secret, credential or personal data appears in the code. The header changes are covered by their own unit tests, and the backend end-to-end tests only replace a fixed wait with waiting until the mail has settled. The ruling would change if a later verify result for this tree failed or went stale, or if the footer, header or home-page work changed behaviour another slice&#39;s criteria cover.</p></div>
+</section>
+</main>
+</div>
+<footer class="site">
+  <p>Generated by the agentic SDLC pipeline from the files in this repository. Styled with the B.C. Design System token set (@bcgov/design-tokens 5.0.0).</p>
+</footer>
+</body>
+</html>

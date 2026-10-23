@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
-import { Heading, Text } from "@bcgov/design-system-react-components";
 import { OpportunityStatus, Program, pacificDayOf, statusLabel } from "@rules/opportunities";
 import { badge, term } from "../app/layout";
+import { Details, Region, type Detail } from "../app/opportunity-kit";
 import { Stack } from "../app/page-layout";
 import { readDate, readDay } from "../lib/dates";
 
@@ -94,20 +94,20 @@ export function SuccessfulProponentSection({
   proponent: { readonly name: string; readonly email?: string | null; readonly phone?: string | null; readonly score?: number | null };
 }) {
   const contact = [proponent.email, proponent.phone].filter((part): part is string => typeof part === "string" && part.trim() !== "");
+  const details: Detail[] = [
+    ...(contact.length > 0
+      ? [{ term: "Contact", value: contact.join(", "), testId: "opportunity-successful-proponent-contact" }]
+      : []),
+    ...(typeof proponent.score === "number"
+      ? [{ term: "Score", value: `${proponent.score}%`, testId: "opportunity-successful-proponent-score" }]
+      : []),
+  ];
   return (
-    <Stack as="section" gap="medium" aria-labelledby="view-award">
-      <Heading level={2} id="view-award">
-        Successful proponent
-      </Heading>
-      <Text elementType="p" data-testid="opportunity-successful-proponent">
+    <Region id="view-award" title="Successful proponent">
+      <p className="op-text" data-testid="opportunity-successful-proponent">
         {proponent.name.trim() === "" ? "—" : proponent.name}
-      </Text>
-      {contact.length > 0 || typeof proponent.score === "number" ? (
-        <Stack as="dl" direction="row" gap="medium">
-          {contact.length > 0 ? <Fact label="Contact details">{contact.join(", ")}</Fact> : null}
-          {typeof proponent.score === "number" ? <Fact label="Score">{`${proponent.score}%`}</Fact> : null}
-        </Stack>
-      ) : null}
-    </Stack>
+      </p>
+      {details.length > 0 ? <Details items={details} /> : null}
+    </Region>
   );
 }

@@ -1,0 +1,17 @@
+gate: G3
+verdict: return
+by: agent:reviewer
+held_by: agent
+rationale: |2-
+  The question is whether slice 8 does what its criteria say, as built and not just as tested. Verify passes on the current tree, but the revision that got it there changes the approved design to suit a defect in the harness. The new adapter's opportunityGroup (tests/adapters/new/index.ts:4315) reads a group's rows as every text line after its heading up to the next group heading, and opens a folded group only when it finds no lines at all. Closed is the last group, so the adapter read the three-programs panel that follows it as the group's rows and never opened it. The builder's own evidence shows exactly this. Instead of that being sent to bind-adapter, the build made the Closed group start open (opportunity-list.tsx defaultOpen; decision 0071), against DESIGN.md's 'Closed and Unpublished start closed'. A product change made to fit the harness is not one this gate should accept. The rest of the diff (restyle, status words by role, in-order escaped search, shared kit and its unit tests, dashboard tables) follows the criteria and the stack, and carries no secrets. The ruling changes to approve once the adapter reads a group's rows from within that group's own section, opening it when collapsed, and the slice passes with Closed starting collapsed as designed.
+conditions:
+  - "addressed-to bind-adapter: the new target's opportunityList group readers (opportunityGroup in tests/adapters/new/index.ts) must read a group's rows from inside that group's own section on the page, not as the text lines that follow its heading up to the next group heading, and must open a collapsed group before reading it. On the slice 8 run the Closed Opportunities group was collapsed and was the last group, so the reader took the program descriptions panel that follows it as its rows, never opened it, and reported the seeded closed Sprint With Us opportunity missing for an administrator."
+  - "app/frontend/src/screens/opportunity-list.tsx: once the adapter answer is approved, start the Closed Opportunities group collapsed again as the approved design says (remove defaultOpen from its Disclosure), withdraw docs/decisions/0071-the-closed-opportunities-group-starts-open.md, and put the unit tests in app/frontend/tests/finding-opportunities.test.tsx back to opening the closed group before reading its rows."
+cost: 0.839712
+turns: 10
+session: "c912ec67-3685-4a5e-af95-c5fc6e55c37c"
+backend: claude
+model: "claude-opus-5-5"
+cli: "2.1.300 (Claude Code)"
+isolation: "none"
+at: 2026-10-18T00:30:29.208Z
