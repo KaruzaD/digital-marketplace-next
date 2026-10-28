@@ -1,0 +1,21 @@
+# Hands an SRE agent incident issue to the Copilot cloud agent. The default GITHUB_TOKEN cannot
+# assign @copilot, so this uses a PAT or GitHub App token stored as COPILOT_ASSIGN_TOKEN.
+name: Assign Copilot to incidents
+
+on:
+  issues:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  assign:
+    if: github.event.label.name == 'sre-incident'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Assign the issue to Copilot
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_ASSIGN_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: gh issue edit "$NUMBER" --add-assignee "@copilot"

@@ -1,9 +1,17 @@
 # Deploys new images to the development and test environment on Azure Container Apps (decision
-# record 0069). It only swaps image tags on the two existing apps, so its Azure identity needs no
-# right to create anything. The foundation is created once by hand: infra/azure/README.md.
+# record 0069) on each push to main that changes more than documentation, or manually. It only swaps image tags
+# on the two existing apps, so its Azure identity needs no right to create anything. The
+# foundation is created once by hand: infra/azure/README.md.
 name: Deploy to Azure
 
 on:
+  push:
+    branches: [main]
+    # Documentation-only pushes don't redeploy.
+    paths-ignore:
+      - "docs/**"
+      - "site/**"
+      - "**/*.md"
   workflow_dispatch: {}
 
 concurrency:

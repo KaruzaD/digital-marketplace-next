@@ -84,3 +84,33 @@ resource serverErrors 'Microsoft.Insights/metricAlerts@2018-03-01' = {
     }
   }
 }
+
+resource backendExceptions 'Microsoft.Insights/scheduledQueryRules@2022-06-15' = {
+  name: '${prefix}-backend-exceptions'
+  location: location
+  tags: tags
+  properties: {
+    displayName: '${prefix}-backend exceptions'
+    description: 'The backend raised more than 5 exceptions in 5 minutes. Picked up by the SRE agent (response plan for exception incidents).'
+    severity: 2
+    enabled: true
+    scopes: [appInsightsId]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT5M'
+    criteria: {
+      allOf: [
+        {
+          query: 'exceptions | where cloud_RoleName == "${prefix}-backend"'
+          timeAggregation: 'Count'
+          operator: 'GreaterThan'
+          threshold: 5
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+    autoMitigate: true
+  }
+}

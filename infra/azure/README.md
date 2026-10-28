@@ -23,7 +23,8 @@ az group create -n rg-dmdev -l canadacentral
 
 The workflow [deploy-azure.yml](../../.github/workflows/deploy-azure.yml) builds and pushes the four
 images to GHCR tagged with the commit, points the existing `dmdev-idp` and `dmdev-frontend` apps at
-them, and smoke-tests the result. Run it manually from the Actions tab. It creates nothing: the
+them, and smoke-tests the result. It runs on every push to `main` except documentation-only ones (`docs/**`, `site/**`,
+`**/*.md`), and manually from the Actions tab. It creates nothing: the
 foundation, the apps and the SRE agent's access are created once by hand (below), and the
 workflow's identity can only update those two apps.
 

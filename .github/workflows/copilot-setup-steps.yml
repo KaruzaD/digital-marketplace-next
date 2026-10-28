@@ -1,0 +1,35 @@
+# Prepares the Copilot cloud agent's environment: Node and the dependencies of the backend
+# (an npm workspace under app/) and of the acceptance tests.
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths: [".github/workflows/copilot-setup-steps.yml"]
+  pull_request:
+    paths: [".github/workflows/copilot-setup-steps.yml"]
+
+permissions: {}
+
+jobs:
+  # The job must be named copilot-setup-steps for the agent to pick it up.
+  copilot-setup-steps:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            app/package-lock.json
+            tests/package-lock.json
+      # The backend's postinstall generates the Prisma client.
+      - name: Install app dependencies (includes app/backend)
+        working-directory: app
+        run: npm ci
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm ci
