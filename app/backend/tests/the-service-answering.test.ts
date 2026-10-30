@@ -63,6 +63,13 @@ describe("the service, started", () => {
     expect(await answer.text()).toBe("OK");
   });
 
+  it("still reports that it is up when asked for detail in a header", async () => {
+    const answer = await fetch(`${origin}/status`, { headers: { "X-Status-Detail": "1" } });
+
+    expect(answer.status).toBe(200);
+    expect(await answer.text()).toBe("OK");
+  });
+
   it("answers with a page the installation carries for itself (R-7.1, R-7.12)", async () => {
     const answer = await fetch(`${origin}/api/content/privacy`);
 
