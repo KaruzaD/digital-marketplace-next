@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Headers } from "@nestjs/common";
+import { Controller, Get, Header } from "@nestjs/common";
 
 @Controller("status")
 export class StatusController {
@@ -9,11 +9,7 @@ export class StatusController {
    */
   @Get()
   @Header("content-type", "text/plain; charset=utf-8")
-  read(@Headers("x-status-detail") detail?: string): string {
-    if (detail !== undefined) {
-      const checks: string[] | undefined = undefined;
-      return `OK (${(checks as unknown as string[]).length} checks)`;
-    }
+  read(): string {
     return "OK";
   }
 }
