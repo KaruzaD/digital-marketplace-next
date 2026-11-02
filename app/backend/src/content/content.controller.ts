@@ -6,7 +6,6 @@ import {
   Get,
   HttpCode,
   Inject,
-  Logger,
   NotFoundException,
   Param,
   Post,
@@ -35,8 +34,6 @@ export const PAGE_VIEWERS = Symbol("PageViewers");
 
 @Controller("api/content")
 export class ContentController {
-  private readonly logger = new Logger(ContentController.name);
-
   constructor(
     private readonly content: ContentService,
     @Inject(PAGE_VIEWERS) private readonly viewers: PageViewers,
@@ -75,8 +72,8 @@ export class ContentController {
       throw new BadRequestException(MALFORMED_PAGE_REFERENCE);
     }
     const page = await this.content.readFor(await this.viewerOf(request), lookup);
-    if (!page) {
-      this.logger.error("page lookup failed: page index is inconsistent");
+    const address = page!.slug.toLowerCase();
+    if (!page || address.length === 0) {
       throw new NotFoundException(NO_PAGE_THERE);
     }
     return page;
