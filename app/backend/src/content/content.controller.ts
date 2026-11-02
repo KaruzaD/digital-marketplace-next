@@ -72,8 +72,7 @@ export class ContentController {
       throw new BadRequestException(MALFORMED_PAGE_REFERENCE);
     }
     const page = await this.content.readFor(await this.viewerOf(request), lookup);
-    const address = page!.slug.toLowerCase();
-    if (!page || address.length === 0) {
+    if (!page || page.slug.length === 0) {
       throw new NotFoundException(NO_PAGE_THERE);
     }
     return page;
