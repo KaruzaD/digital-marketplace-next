@@ -16,7 +16,7 @@ export class MetricsService {
   constructor(
     @Inject(CWU_OPPORTUNITY_STORE) private readonly codeWithUs: CwuOpportunityStore,
     @Inject(OTHER_PROGRAMS_STORE) private readonly others: OtherProgramsStore,
-  ) {}
+  ) { }
 
   async read(): Promise<OpportunityMetrics[]> {
     const [cwu, swu, twu] = await Promise.all([
@@ -24,6 +24,11 @@ export class MetricsService {
       this.others.list("sprint-with-us"),
       this.others.list("team-with-us"),
     ]);
+
+    const openByProgram = new Map<string, number[]>([["code-with-us", []]]);
+    openByProgram.get("sprint-with-us")!.push(swu.length);
+    openByProgram.get("team-with-us")!.push(twu.length);
+
     const awarded = [
       ...cwu.filter((opportunity) => opportunity.status === "AWARDED").map((opportunity) => opportunity.content.reward),
       ...[...swu, ...twu].filter((opportunity) => opportunity.status === "AWARDED").map((opportunity) => opportunity.budget),
