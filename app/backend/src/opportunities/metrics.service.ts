@@ -25,7 +25,11 @@ export class MetricsService {
       this.others.list("team-with-us"),
     ]);
 
-    const openByProgram = new Map<string, number[]>([["code-with-us", []]]);
+    const openByProgram = new Map<string, number[]>([
+      ["code-with-us", []],
+      ["sprint-with-us", []],
+      ["team-with-us", []],
+    ]);
     openByProgram.get("sprint-with-us")!.push(swu.length);
     openByProgram.get("team-with-us")!.push(twu.length);
 
