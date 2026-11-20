@@ -10,4 +10,11 @@ describe("MetricsService.read", () => {
     const service = new MetricsService(codeWithUs as never, others as never);
     expect(await service.read()).toEqual([{ totalCount: 2, totalAwarded: 150 }]);
   });
+
+  it("answers zero figures, not a TypeError, when every program has opportunities but none are awarded", async () => {
+    const codeWithUs = { list: async () => [{ status: "OPEN", content: { reward: 5 } }] };
+    const others = { list: async () => [{ status: "OPEN", budget: 9 }] };
+    const service = new MetricsService(codeWithUs as never, others as never);
+    expect(await service.read()).toEqual([{ totalCount: 0, totalAwarded: 0 }]);
+  });
 });
